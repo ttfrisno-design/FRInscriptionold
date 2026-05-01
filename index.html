@@ -3058,9 +3058,35 @@ async function confirmDossierSansPaiement(code) {
   localStorage.setItem('fri_registrations', JSON.stringify(existing));
   state.registrations = existing;
 
-  // ── Lire les infos chèques depuis le formulaire AVANT de changer de page ──
+  // ── Validation + lecture des infos chèques AVANT de changer de page ──
   if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
     const isTroisCheques = state.troisCheques && document.getElementById('cb-trois-cheques')?.checked;
+
+    // ── VALIDATION : vérifier que les champs chèques sont remplis ──
+    if (isTroisCheques) {
+      const manquants = [];
+      [1,2,3].forEach(n => {
+        const b = (document.getElementById('ch'+n+'t-banque')?.value || '').trim();
+        const num = (document.getElementById('ch'+n+'t-numero')?.value || '').trim();
+        if (!b || !num) manquants.push('Chèque n°'+n + ((!b && !num) ? ' (banque et n° chèque)' : !b ? ' (banque)' : ' (n° chèque)'));
+      });
+      if (manquants.length > 0) {
+        showToast('⚠️ Formulaire chèques incomplet : ' + manquants.join(' — '), '#856404');
+        document.getElementById('trois-cheques-form')?.scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+      }
+    } else {
+      const b1   = (document.getElementById('ch1-banque')?.value || '').trim();
+      const num1 = (document.getElementById('ch1-numero')?.value || '').trim();
+      if (!b1 || !num1) {
+        const manque = (!b1 && !num1) ? 'la banque et le numéro de chèque' : !b1 ? 'la banque' : 'le numéro de chèque';
+        showToast('⚠️ Veuillez renseigner ' + manque + ' avant de valider.', '#856404');
+        document.getElementById('ch1-banque')?.scrollIntoView({behavior:'smooth', block:'center'});
+        document.getElementById('ch1-banque')?.focus();
+        return;
+      }
+    }
+
     if (isTroisCheques) {
       // 3 chèques
       reg.troisCheques = true;
@@ -4740,7 +4766,9 @@ function clearSignature() {
 
 function showToast(msg, type) {
   const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (type==='green'?'#2d6a4f':'#856404') + ';color:white;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+  // type peut être 'green', une couleur hex, ou autre
+  const bg = type === 'green' ? '#2d6a4f' : (type && type.startsWith('#') ? type : '#856404');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + bg + ';color:white;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:90%;text-align:center;';
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 4000);
