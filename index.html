@@ -3114,7 +3114,8 @@ async function confirmDossierSansPaiement(code) {
     if (ridx >= 0) { regsArr[ridx] = reg; localStorage.setItem('fri_registrations', JSON.stringify(regsArr)); }
   }
 
-  // Send to Google Sheets (admin will see status "En attente paiement")
+  // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
+  await sendToGoogleSheets(reg);
   goStep(6);
   const modeLabelFinal = {
     cheque: 'Ch\u00e8que \u00e0 l\'ordre du FRI',
@@ -3165,8 +3166,6 @@ async function confirmDossierSansPaiement(code) {
 
     </div>`;
 
-  // Send to sheet with pending_manual status
-  await sendToGoogleSheets(reg);
 }
 
 async function confirmPayment() {
