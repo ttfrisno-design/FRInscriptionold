@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDm1tqlc-LRsu17mi0RTYmuVba9jRV_tyQX3Dj4cAfcmE0rzRLdE8mOR75SMY8Zs45/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXTlsioyLTfb7srrrr5o5Gv5Vvl_HEYTZma2fHmWpU8NcDCxMJKwUPut5YsVeCXe0e/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -3116,6 +3116,33 @@ async function confirmDossierSansPaiement(code) {
 
   // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
   await sendToGoogleSheets(reg);
+
+  // Envoi séparé des chèques (payload léger, sans les rows)
+  if (reg.cheques && reg.cheques.length > 0) {
+    const urlCh = getAppsScriptUrl();
+    if (urlCh && !urlCh.includes('VOTRE_URL')) {
+      const r0 = reg.responsable || {};
+      const chPayload = {
+        action:  'ecrireChèques',
+        code:    reg.code || '',
+        nom:     r0.nom    || '',
+        prenom:  r0.prenom || '',
+        cheques: reg.cheques
+      };
+      const cbCh = '_friCh_' + Date.now();
+      const pCh  = new URLSearchParams();
+      pCh.set('payload',  JSON.stringify(chPayload));
+      pCh.set('callback', cbCh);
+      pCh.set('_t', Date.now());
+      window[cbCh] = function() { delete window[cbCh]; };
+      const sCh = document.createElement('script');
+      sCh.src = urlCh + '?' + pCh.toString();
+      sCh.onerror = () => { delete window[cbCh]; };
+      setTimeout(() => { delete window[cbCh]; }, 10000);
+      document.head.appendChild(sCh);
+    }
+  }
+
   goStep(6);
   const modeLabelFinal = {
     cheque: 'Ch\u00e8que \u00e0 l\'ordre du FRI',
