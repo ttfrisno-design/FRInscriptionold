@@ -2915,15 +2915,22 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   const nom      = (m.nom    || '').replace(/\s+/g,'_');
   const filename = 'Attestation_sante_' + (isMineur ? 'mineur' : 'majeur') + '_' + prenom + '_' + nom + '.pdf';
 
-  // Forcer le téléchargement via blob URL
+  // Ouvrir le PDF dans un nouvel onglet (pour enregistrement ou impression)
   const pdfBlob = doc.output('blob');
-  const dlUrl   = URL.createObjectURL(pdfBlob);
-  const dlLink  = document.createElement('a');
-  dlLink.href = dlUrl; dlLink.download = filename; dlLink.style.display = 'none';
-  document.body.appendChild(dlLink);
-  dlLink.click();
-  setTimeout(() => { URL.revokeObjectURL(dlUrl); dlLink.remove(); }, 3000);
-  showToast('✅ PDF téléchargé : ' + filename, 'green');
+  const pdfUrl  = URL.createObjectURL(pdfBlob);
+  const win = window.open(pdfUrl, '_blank');
+  if (!win) {
+    // Si le navigateur bloque les popups, fallback téléchargement
+    const dlLink = document.createElement('a');
+    dlLink.href = pdfUrl; dlLink.download = filename; dlLink.style.display = 'none';
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    setTimeout(() => { dlLink.remove(); }, 2000);
+    showToast('✅ PDF généré (autorisez les popups pour l\'ouvrir dans un onglet)', 'green');
+  } else {
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 30000); // libérer après 30s
+    showToast('✅ PDF ouvert dans un nouvel onglet — enregistrez ou imprimez', 'green');
+  }
 
   // ── Envoi notification email ──
   try {
