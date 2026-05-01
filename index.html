@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiI7vbcSQ3fjIvccS5zr6K5JlOkwePz3r2M6l-avesJ7Gh0Wt2jyfiQeBGhVUD5Nqh/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAZ-I2N6C1Rlrn5HQiYDRWtcWOcwtXAhMIsMlGciHs8m3e0Xz7nDWq7yFywl5mYcx7/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -2635,48 +2635,79 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   }
   function tableau(questions, startY) {
     let y = startY;
-    const rowH = 8;
-    // Header
+    // Colonnes : texte sur 145mm, OUI sur 15mm, NON sur 15mm (total = TW = 170mm)
+    const COL_TXT  = TW - 34; // 136mm pour le texte
+    const COL_W    = 17;      // largeur colonne OUI/NON
+    const X_OUI    = M + COL_TXT + 2;
+    const X_NON    = M + COL_TXT + COL_W + 2;
+    const HDR_H    = 8;
+
+    // ── En-tête ──
     doc.setFillColor(...VERT);
-    doc.rect(M, y, TW, rowH, 'F');
-    doc.setFontSize(9);
+    doc.rect(M, y, TW, HDR_H, 'F');
+    doc.setFontSize(8.5);
     doc.setFont('helvetica','bold');
     doc.setTextColor(...BLANC);
-    doc.text('RÉPONDEZ AUX QUESTIONS SUIVANTES PAR OUI OU PAR NON', M+3, y+5.5);
-    doc.text('OUI', W-M-18, y+5.5);
-    doc.text('NON', W-M-8, y+5.5);
-    y += rowH;
+    doc.text('RÉPONDEZ AUX QUESTIONS SUIVANTES PAR OUI OU PAR NON', M + 3, y + 5.5);
+    // Centrer OUI et NON dans leurs colonnes
+    doc.text('OUI', X_OUI + COL_W/2 - 2, y + 5.5);
+    doc.text('NON', X_NON + COL_W/2 - 2, y + 5.5);
+    y += HDR_H;
+
     questions.forEach(function(q, i) {
-      const bg = i%2===0 ? [245,250,245] : [255,255,255];
-      doc.setFillColor(...bg);
-      const lines = doc.splitTextToSize(q.txt, TW - 30);
-      const rh = Math.max(rowH, lines.length * 4.5 + 3);
-      doc.rect(M, y, TW, rh, 'F');
-      doc.setDrawColor(200,220,200);
-      doc.rect(M, y, TW, rh, 'S');
+      const bg = i % 2 === 0 ? [245, 250, 245] : [255, 255, 255];
+      // Calculer la hauteur de ligne
       doc.setFontSize(8.5);
-      doc.setFont('helvetica','normal');
+      const lines = doc.splitTextToSize(q.txt, COL_TXT - 4);
+      const rh = Math.max(10, lines.length * 4.8 + 4);
+
+      // Fond de ligne
+      doc.setFillColor(...bg);
+      doc.rect(M, y, TW, rh, 'F');
+      // Séparateurs verticaux
+      doc.setDrawColor(200, 220, 200);
+      doc.setLineWidth(0.3);
+      doc.rect(M, y, TW, rh, 'S');
+      doc.line(M + COL_TXT, y, M + COL_TXT, y + rh);
+      doc.line(M + COL_TXT + COL_W, y, M + COL_TXT + COL_W, y + rh);
+
+      // Texte de la question
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(...NOIR);
-      doc.text(lines, M+3, y+5);
-      // OUI / NON checkboxes
-      const rep = q.rep;
-      const cy = y + rh/2;
-      doc.setDrawColor(...NOIR);
-      doc.rect(W-M-20, cy-3, 5, 5, 'S');
-      doc.rect(W-M-10, cy-3, 5, 5, 'S');
-      if (rep === 'oui') {
-        doc.setFillColor(200,0,0);
-        doc.rect(W-M-20, cy-3, 5, 5, 'F');
+      doc.text(lines, M + 3, y + 5);
+
+      // Cases à cocher centrées dans leurs colonnes
+      const cy = y + rh / 2;
+      const bx1 = X_OUI  + (COL_W - 5) / 2; // case OUI
+      const bx2 = X_NON  + (COL_W - 5) / 2; // case NON
+
+      // Case OUI
+      if (q.rep === 'oui') {
+        doc.setFillColor(200, 0, 0);
+        doc.rect(bx1, cy - 2.5, 5, 5, 'F');
         doc.setTextColor(...BLANC);
         doc.setFontSize(7);
-        doc.text('X', W-M-18, cy+1.5);
-      } else if (rep === 'non') {
-        doc.setFillColor(...VERT);
-        doc.rect(W-M-10, cy-3, 5, 5, 'F');
-        doc.setTextColor(...BLANC);
-        doc.setFontSize(7);
-        doc.text('X', W-M-8, cy+1.5);
+        doc.text('X', bx1 + 1.5, cy + 1.5);
+      } else {
+        doc.setDrawColor(...NOIR);
+        doc.setLineWidth(0.5);
+        doc.rect(bx1, cy - 2.5, 5, 5, 'S');
       }
+
+      // Case NON
+      if (q.rep === 'non') {
+        doc.setFillColor(...VERT);
+        doc.rect(bx2, cy - 2.5, 5, 5, 'F');
+        doc.setTextColor(...BLANC);
+        doc.setFontSize(7);
+        doc.text('X', bx2 + 1.5, cy + 1.5);
+      } else {
+        doc.setDrawColor(...NOIR);
+        doc.setLineWidth(0.5);
+        doc.rect(bx2, cy - 2.5, 5, 5, 'S');
+      }
+
+      doc.setLineWidth(0.3);
       y += rh;
     });
     return y;
@@ -2910,15 +2941,10 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
 }
 
 function envoyerPDFViaForm(filename, dataUri, membre, responsable, email, type) {
-  const base64 = dataUri.split(',')[1];
-  if (!base64) return;
   const url = getAppsScriptUrl();
   if (!url || url.includes('VOTRE_URL')) return;
 
-  // Envoyer via <script> tag (méthode qui fonctionne avec Apps Script)
-  // Le PDF est trop grand pour une URL — on envoie juste les métadonnées
-  // et le texte court, Apps Script génère un email sans pièce jointe PDF
-  // mais avec lien de téléchargement ou copie Drive
+  // Même méthode que validerPaiement — balise <script> dynamique
   const cbName = '_pdfCb_' + Date.now();
   const payload = {
     action: 'envoyerAttestationPDF',
@@ -2926,20 +2952,29 @@ function envoyerPDFViaForm(filename, dataUri, membre, responsable, email, type) 
     membre: membre,
     responsable: responsable,
     email: email,
-    type: type,
-    callback: cbName
+    type: type
   };
   const params = new URLSearchParams();
   params.set('payload', JSON.stringify(payload));
+  params.set('action', 'envoyerAttestationPDF');
   params.set('callback', cbName);
   params.set('_t', Date.now());
 
-  window[cbName] = function() { delete window[cbName]; if(s.parentNode) s.parentNode.removeChild(s); };
-  setTimeout(() => { delete window[cbName]; }, 10000);
+  let done = false;
+  const t = setTimeout(() => {
+    if (!done) { done = true; delete window[cbName]; if(s.parentNode) s.parentNode.removeChild(s); }
+  }, 8000);
+
+  window[cbName] = function(data) {
+    if (!done) { done = true; clearTimeout(t); delete window[cbName]; if(s.parentNode) s.parentNode.removeChild(s); }
+  };
 
   const s = document.createElement('script');
   s.src = url + '?' + params.toString();
-  s.onerror = () => { delete window[cbName]; if(s.parentNode) s.parentNode.removeChild(s); };
+  s.onerror = () => {
+    if (!done) { done = true; clearTimeout(t); delete window[cbName]; }
+    // onerror = Apps Script a répondu (302 normal) — email envoyé
+  };
   document.head.appendChild(s);
 }
 
