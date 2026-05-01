@@ -3046,11 +3046,39 @@ async function confirmDossierSansPaiement(code) {
   const reg = pending[code];
   if (!reg) { alert('Dossier introuvable.'); return; }
 
-  // Mark as pending_manual (waiting for manual payment validation by admin)
+  // ── VALIDATION CHÈQUES EN PREMIER (avant tout déplacement de données) ──
+  if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
+    const isTroisCheques = state.troisCheques && document.getElementById('cb-trois-cheques')?.checked;
+    if (isTroisCheques) {
+      const manquants = [];
+      [1,2,3].forEach(n => {
+        const b   = (document.getElementById('ch'+n+'t-banque')?.value || '').trim();
+        const num = (document.getElementById('ch'+n+'t-numero')?.value || '').trim();
+        if (!b || !num) manquants.push('Chèque n°'+n + ((!b&&!num)?' (banque et n° chèque)':!b?' (banque)':' (n° chèque)'));
+      });
+      if (manquants.length > 0) {
+        showToast('⚠️ Formulaire chèques incomplet : ' + manquants.join(' — '), '#856404');
+        document.getElementById('trois-cheques-form')?.scrollIntoView({behavior:'smooth', block:'center'});
+        return; // ← AVANT tout déplacement
+      }
+    } else {
+      const b1   = (document.getElementById('ch1-banque')?.value || '').trim();
+      const num1 = (document.getElementById('ch1-numero')?.value || '').trim();
+      if (!b1 || !num1) {
+        const manque = (!b1&&!num1)?'la banque et le numéro de chèque':!b1?'la banque':'le numéro de chèque';
+        showToast('⚠️ Veuillez renseigner ' + manque + ' avant de valider.', '#856404');
+        document.getElementById('ch1-banque')?.scrollIntoView({behavior:'smooth', block:'center'});
+        document.getElementById('ch1-banque')?.focus();
+        return; // ← AVANT tout déplacement
+      }
+    }
+  }
+
+  // Mark as pending_manual
   reg.status = 'pending_manual';
   reg.dateDossier = new Date().toLocaleDateString('fr-FR');
 
-  // Move from pending to registrations
+  // Move from pending to registrations (seulement si validation OK)
   delete pending[code];
   localStorage.setItem('fri_pending', JSON.stringify(pending));
   const existing = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
@@ -3058,35 +3086,9 @@ async function confirmDossierSansPaiement(code) {
   localStorage.setItem('fri_registrations', JSON.stringify(existing));
   state.registrations = existing;
 
-  // ── Validation + lecture des infos chèques AVANT de changer de page ──
+  // ── Lecture des infos chèques ──
   if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
     const isTroisCheques = state.troisCheques && document.getElementById('cb-trois-cheques')?.checked;
-
-    // ── VALIDATION : vérifier que les champs chèques sont remplis ──
-    if (isTroisCheques) {
-      const manquants = [];
-      [1,2,3].forEach(n => {
-        const b = (document.getElementById('ch'+n+'t-banque')?.value || '').trim();
-        const num = (document.getElementById('ch'+n+'t-numero')?.value || '').trim();
-        if (!b || !num) manquants.push('Chèque n°'+n + ((!b && !num) ? ' (banque et n° chèque)' : !b ? ' (banque)' : ' (n° chèque)'));
-      });
-      if (manquants.length > 0) {
-        showToast('⚠️ Formulaire chèques incomplet : ' + manquants.join(' — '), '#856404');
-        document.getElementById('trois-cheques-form')?.scrollIntoView({behavior:'smooth', block:'center'});
-        return;
-      }
-    } else {
-      const b1   = (document.getElementById('ch1-banque')?.value || '').trim();
-      const num1 = (document.getElementById('ch1-numero')?.value || '').trim();
-      if (!b1 || !num1) {
-        const manque = (!b1 && !num1) ? 'la banque et le numéro de chèque' : !b1 ? 'la banque' : 'le numéro de chèque';
-        showToast('⚠️ Veuillez renseigner ' + manque + ' avant de valider.', '#856404');
-        document.getElementById('ch1-banque')?.scrollIntoView({behavior:'smooth', block:'center'});
-        document.getElementById('ch1-banque')?.focus();
-        return;
-      }
-    }
-
     if (isTroisCheques) {
       // 3 chèques
       reg.troisCheques = true;
