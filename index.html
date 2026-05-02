@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjyVp1A_m29sQ4EtzMTvRXVcVpVwGuL7EucqJPSpDbukowlrDuEyuUjLrRlpkdALNEpw/exec';
+const APPS_SCRIPT_URL = 'Vhttps://script.google.com/macros/s/AKfycbzjyVp1A_m29sQ4EtzMTvRXVcVpVwGuL7EucqJPSpDbukowlrDuEyuUjLrRlpkdALNEpw/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -4813,9 +4813,7 @@ function validerSignature() {
   document.getElementById('signature-modal').style.display = 'none';
   if (_sigCallback) { _sigCallback(dataUrl); _sigCallback = null; }
 }
-</script>
-</body>
-</html>function setupPaymentStep(code) {
+function setupPaymentStep(code) {
   var pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
   var reg = pending[code];
   if (!reg) return;
@@ -4838,15 +4836,14 @@ function validerSignature() {
   if (mode === 'helloasso') {
     document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
     document.getElementById('step-b-content').innerHTML = codeBox
-      + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l'association.</p>'
+      + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l\'association.</p>'
       + '<iframe id="haWidget" allowtransparency="true" scrolling="auto"'
       + ' src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville/widget"'
-      + ' style="width:100%;height:750px;border:none;border-radius:10px;"'
-      + ' onload="(function(){window.addEventListener('message',function(e){var h=e.data&&e.data.height;var el=document.getElementById('haWidget');if(h&&el&&h>parseFloat(el.style.height||0)){el.style.height=h+'px';}});})()"></iframe>'
+      + ' style="width:100%;height:750px;border:none;border-radius:10px;"></iframe>'
       + '<div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">'
       + '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">&#x26A0;&#xFE0F; Apr&egrave;s votre paiement HelloAsso</div>'
       + '<div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez sur le bouton ci-dessous pour finaliser votre inscription.</div>'
-      + '<button class="btn btn-primary" onclick="finaliserInscription('' + code + '')" style="width:100%;justify-content:center;">&#x2705; Finaliser mon inscription</button>'
+      + '<button class="btn btn-primary" onclick="finaliserInscription(\'' + code + '\')" style="width:100%;justify-content:center;">&#x2705; Finaliser mon inscription</button>'
       + '</div>';
 
   } else if (mode === 'cheque' || mode === 'cheque3') {
@@ -4862,8 +4859,8 @@ function validerSignature() {
       + '<div style="font-size:13px;color:var(--dark);line-height:1.7;">Renseignez les informations de chaque ch&egrave;que ci-dessus, puis cliquez sur <strong>Valider les ch&egrave;ques</strong>.<br>'
       + 'D&eacute;posez les ch&egrave;ques lors des <strong>permanences du mardi 16h30-18h30</strong>.</div>'
       + '</div>'
-      + '<button class="btn btn-primary" onclick="validerFormulaireCheques('' + code + '',' + total + ',' + showTrois + ')"'
-      + ' style="width:100%;justify-content:center;margin-top:16px;font-size:15px;padding:14px;">&#x2705; Valider les ch&egrave;ques et finaliser l'inscription</button>';
+      + '<button class="btn btn-primary" onclick="validerFormulaireCheques(\'' + code + '\',' + total + ',' + showTrois + ')"'
+      + ' style="width:100%;justify-content:center;margin-top:16px;font-size:15px;padding:14px;">&#x2705; Valider les ch&egrave;ques et finaliser l\'inscription</button>';
 
   } else {
     var modeLabel = { especes:'espèces', ancv:'coupon sport / ANCV' }[mode] || mode;
@@ -4878,8 +4875,8 @@ function validerSignature() {
       + '&#x1F4E7; <strong>Email :</strong> frisneauville@orange.fr<br>'
       + '&#x1F4DE; <strong>Tél :</strong> 02.35.59.01.01'
       + '</div></div>'
-      + '<button class="btn btn-primary" onclick="finaliserInscription('' + code + '')"'
-      + ' style="width:100%;justify-content:center;margin-top:16px;">&#x2705; Confirmer l'inscription</button>';
+      + '<button class="btn btn-primary" onclick="finaliserInscription(\'' + code + '\')"'
+      + ' style="width:100%;justify-content:center;margin-top:16px;">&#x2705; Confirmer l\'inscription</button>';
   }
 }
 
@@ -4939,3 +4936,8 @@ async function validerFormulaireCheques(code, total, showTrois) {
   localStorage.setItem('fri_pending', JSON.stringify(pending));
   await finaliserInscription(code);
 }
+
+
+</script>
+</body>
+</html>
