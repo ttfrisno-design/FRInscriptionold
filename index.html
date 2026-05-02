@@ -4816,86 +4816,73 @@ function validerSignature() {
 </script>
 </body>
 </html>function setupPaymentStep(code) {
-  const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
-  const reg = pending[code];
+  var pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+  var reg = pending[code];
   if (!reg) return;
 
-  const mode    = reg.responsable.modePaiement || 'helloasso';
-  const total   = calcTotals().grandTotal || 0;
-  const cardB   = document.getElementById('card-step-b');
+  var mode  = reg.responsable.modePaiement || 'helloasso';
+  var total = calcTotals().grandTotal || 0;
+  var cardB = document.getElementById('card-step-b');
   cardB.style.opacity = '1'; cardB.style.pointerEvents = '';
   cardB.style.borderLeftColor = 'var(--green)';
   document.getElementById('step-b-num').style.background = 'var(--green)';
   document.getElementById('card-step-c').style.display = 'none';
 
-  // ── ÉTAPE 1 : Code dossier confirmé ──
-  const codeBox = `
-    <div style="background:var(--green-pale);border:2px solid var(--green);border-radius:12px;padding:18px;margin-bottom:20px;text-align:center;">
-      <div style="font-size:13px;color:var(--green);font-weight:700;margin-bottom:6px;">✅ Dossier enregistré</div>
-      <div style="font-size:26px;font-weight:800;color:var(--dark);letter-spacing:3px;">${code}</div>
-      <div style="font-size:12px;color:var(--gray);margin-top:6px;">Notez ce code — il vous sera demandé pour toute demande de modification</div>
-    </div>`;
+  // Encart code dossier
+  var codeBox = '<div style="background:var(--green-pale);border:2px solid var(--green);border-radius:12px;padding:18px;margin-bottom:20px;text-align:center;">'
+    + '<div style="font-size:13px;color:var(--green);font-weight:700;margin-bottom:6px;">&#x2705; Dossier enregistr&eacute;</div>'
+    + '<div style="font-size:26px;font-weight:800;color:var(--dark);letter-spacing:3px;">' + code + '</div>'
+    + '<div style="font-size:12px;color:var(--gray);margin-top:6px;">Notez ce code &mdash; il vous sera demand&eacute; pour toute modification</div>'
+    + '</div>';
 
-  // ── ÉTAPE 2 : Selon le mode de paiement ──
   if (mode === 'helloasso') {
     document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
-    document.getElementById('step-b-content').innerHTML = codeBox + `
-      <p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement sécurisé sans commission pour l'association.</p>
-      <iframe id="haWidget" allowtransparency="true" scrolling="auto"
-        src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville/widget"
-        style="width:100%;height:750px;border:none;border-radius:10px;"
-        onload="(function(){window.addEventListener('message',function(e){var h=e.data&&e.data.height;var el=document.getElementById('haWidget');if(h&&el&&h>parseFloat(el.style.height||0)){el.style.height=h+'px';}});})()">
-      </iframe>
-      <div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">
-        <div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">⚠️ Après votre paiement HelloAsso</div>
-        <div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez sur le bouton ci-dessous pour finaliser votre inscription.</div>
-        <button class="btn btn-primary" onclick="finaliserInscription('${code}')" style="width:100%;justify-content:center;">
-          ✅ Finaliser mon inscription
-        </button>
-      </div>`;
+    document.getElementById('step-b-content').innerHTML = codeBox
+      + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l'association.</p>'
+      + '<iframe id="haWidget" allowtransparency="true" scrolling="auto"'
+      + ' src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville/widget"'
+      + ' style="width:100%;height:750px;border:none;border-radius:10px;"'
+      + ' onload="(function(){window.addEventListener('message',function(e){var h=e.data&&e.data.height;var el=document.getElementById('haWidget');if(h&&el&&h>parseFloat(el.style.height||0)){el.style.height=h+'px';}});})()"></iframe>'
+      + '<div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">'
+      + '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">&#x26A0;&#xFE0F; Apr&egrave;s votre paiement HelloAsso</div>'
+      + '<div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez sur le bouton ci-dessous pour finaliser votre inscription.</div>'
+      + '<button class="btn btn-primary" onclick="finaliserInscription('' + code + '')" style="width:100%;justify-content:center;">&#x2705; Finaliser mon inscription</button>'
+      + '</div>';
 
   } else if (mode === 'cheque' || mode === 'cheque3') {
-    // ── Chèques : formulaire obligatoire avant validation ──
-    const showTrois = total > 260;
-    const ch1 = showTrois ? Math.round(total * 0.40) : total;
-    const ch2 = showTrois ? Math.round(total * 0.30) : 0;
-    const ch3 = showTrois ? total - Math.round(total*0.40) - Math.round(total*0.30) : 0;
-
+    var showTrois = total > 260;
+    var ch1 = showTrois ? Math.round(total * 0.40) : total;
+    var ch2 = showTrois ? Math.round(total * 0.30) : 0;
+    var ch3 = showTrois ? total - Math.round(total*0.40) - Math.round(total*0.30) : 0;
     document.getElementById('step-b-title').textContent = 'Paiement par chèque';
-    document.getElementById('step-b-content').innerHTML = codeBox + buildChequesHtml(total, ch1, ch2, ch3, showTrois) + `
-      <div style="background:#e3f2fd;border:1px solid #1565c0;border-radius:10px;padding:14px;margin-top:14px;">
-        <div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:6px;">📋 Instructions</div>
-        <div style="font-size:13px;color:var(--dark);line-height:1.7;">
-          Renseignez les informations de chaque chèque ci-dessus, puis cliquez sur <strong>Valider les chèques</strong>.<br>
-          Déposez les chèques lors des <strong>permanences du mardi 16h30-18h30</strong>.
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="validerFormulaireCheques('${code}', ${total}, ${showTrois})"
-        style="width:100%;justify-content:center;margin-top:16px;font-size:15px;padding:14px;">
-        ✅ Valider les chèques et finaliser l'inscription
-      </button>`;
+    document.getElementById('step-b-content').innerHTML = codeBox
+      + buildChequesHtml(total, ch1, ch2, ch3, showTrois)
+      + '<div style="background:#e3f2fd;border:1px solid #1565c0;border-radius:10px;padding:14px;margin-top:14px;">'
+      + '<div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:6px;">&#x1F4CB; Instructions</div>'
+      + '<div style="font-size:13px;color:var(--dark);line-height:1.7;">Renseignez les informations de chaque ch&egrave;que ci-dessus, puis cliquez sur <strong>Valider les ch&egrave;ques</strong>.<br>'
+      + 'D&eacute;posez les ch&egrave;ques lors des <strong>permanences du mardi 16h30-18h30</strong>.</div>'
+      + '</div>'
+      + '<button class="btn btn-primary" onclick="validerFormulaireCheques('' + code + '',' + total + ',' + showTrois + ')"'
+      + ' style="width:100%;justify-content:center;margin-top:16px;font-size:15px;padding:14px;">&#x2705; Valider les ch&egrave;ques et finaliser l'inscription</button>';
 
   } else {
-    // ── Espèces / ANCV ──
-    const modeLabel = { especes:'espèces', ancv:'coupon sport / ANCV' }[mode] || mode;
+    var modeLabel = { especes:'espèces', ancv:'coupon sport / ANCV' }[mode] || mode;
     document.getElementById('step-b-title').textContent = 'Règlement en ' + modeLabel;
-    document.getElementById('step-b-content').innerHTML = codeBox + `
-      <div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:20px;">
-        <div style="font-size:15px;font-weight:700;color:#856404;margin-bottom:12px;">📍 Déposez votre dossier au bureau du Foyer Rural</div>
-        <div style="font-size:14px;color:var(--dark);line-height:1.8;">
-          ✅ Votre dossier est enregistré sous le code <strong>${code}</strong><br>
-          📅 <strong>Permanences :</strong> Mardi 16h30-18h30<br>
-          📍 <strong>Adresse :</strong> Salle des fêtes, Place A. Cramilly, Isneauville<br>
-          📧 <strong>Email :</strong> frisneauville@orange.fr<br>
-          📞 <strong>Tél :</strong> 02.35.59.01.01
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="finaliserInscription('${code}')"
-        style="width:100%;justify-content:center;margin-top:16px;">
-        ✅ Confirmer l'inscription
-      </button>`;
+    document.getElementById('step-b-content').innerHTML = codeBox
+      + '<div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:20px;">'
+      + '<div style="font-size:15px;font-weight:700;color:#856404;margin-bottom:12px;">&#x1F4CD; D&eacute;posez votre dossier au bureau du Foyer Rural</div>'
+      + '<div style="font-size:14px;color:var(--dark);line-height:1.8;">'
+      + '&#x2705; Votre dossier est enregistr&eacute; sous le code <strong>' + code + '</strong><br>'
+      + '&#x1F4C5; <strong>Permanences :</strong> Mardi 16h30-18h30<br>'
+      + '&#x1F4CD; <strong>Adresse :</strong> Salle des fêtes, Place A. Cramilly, Isneauville<br>'
+      + '&#x1F4E7; <strong>Email :</strong> frisneauville@orange.fr<br>'
+      + '&#x1F4DE; <strong>Tél :</strong> 02.35.59.01.01'
+      + '</div></div>'
+      + '<button class="btn btn-primary" onclick="finaliserInscription('' + code + '')"'
+      + ' style="width:100%;justify-content:center;margin-top:16px;">&#x2705; Confirmer l'inscription</button>';
   }
 }
+
 
 // ── Valider le formulaire chèques et finaliser ──
 async function validerFormulaireCheques(code, total, showTrois) {
