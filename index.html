@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyed-oFWaPS90T_WiVHXl1UrNP95gt-fumHntJmypMArDSZHefIXNXqE7kLa3QSbRqD/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxGQJ0zGdZ8CWpsR35s6Zu7QT64H833KQFihX2a68LWP1jNIQroLhhX1G_JL8pZ-1j5/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -1992,12 +1992,12 @@ function updateQS(memberId) {
   } else if (hasOui) {
     res.className = 'qs-result qs-ko';
     res.innerHTML = '⚠️ Au moins une réponse OUI — Certificat médical requis. Consultez votre médecin.'
-      + '<br><button onclick="genererAttestationPDF(' + memberId + ')" style="margin-top:8px;background:#f57c00;color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">📄 Télécharger le questionnaire pré-rempli PDF</button>';
+      + '<br><button onclick="genererAttestationPDF(' + memberId + ')" style="margin-top:8px;background:#f57c00;color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">✍️ Signer et Télécharger le questionnaire PDF</button>';
     m.qsResult = 'certificat_requis';
   } else {
     res.className = 'qs-result qs-ok';
     res.innerHTML = '✅ Toutes réponses NON — Remettez uniquement l\'Attestation santé à l\'association.'
-      + '<br><button onclick="genererAttestationPDF(' + memberId + ')" style="margin-top:8px;background:var(--green);color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">📄 Télécharger l\'attestation PDF à signer</button>';
+      + '<br><button onclick="genererAttestationPDF(' + memberId + ')" style="margin-top:8px;background:var(--green);color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">✍️ Signer et Télécharger l\'attestation PDF</button>';
     m.qsResult = 'attestation_ok';
   }
 }
@@ -3117,22 +3117,25 @@ async function confirmDossierSansPaiement(code) {
   // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
   await sendToGoogleSheets(reg);
 
-  // Envoi chèques séparé — SYNCHRONE avant goStep pour garantir l'envoi
+  // Envoi chèques — params URL directs pour éviter la limite de taille du payload JSON
   if (reg.cheques && reg.cheques.length > 0) {
     const urlCh = getAppsScriptUrl();
     if (urlCh && !urlCh.includes('VOTRE_URL')) {
       const r0 = reg.responsable || {};
       await new Promise(resolve => {
-        const chPayload = {
-          action: 'ecrireChèques',
-          code:   reg.code || '',
-          nom:    r0.nom   || '',
-          prenom: r0.prenom|| '',
-          cheques: reg.cheques
-        };
         const cbCh = '_friCh_' + Date.now();
         const pCh  = new URLSearchParams();
-        pCh.set('payload',  JSON.stringify(chPayload));
+        // Action passée directement comme paramètre URL (pas dans payload JSON)
+        pCh.set('action',   'ecrireChèques');
+        pCh.set('code',     reg.code     || '');
+        pCh.set('nom',      r0.nom       || '');
+        pCh.set('prenom',   r0.prenom    || '');
+        pCh.set('nbCheques', String(reg.cheques.length));
+        reg.cheques.forEach((ch, i) => {
+          pCh.set('ch' + (i+1) + '_banque',    ch.banque    || '');
+          pCh.set('ch' + (i+1) + '_num',       ch.numCheque || '');
+          pCh.set('ch' + (i+1) + '_montant',   String(ch.montant || 0));
+        });
         pCh.set('callback', cbCh);
         pCh.set('_t', Date.now());
         let done = false;
@@ -4790,11 +4793,19 @@ function initSignaturePad() {
 }
 
 function ouvrirSignature(label, callback) {
-  document.getElementById('signature-modal').style.display = 'flex';
-  document.getElementById('signature-who').textContent = label;
-  _sigCallback = callback;
-  if (!_sigCtx) initSignaturePad();
-  clearSignature();
+  // Scroller vers le haut d'abord pour que la modal fixed soit visible
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  // Petit délai puis afficher la modal
+  setTimeout(() => {
+    const modal = document.getElementById('signature-modal');
+    modal.style.display = 'flex';
+    document.getElementById('signature-who').textContent = label;
+    _sigCallback = callback;
+    if (!_sigCtx) initSignaturePad();
+    clearSignature();
+  }, 100);
 }
 
 function clearSignature() {
