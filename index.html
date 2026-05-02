@@ -3437,36 +3437,39 @@ async function lireSheetPublic() {
 // mode:'no-cors' = pas de preflight, réponse opaque ignorée, mais la requête part
 async function callAppsScriptFetch(url, payload) {
   const payloadStr = JSON.stringify(payload);
-  const params = new URLSearchParams();
-  params.set('payload', payloadStr);
-  params.set('_t', Date.now());
-  const fullUrl = url + '?' + params.toString();
+  console.log('[FRI] POST payload size:', payloadStr.length);
 
-  // Utiliser UNIQUEMENT la balise <script> qui déclenche réellement doGet sur Apps Script
-  // (fetch no-cors ne déclenche pas doGet de manière fiable)
-  return new Promise((resolve) => {
-    const cbName = '_friCb_' + Date.now();
-    const params2 = new URLSearchParams();
-    params2.set('payload', payloadStr);
-    params2.set('callback', cbName);
-    params2.set('_t', Date.now());
-    const scriptUrl = url + '?' + params2.toString();
-
-    let done = false;
-    const cleanup = () => { if (s.parentNode) s.parentNode.removeChild(s); delete window[cbName]; };
-
-    window[cbName] = function() { if (!done) { done = true; cleanup(); resolve({ ok: true }); } };
-
-    const t = setTimeout(() => {
-      if (!done) { done = true; cleanup(); resolve({ ok: true }); } // timeout = ok par défaut
-    }, 12000);
-
-    console.log('[FRI] payload size:', payloadStr.length, 'URL size:', scriptUrl.length);
-    const s = document.createElement('script');
-    s.src = scriptUrl;
-    s.onerror = () => { if (!done) { done = true; clearTimeout(t); cleanup(); resolve({ ok: true }); } };
-    document.head.appendChild(s);
-  });
+  // Utiliser fetch POST — seule méthode qui transmet le body à Apps Script
+  // Apps Script reçoit via doPost(e) → e.postData.contents
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: payloadStr
+    });
+    console.log('[FRI] POST envoyé (no-cors)');
+    return { ok: true };
+  } catch(err) {
+    console.warn('[FRI] POST KO:', err.message);
+    // Fallback: GET avec payload
+    return new Promise((resolve) => {
+      const cbName = '_friCb_' + Date.now();
+      const params2 = new URLSearchParams();
+      params2.set('payload', payloadStr);
+      params2.set('callback', cbName);
+      params2.set('_t', Date.now());
+      const scriptUrl = url + '?' + params2.toString();
+      let done = false;
+      const cleanup = () => { if (s.parentNode) s.parentNode.removeChild(s); delete window[cbName]; };
+      window[cbName] = function() { if (!done) { done = true; cleanup(); resolve({ ok: true }); } };
+      setTimeout(() => { if (!done) { done = true; cleanup(); resolve({ ok: true }); } }, 12000);
+      const s = document.createElement('script');
+      s.src = scriptUrl;
+      s.onerror = () => { if (!done) { done = true; cleanup(); resolve({ ok: true }); } };
+      document.head.appendChild(s);
+    });
+  }
 }
 
 // Validation paiement — utilise une balise <script> dynamique
