@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'Vhttps://script.google.com/macros/s/AKfycbzjyVp1A_m29sQ4EtzMTvRXVcVpVwGuL7EucqJPSpDbukowlrDuEyuUjLrRlpkdALNEpw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjyVp1A_m29sQ4EtzMTvRXVcVpVwGuL7EucqJPSpDbukowlrDuEyuUjLrRlpkdALNEpw/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -2368,110 +2368,9 @@ function saveDossier() {
   document.getElementById('dossier-code').textContent = code;
   document.getElementById('dossier-box').style.display = 'block';
 
-  // Pre-fill email in step C
-  document.getElementById('confirm-email').value = reg.responsable.email1 || '';
-  document.getElementById('confirm-code').value = code;
 
-  // Lock step A button
-  const btnA = document.getElementById('btn-save-dossier');
-  btnA.textContent = '✅ Dossier enregistré';
-  btnA.disabled = true;
-  btnA.style.background = 'var(--green-light)';
-
-  const modePaiement = reg.responsable.modePaiement || 'helloasso';
-  const isHelloAsso = modePaiement === 'helloasso';
-
-  // Unlock step B always
-  const cardB = document.getElementById('card-step-b');
-  cardB.style.opacity = '1';
-  cardB.style.pointerEvents = '';
-  cardB.style.borderLeftColor = 'var(--green)';
-  document.getElementById('step-b-num').style.background = 'var(--green)';
-
-  if (isHelloAsso) {
-    // HelloAsso : ouvrir le lien puis enregistrer le dossier en attente (comme les autres modes)
-    document.getElementById('step-b-title').textContent = 'Réglez via HelloAsso';
-    document.getElementById('step-b-content').innerHTML = `
-      <div style="margin-bottom:16px;">
-        <p style="font-size:14px;color:var(--gray);margin-bottom:12px;">
-          Paiement sécurisé directement ci-dessous — sans commission pour l'association.
-        </p>
-        <iframe id="haWidget" allowtransparency="true" scrolling="auto"
-          src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville/widget"
-          style="width:100%;height:750px;border:none;border-radius:10px;"
-          onload="(function(){window.addEventListener('message',function(e){var h=e.data&&e.data.height;var el=document.getElementById('haWidget');if(h&&el&&h>parseFloat(el.style.height||0)){el.style.height=h+'px';}});})()">
-        </iframe>
-      </div>
-      <div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:18px;margin-top:8px;">
-        <div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">⚠️ Après votre paiement HelloAsso</div>
-        <div style="font-size:14px;color:var(--dark);line-height:1.7;">
-          Cliquez sur le bouton ci-dessous pour enregistrer votre dossier.<br>
-          L'association vérifiera votre paiement et vous enverra un email de confirmation.
-        </div>
-        <button class="btn btn-primary" onclick="finaliserInscription('${code}')" style="margin-top:14px;width:100%;justify-content:center;">
-          📋 Enregistrer mon dossier
-        </button>
-      </div>`;
-
-    // Masquer step C (plus besoin de confirmer manuellement)
-    document.getElementById('card-step-c').style.display = 'none';
-
-  } else {
-    const modeLabel = {
-      cheque: 'chèque à l\'ordre du FRI',
-      especes: 'espèces',
-      ancv: 'coupon sport / ANCV'
-    }[modePaiement] || modePaiement;
-
-    const totalAmount = calcTotals().grandTotal || 0;
-    const showTroisCheques = modePaiement === 'cheque' && totalAmount > 260;
-
-    // Calculer les montants des 3 chèques
-    const ch1 = showTroisCheques ? Math.round(totalAmount * 0.40) : 0;
-    const ch2 = showTroisCheques ? Math.round(totalAmount * 0.30) : 0;
-    const ch3 = showTroisCheques ? totalAmount - ch1 - ch2 : 0;
-
-    document.getElementById('step-b-title').textContent = 'Règlement par ' + modeLabel;
-    document.getElementById('step-b-content').innerHTML = `
-      <div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:24px;">
-
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-          <div style="font-size:32px;flex-shrink:0">💳</div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--dark);">Mode de règlement choisi</div>
-            <div style="font-size:18px;font-weight:800;color:var(--green);margin-top:2px;">${modeLabel}</div>
-          </div>
-        </div>
-
-        ${buildChequesHtml(totalAmount, ch1, ch2, ch3, showTroisCheques)}
-
-        <div style="background:white;border:1px solid #e8c84a;border-radius:8px;padding:14px 16px;margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:6px;">⚠️ Important</div>
-          <div style="font-size:14px;color:var(--dark);line-height:1.7;">
-            Votre inscription sera <strong>définitivement confirmée uniquement après réception
-            et vérification de votre paiement</strong> par l'association.<br>
-            Vous recevrez un email de confirmation dès validation par le Foyer Rural.
-          </div>
-        </div>
-
-        <div style="background:white;border:1px solid #d0e8d0;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
-          <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px;">📅 Permanences</div>
-          <div style="font-size:14px;color:var(--dark);line-height:1.8;">
-            <strong>Mardis de 16h30 à 18h30</strong><br>
-            Salle des fêtes — Place A. Cramilly, Isneauville<br>
-            📧 <a href="mailto:frisneauville@orange.fr" style="color:var(--green);font-weight:600;">frisneauville@orange.fr</a>
-            &nbsp;·&nbsp;
-            📞 <a href="tel:0235590101" style="color:var(--green);font-weight:600;">02.35.59.01.01</a>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" onclick="finaliserInscription('${code}')" style="width:100%;justify-content:center;font-size:15px;padding:14px;">
-          📋 Enregistrer mon dossier en attente de paiement
-        </button>
-      </div>`;
-
-    document.getElementById('card-step-c').style.display = 'none';
-  }
+  // Appeler setupPaymentStep pour gérer le paiement selon le mode choisi
+  setupPaymentStep(code);
 }
 
 function buildChequeRow(n, label, montant, readonly, suffix) {
@@ -4880,6 +4779,32 @@ function setupPaymentStep(code) {
   }
 }
 
+
+// Surveiller les champs chèques et afficher le bouton quand tout est rempli
+function surveillerChampsChèques(showTrois) {
+  var ids = showTrois
+    ? ['ch1t-banque','ch1t-numero','ch2t-banque','ch2t-numero','ch3t-banque','ch3t-numero']
+    : ['ch1-banque','ch1-numero'];
+
+  function verifier() {
+    var tousRemplis = ids.every(function(id) {
+      var el = document.getElementById(id);
+      return el && el.value && el.value.trim() !== '';
+    });
+    var btn = document.getElementById('cheque-validation-btn');
+    if (btn) btn.style.display = tousRemplis ? '' : 'none';
+  }
+
+  // Écouter les modifications sur chaque champ
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', verifier);
+      el.addEventListener('change', verifier);
+    }
+  });
+  verifier(); // Vérifier immédiatement
+}
 
 // ── Valider le formulaire chèques et finaliser ──
 async function validerFormulaireCheques(code, total, showTrois) {
