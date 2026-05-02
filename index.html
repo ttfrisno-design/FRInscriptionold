@@ -3067,10 +3067,11 @@ async function confirmDossierSansPaiement(code) {
     if (btn) { btn.disabled = false; btn.innerHTML = origText; btn.style.opacity = ''; }
   };
 
-  try {
   const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
   const reg = pending[code];
   if (!reg) { removeOverlay(); alert('Dossier introuvable.'); return; }
+
+  try {
 
   // ── VALIDATION CHÈQUES EN PREMIER (avant tout déplacement de données) ──
   if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
