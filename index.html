@@ -3692,12 +3692,7 @@ async function sendToGoogleSheets(reg) {
       rows: rows,
       status: reg.status === 'pending_manual' ? 'pending' : 'paid',
       // Inclure les données des 3 chèques si applicable
-      // Encoder les chèques en champ compact pour éviter les limites de taille
-      ch: (reg.cheques && reg.cheques.length > 0)
-        ? reg.cheques.map(c => (c.numero||'')+'|'+(c.banque||'')+'|'+(c.numCheque||'')+'|'+(c.montant||0)).join(';;')
-        : undefined,
-      nom: (reg.responsable && reg.responsable.nom) || '',
-      prenom: (reg.responsable && reg.responsable.prenom) || ''
+      cheques: (reg.cheques && reg.cheques.length > 0) ? reg.cheques : undefined
     };
     const payloadSize = JSON.stringify(payloadObj).length;
     
