@@ -2408,7 +2408,7 @@ function saveDossier() {
           Cliquez sur le bouton ci-dessous pour enregistrer votre dossier.<br>
           L'association vérifiera votre paiement et vous enverra un email de confirmation.
         </div>
-        <button class="btn btn-primary" onclick="confirmDossierSansPaiement('${code}')" style="margin-top:14px;width:100%;justify-content:center;">
+        <button class="btn btn-primary" onclick="finaliserInscription('${code}')" style="margin-top:14px;width:100%;justify-content:center;">
           📋 Enregistrer mon dossier
         </button>
       </div>`;
@@ -2465,7 +2465,7 @@ function saveDossier() {
           </div>
         </div>
 
-        <button class="btn btn-primary" onclick="confirmDossierSansPaiement('${code}')" style="width:100%;justify-content:center;font-size:15px;padding:14px;">
+        <button class="btn btn-primary" onclick="finaliserInscription('${code}')" style="width:100%;justify-content:center;font-size:15px;padding:14px;">
           📋 Enregistrer mon dossier en attente de paiement
         </button>
       </div>`;
@@ -3041,7 +3041,7 @@ function openHelloAsso() {
   }
 }
 
-async function confirmDossierSansPaiement(code) {
+async function finaliserInscription(code) {
   // Afficher un message d'attente
   const btn = document.querySelector('[onclick*="confirmDossierSansPaiement"]');
   const origText = btn ? btn.innerHTML : '';
@@ -3073,33 +3073,7 @@ async function confirmDossierSansPaiement(code) {
 
   try {
 
-  // ── VALIDATION CHÈQUES EN PREMIER (avant tout déplacement de données) ──
-  if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
-    const isTroisCheques = state.troisCheques && document.getElementById('cb-trois-cheques')?.checked;
-    if (isTroisCheques) {
-      const manquants = [];
-      [1,2,3].forEach(n => {
-        const b   = (document.getElementById('ch'+n+'t-banque')?.value || '').trim();
-        const num = (document.getElementById('ch'+n+'t-numero')?.value || '').trim();
-        if (!b || !num) manquants.push('Chèque n°'+n + ((!b&&!num)?' (banque et n° chèque)':!b?' (banque)':' (n° chèque)'));
-      });
-      if (manquants.length > 0) {
-        showToast('⚠️ Formulaire chèques incomplet : ' + manquants.join(' — '), '#856404');
-        document.getElementById('trois-cheques-form')?.scrollIntoView({behavior:'smooth', block:'center'});
-        return; // ← AVANT tout déplacement
-      }
-    } else {
-      const b1   = (document.getElementById('ch1-banque')?.value || '').trim();
-      const num1 = (document.getElementById('ch1-numero')?.value || '').trim();
-      if (!b1 || !num1) {
-        const manque = (!b1&&!num1)?'la banque et le numéro de chèque':!b1?'la banque':'le numéro de chèque';
-        showToast('⚠️ Veuillez renseigner ' + manque + ' avant de valider.', '#856404');
-        document.getElementById('ch1-banque')?.scrollIntoView({behavior:'smooth', block:'center'});
-        document.getElementById('ch1-banque')?.focus();
-        return; // ← AVANT tout déplacement
-      }
-    }
-  }
+  // Validation chèques déjà faite par validerFormulaireCheques()
 
   // Mark as pending_manual
   reg.status = 'pending_manual';
@@ -4746,7 +4720,7 @@ function exportSingleExcel(id) {
   <div id="signature-box">
     <div style="font-size:18px;font-weight:700;color:var(--dark);margin-bottom:6px;">✍️ Signature électronique</div>
     <div id="signature-who" style="font-size:13px;color:var(--gray);margin-bottom:16px;"></div>
-    <canvas id="signature-canvas" width="450" height="180"></canvas>
+    <canvas id="signature-canvas" width="450" height="180" style="border:2px solid black;border-radius:4px;display:block;"></canvas>
     <div style="font-size:11px;color:var(--gray);margin-top:6px;">Signez dans le cadre ci-dessus à la souris ou au doigt</div>
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button onclick="clearSignature()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:white;cursor:pointer;font-size:13px;">🗑 Effacer</button>
@@ -4841,4 +4815,140 @@ function validerSignature() {
 }
 </script>
 </body>
-</html>
+</html>function setupPaymentStep(code) {
+  const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+  const reg = pending[code];
+  if (!reg) return;
+
+  const mode    = reg.responsable.modePaiement || 'helloasso';
+  const total   = calcTotals().grandTotal || 0;
+  const cardB   = document.getElementById('card-step-b');
+  cardB.style.opacity = '1'; cardB.style.pointerEvents = '';
+  cardB.style.borderLeftColor = 'var(--green)';
+  document.getElementById('step-b-num').style.background = 'var(--green)';
+  document.getElementById('card-step-c').style.display = 'none';
+
+  // ── ÉTAPE 1 : Code dossier confirmé ──
+  const codeBox = `
+    <div style="background:var(--green-pale);border:2px solid var(--green);border-radius:12px;padding:18px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:13px;color:var(--green);font-weight:700;margin-bottom:6px;">✅ Dossier enregistré</div>
+      <div style="font-size:26px;font-weight:800;color:var(--dark);letter-spacing:3px;">${code}</div>
+      <div style="font-size:12px;color:var(--gray);margin-top:6px;">Notez ce code — il vous sera demandé pour toute demande de modification</div>
+    </div>`;
+
+  // ── ÉTAPE 2 : Selon le mode de paiement ──
+  if (mode === 'helloasso') {
+    document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
+    document.getElementById('step-b-content').innerHTML = codeBox + `
+      <p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement sécurisé sans commission pour l'association.</p>
+      <iframe id="haWidget" allowtransparency="true" scrolling="auto"
+        src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville/widget"
+        style="width:100%;height:750px;border:none;border-radius:10px;"
+        onload="(function(){window.addEventListener('message',function(e){var h=e.data&&e.data.height;var el=document.getElementById('haWidget');if(h&&el&&h>parseFloat(el.style.height||0)){el.style.height=h+'px';}});})()">
+      </iframe>
+      <div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">
+        <div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">⚠️ Après votre paiement HelloAsso</div>
+        <div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez sur le bouton ci-dessous pour finaliser votre inscription.</div>
+        <button class="btn btn-primary" onclick="finaliserInscription('${code}')" style="width:100%;justify-content:center;">
+          ✅ Finaliser mon inscription
+        </button>
+      </div>`;
+
+  } else if (mode === 'cheque' || mode === 'cheque3') {
+    // ── Chèques : formulaire obligatoire avant validation ──
+    const showTrois = total > 260;
+    const ch1 = showTrois ? Math.round(total * 0.40) : total;
+    const ch2 = showTrois ? Math.round(total * 0.30) : 0;
+    const ch3 = showTrois ? total - Math.round(total*0.40) - Math.round(total*0.30) : 0;
+
+    document.getElementById('step-b-title').textContent = 'Paiement par chèque';
+    document.getElementById('step-b-content').innerHTML = codeBox + buildChequesHtml(total, ch1, ch2, ch3, showTrois) + `
+      <div style="background:#e3f2fd;border:1px solid #1565c0;border-radius:10px;padding:14px;margin-top:14px;">
+        <div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:6px;">📋 Instructions</div>
+        <div style="font-size:13px;color:var(--dark);line-height:1.7;">
+          Renseignez les informations de chaque chèque ci-dessus, puis cliquez sur <strong>Valider les chèques</strong>.<br>
+          Déposez les chèques lors des <strong>permanences du mardi 16h30-18h30</strong>.
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="validerFormulaireCheques('${code}', ${total}, ${showTrois})"
+        style="width:100%;justify-content:center;margin-top:16px;font-size:15px;padding:14px;">
+        ✅ Valider les chèques et finaliser l'inscription
+      </button>`;
+
+  } else {
+    // ── Espèces / ANCV ──
+    const modeLabel = { especes:'espèces', ancv:'coupon sport / ANCV' }[mode] || mode;
+    document.getElementById('step-b-title').textContent = 'Règlement en ' + modeLabel;
+    document.getElementById('step-b-content').innerHTML = codeBox + `
+      <div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:20px;">
+        <div style="font-size:15px;font-weight:700;color:#856404;margin-bottom:12px;">📍 Déposez votre dossier au bureau du Foyer Rural</div>
+        <div style="font-size:14px;color:var(--dark);line-height:1.8;">
+          ✅ Votre dossier est enregistré sous le code <strong>${code}</strong><br>
+          📅 <strong>Permanences :</strong> Mardi 16h30-18h30<br>
+          📍 <strong>Adresse :</strong> Salle des fêtes, Place A. Cramilly, Isneauville<br>
+          📧 <strong>Email :</strong> frisneauville@orange.fr<br>
+          📞 <strong>Tél :</strong> 02.35.59.01.01
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="finaliserInscription('${code}')"
+        style="width:100%;justify-content:center;margin-top:16px;">
+        ✅ Confirmer l'inscription
+      </button>`;
+  }
+}
+
+// ── Valider le formulaire chèques et finaliser ──
+async function validerFormulaireCheques(code, total, showTrois) {
+  const isTrois = showTrois && document.getElementById('cb-trois-cheques')?.checked;
+
+  // Validation chèques
+  if (isTrois) {
+    const manquants = [];
+    [1,2,3].forEach(n => {
+      const b   = (document.getElementById('ch'+n+'t-banque')?.value || '').trim();
+      const num = (document.getElementById('ch'+n+'t-numero')?.value || '').trim();
+      if (!b || !num) manquants.push('Chèque n°'+n+((!b&&!num)?' (banque + n° chèque)':!b?' (banque)':' (n° chèque)'));
+    });
+    if (manquants.length > 0) {
+      showToast('⚠️ Informations manquantes : ' + manquants.join(' — '), '#856404');
+      document.getElementById('trois-cheques-form')?.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+  } else {
+    const b1   = (document.getElementById('ch1-banque')?.value || '').trim();
+    const num1 = (document.getElementById('ch1-numero')?.value || '').trim();
+    if (!b1 || !num1) {
+      const manque = (!b1&&!num1) ? 'la banque et le n° de chèque' : !b1 ? 'la banque' : 'le n° de chèque';
+      showToast('⚠️ Veuillez renseigner ' + manque, '#856404');
+      document.getElementById('ch1-banque')?.focus();
+      return;
+    }
+  }
+
+  // Lire les infos chèques
+  const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+  const reg = pending[code];
+  if (!reg) { alert('Dossier introuvable.'); return; }
+
+  if (isTrois) {
+    reg.cheques = [1,2,3].map(n => ({
+      numero: n,
+      montant: Number(document.getElementById('ch'+n+'t-montant')?.value || 0),
+      banque:    (document.getElementById('ch'+n+'t-banque')?.value  || '').trim(),
+      numCheque: (document.getElementById('ch'+n+'t-numero')?.value  || '').trim()
+    }));
+    reg.responsable.modePaiement = 'cheque3';
+  } else {
+    reg.cheques = [{
+      numero: 1,
+      montant: total,
+      banque:    (document.getElementById('ch1-banque')?.value  || '').trim(),
+      numCheque: (document.getElementById('ch1-numero')?.value  || '').trim()
+    }];
+  }
+
+  // Sauvegarder et finaliser
+  pending[code] = reg;
+  localStorage.setItem('fri_pending', JSON.stringify(pending));
+  await finaliserInscription(code);
+}
