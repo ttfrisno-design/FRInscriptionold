@@ -3461,6 +3461,7 @@ async function callAppsScriptFetch(url, payload) {
       if (!done) { done = true; cleanup(); resolve({ ok: true }); } // timeout = ok par défaut
     }, 12000);
 
+    console.log('[FRI] payload size:', payloadStr.length, 'URL size:', scriptUrl.length);
     const s = document.createElement('script');
     s.src = scriptUrl;
     s.onerror = () => { if (!done) { done = true; clearTimeout(t); cleanup(); resolve({ ok: true }); } };
