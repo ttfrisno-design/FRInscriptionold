@@ -2986,34 +2986,9 @@ async function finaliserInscription(code) {
   localStorage.setItem('fri_registrations', JSON.stringify(existing));
   state.registrations = existing;
 
-  // ── Lecture des infos chèques ──
-  console.log('[FRI CHEQUE BLOCK] modePaiement=', reg.responsable.modePaiement, 'ch1-banque=', document.getElementById('ch1-banque')?.value);
-  if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
-    const isTroisCheques = state.troisCheques && document.getElementById('cb-trois-cheques')?.checked;
-    if (isTroisCheques) {
-      // 3 chèques
-      reg.troisCheques = true;
-      reg.responsable.modePaiement = 'cheque3';
-      reg.cheques = [1,2,3].map(n => ({
-        numero:    n,
-        montant:   Number(document.getElementById('ch'+n+'t-montant')?.value || 0),
-        banque:    (document.getElementById('ch'+n+'t-banque')?.value  || '').trim(),
-        numCheque: (document.getElementById('ch'+n+'t-numero')?.value  || '').trim()
-      }));
-    } else {
-      // 1 chèque
-      reg.cheques = [{
-        numero:    1,
-        montant:   Number(document.getElementById('ch1-montant')?.value || calcTotals().grandTotal || 0),
-        banque:    (document.getElementById('ch1-banque')?.value  || '').trim(),
-        numCheque: (document.getElementById('ch1-numero')?.value  || '').trim()
-      }];
-    }
-    // Mettre à jour le localStorage avec les infos chèques
-    const regsArr = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-    const ridx = regsArr.findIndex(r => r.code === code || r.id === reg.id);
-    if (ridx >= 0) { regsArr[ridx] = reg; localStorage.setItem('fri_registrations', JSON.stringify(regsArr)); }
-  }
+  // Les chèques sont déjà dans reg.cheques (sauvegardés par validerFormulaireCheques)
+  // Ne pas relire depuis le DOM qui peut être vide à ce stade
+  console.log("[FRI] reg.cheques au moment envoi:", JSON.stringify(reg.cheques));
 
   // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
   await sendToGoogleSheets(reg);
