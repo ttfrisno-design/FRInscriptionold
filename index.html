@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby5wO-K7jgtVXPnBl4TKWbsKpWm3wszuCiRF7pw7XOGTVMM71DDFwlbTjvHyaGFmlMA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMgkzwKRKi1CeyvJW4guLbNnZrCE9iCAqXYYN87qHH52xEbXTurXFVWf_lWPxyouJS/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -3704,7 +3704,12 @@ async function sendToGoogleSheets(reg) {
       rows: rows,
       status: reg.status === 'pending_manual' ? 'pending' : 'paid',
       // Inclure les données des 3 chèques si applicable
-      cheques: (reg.cheques && reg.cheques.length > 0) ? reg.cheques : undefined
+      // Encoder les chèques en champ compact pour éviter les limites de taille
+      ch: (reg.cheques && reg.cheques.length > 0)
+        ? reg.cheques.map(c => (c.numero||'')+'|'+(c.banque||'')+'|'+(c.numCheque||'')+'|'+(c.montant||0)).join(';;')
+        : undefined,
+      nom: (reg.responsable && reg.responsable.nom) || '',
+      prenom: (reg.responsable && reg.responsable.prenom) || ''
     };
     const payloadSize = JSON.stringify(payloadObj).length;
     
