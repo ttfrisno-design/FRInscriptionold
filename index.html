@@ -3117,37 +3117,51 @@ async function confirmDossierSansPaiement(code) {
   // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
   await sendToGoogleSheets(reg);
 
-  // Envoi chèques — params URL directs pour éviter la limite de taille du payload JSON
+  // Envoi chèques — params URL directs
+  console.log('[FRI] reg.cheques:', JSON.stringify(reg.cheques));
+  console.log('[FRI] reg.code:', reg.code);
   if (reg.cheques && reg.cheques.length > 0) {
     const urlCh = getAppsScriptUrl();
+    console.log('[FRI] URL Apps Script:', urlCh ? urlCh.substring(0,60) : 'VIDE');
     if (urlCh && !urlCh.includes('VOTRE_URL')) {
       const r0 = reg.responsable || {};
       await new Promise(resolve => {
         const cbCh = '_friCh_' + Date.now();
         const pCh  = new URLSearchParams();
-        // Action passée directement comme paramètre URL (pas dans payload JSON)
-        pCh.set('action',   'ecrireChèques');
-        pCh.set('code',     reg.code     || '');
-        pCh.set('nom',      r0.nom       || '');
-        pCh.set('prenom',   r0.prenom    || '');
+        pCh.set('action',    'ecrireChèques');
+        pCh.set('code',      reg.code     || '');
+        pCh.set('nom',       r0.nom       || '');
+        pCh.set('prenom',    r0.prenom    || '');
         pCh.set('nbCheques', String(reg.cheques.length));
         reg.cheques.forEach((ch, i) => {
-          pCh.set('ch' + (i+1) + '_banque',    ch.banque    || '');
-          pCh.set('ch' + (i+1) + '_num',       ch.numCheque || '');
-          pCh.set('ch' + (i+1) + '_montant',   String(ch.montant || 0));
+          pCh.set('ch' + (i+1) + '_banque',  ch.banque    || '');
+          pCh.set('ch' + (i+1) + '_num',     ch.numCheque || '');
+          pCh.set('ch' + (i+1) + '_montant', String(ch.montant || 0));
         });
         pCh.set('callback', cbCh);
         pCh.set('_t', Date.now());
+        const fullUrl = urlCh + '?' + pCh.toString();
+        console.log('[FRI] URL chèques envoyée:', fullUrl.substring(0,120));
         let done = false;
-        const finish = () => { if(!done){done=true; delete window[cbCh]; if(sCh.parentNode) sCh.parentNode.removeChild(sCh); resolve();} };
+        const finish = () => {
+          if(!done){ done=true; delete window[cbCh];
+            if(sCh.parentNode) sCh.parentNode.removeChild(sCh);
+            console.log('[FRI] ecrireChèques terminé');
+            resolve();
+          }
+        };
         window[cbCh] = finish;
         setTimeout(finish, 8000);
         const sCh = document.createElement('script');
-        sCh.src = urlCh + '?' + pCh.toString();
-        sCh.onerror = finish;
+        sCh.src = fullUrl;
+        sCh.onerror = () => { console.log('[FRI] script onerror — Apps Script a répondu'); finish(); };
         document.head.appendChild(sCh);
       });
+    } else {
+      console.warn('[FRI] URL Apps Script non configurée ou invalide');
     }
+  } else {
+    console.warn('[FRI] reg.cheques vide ou absent:', reg.cheques);
   }
 
   goStep(6);
