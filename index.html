@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMgkzwKRKi1CeyvJW4guLbNnZrCE9iCAqXYYN87qHH52xEbXTurXFVWf_lWPxyouJS/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPJNfAW7_QgdbkBTAizGG0px5XkWiHlaVW4se9EZsCd71yhv5ncuPXk5jY4pUCw5Ti/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -3042,9 +3042,35 @@ function openHelloAsso() {
 }
 
 async function confirmDossierSansPaiement(code) {
+  // Afficher un message d'attente
+  const btn = document.querySelector('[onclick*="confirmDossierSansPaiement"]');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Enregistrement en cours... veuillez patienter';
+    btn.style.opacity = '0.7';
+  }
+  // Afficher un overlay d'attente
+  const overlay = document.createElement('div');
+  overlay.id = 'fri-loading-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;';
+  overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;">'
+    + '<div style="font-size:40px;margin-bottom:12px;">⏳</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#1a2e22;margin-bottom:8px;">Enregistrement en cours...</div>'
+    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes,<br>votre dossier est en cours d\'envoi.</div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+
+  const removeOverlay = () => {
+    const ol = document.getElementById('fri-loading-overlay');
+    if (ol) ol.remove();
+    if (btn) { btn.disabled = false; btn.innerHTML = origText; btn.style.opacity = ''; }
+  };
+
+  try {
   const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
   const reg = pending[code];
-  if (!reg) { alert('Dossier introuvable.'); return; }
+  if (!reg) { removeOverlay(); alert('Dossier introuvable.'); return; }
 
   // ── VALIDATION CHÈQUES EN PREMIER (avant tout déplacement de données) ──
   if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
@@ -3118,52 +3144,13 @@ async function confirmDossierSansPaiement(code) {
   // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
   await sendToGoogleSheets(reg);
 
-  // Envoi chèques — params URL directs
-  console.log('[FRI] modePaiement:', reg.responsable?.modePaiement);
-  console.log('[FRI] reg.cheques:', JSON.stringify(reg.cheques));
-  console.log('[FRI] reg.code:', reg.code);
-  if (reg.cheques && reg.cheques.length > 0) {
-    const urlCh = getAppsScriptUrl();
-    console.log('[FRI] URL Apps Script:', urlCh ? urlCh.substring(0,60) : 'VIDE');
-    if (urlCh && !urlCh.includes('VOTRE_URL')) {
-      const r0 = reg.responsable || {};
-      // Envoyer via fetch no-cors (pas besoin de réponse, juste déclencher doGet)
-      const pCh = new URLSearchParams();
-      pCh.set('action',    'ecrireCheques');
-      pCh.set('code',      reg.code     || '');
-      pCh.set('nom',       r0.nom       || '');
-      pCh.set('prenom',    r0.prenom    || '');
-      pCh.set('nbCheques', String(reg.cheques.length));
-      reg.cheques.forEach((ch, i) => {
-        pCh.set('ch' + (i+1) + '_banque',  ch.banque    || '');
-        pCh.set('ch' + (i+1) + '_num',     ch.numCheque || '');
-        pCh.set('ch' + (i+1) + '_montant', String(ch.montant || 0));
-      });
-      pCh.set('_t', Date.now());
-      const fullUrl = urlCh + '?' + pCh.toString();
-      console.log('[FRI] URL chèques:', fullUrl.substring(0, 120));
-      // Utiliser fetch no-cors — déclenche bien doGet sur Apps Script
-      // (contrairement au script tag qui suit la redirection 302)
-      try {
-        await fetch(fullUrl, { method:'GET', mode:'no-cors', cache:'no-store' });
-        console.log('[FRI] fetch chèques envoyé');
-      } catch(fetchErr) {
-        // Fallback: XMLHttpRequest
-        try {
-          const xhr = new XMLHttpRequest();
-          xhr.open('GET', fullUrl, true);
-          xhr.send();
-          console.log('[FRI] XHR chèques envoyé');
-        } catch(e2) { console.warn('[FRI] envoi chèques KO:', e2); }
-      }
-    } else {
-      console.warn('[FRI] URL Apps Script non configurée ou invalide');
-    }
-  } else {
-    console.warn('[FRI] reg.cheques vide ou absent:', reg.cheques);
-  }
-
+  removeOverlay();
   goStep(6);
+  } catch(err) {
+    removeOverlay();
+    console.error('Erreur inscription:', err);
+    alert('Une erreur est survenue. Veuillez réessayer.');
+  }
   const modeLabelFinal = {
     cheque: 'Ch\u00e8que \u00e0 l\'ordre du FRI',
     especes: 'Espèces',
