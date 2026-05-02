@@ -3087,6 +3087,7 @@ async function confirmDossierSansPaiement(code) {
   state.registrations = existing;
 
   // ── Lecture des infos chèques ──
+  console.log('[FRI CHEQUE BLOCK] modePaiement=', reg.responsable.modePaiement, 'ch1-banque=', document.getElementById('ch1-banque')?.value);
   if (reg.responsable.modePaiement === 'cheque' || reg.responsable.modePaiement === 'cheque3') {
     const isTroisCheques = state.troisCheques && document.getElementById('cb-trois-cheques')?.checked;
     if (isTroisCheques) {
@@ -3118,6 +3119,7 @@ async function confirmDossierSansPaiement(code) {
   await sendToGoogleSheets(reg);
 
   // Envoi chèques — params URL directs
+  console.log('[FRI] modePaiement:', reg.responsable?.modePaiement);
   console.log('[FRI] reg.cheques:', JSON.stringify(reg.cheques));
   console.log('[FRI] reg.code:', reg.code);
   if (reg.cheques && reg.cheques.length > 0) {
@@ -4807,19 +4809,16 @@ function initSignaturePad() {
 }
 
 function ouvrirSignature(label, callback) {
-  // Scroller vers le haut d'abord pour que la modal fixed soit visible
-  window.scrollTo({ top: 0, behavior: 'instant' });
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-  // Petit délai puis afficher la modal
+  const modal = document.getElementById('signature-modal');
+  modal.style.display = 'flex';
+  document.getElementById('signature-who').textContent = label;
+  _sigCallback = callback;
+  if (!_sigCtx) initSignaturePad();
+  clearSignature();
+  // Scroller vers le BAS pour que la modal fixed soit visible (le bouton est en bas)
   setTimeout(() => {
-    const modal = document.getElementById('signature-modal');
-    modal.style.display = 'flex';
-    document.getElementById('signature-who').textContent = label;
-    _sigCallback = callback;
-    if (!_sigCtx) initSignaturePad();
-    clearSignature();
-  }, 100);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }, 50);
 }
 
 function clearSignature() {
