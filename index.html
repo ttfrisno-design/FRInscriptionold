@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXTlsioyLTfb7srrrr5o5Gv5Vvl_HEYTZma2fHmWpU8NcDCxMJKwUPut5YsVeCXe0e/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-Z3WFEeHShUybLouF8iECXKKymlSfkcuHxS_Esmnl1qz5xiii6NAgwRMT52r7PXGq/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -3117,29 +3117,33 @@ async function confirmDossierSansPaiement(code) {
   // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
   await sendToGoogleSheets(reg);
 
-  // Envoi séparé des chèques (payload léger, sans les rows)
+  // Envoi chèques séparé — SYNCHRONE avant goStep pour garantir l'envoi
   if (reg.cheques && reg.cheques.length > 0) {
     const urlCh = getAppsScriptUrl();
     if (urlCh && !urlCh.includes('VOTRE_URL')) {
       const r0 = reg.responsable || {};
-      const chPayload = {
-        action:  'ecrireChèques',
-        code:    reg.code || '',
-        nom:     r0.nom    || '',
-        prenom:  r0.prenom || '',
-        cheques: reg.cheques
-      };
-      const cbCh = '_friCh_' + Date.now();
-      const pCh  = new URLSearchParams();
-      pCh.set('payload',  JSON.stringify(chPayload));
-      pCh.set('callback', cbCh);
-      pCh.set('_t', Date.now());
-      window[cbCh] = function() { delete window[cbCh]; };
-      const sCh = document.createElement('script');
-      sCh.src = urlCh + '?' + pCh.toString();
-      sCh.onerror = () => { delete window[cbCh]; };
-      setTimeout(() => { delete window[cbCh]; }, 10000);
-      document.head.appendChild(sCh);
+      await new Promise(resolve => {
+        const chPayload = {
+          action: 'ecrireChèques',
+          code:   reg.code || '',
+          nom:    r0.nom   || '',
+          prenom: r0.prenom|| '',
+          cheques: reg.cheques
+        };
+        const cbCh = '_friCh_' + Date.now();
+        const pCh  = new URLSearchParams();
+        pCh.set('payload',  JSON.stringify(chPayload));
+        pCh.set('callback', cbCh);
+        pCh.set('_t', Date.now());
+        let done = false;
+        const finish = () => { if(!done){done=true; delete window[cbCh]; if(sCh.parentNode) sCh.parentNode.removeChild(sCh); resolve();} };
+        window[cbCh] = finish;
+        setTimeout(finish, 8000);
+        const sCh = document.createElement('script');
+        sCh.src = urlCh + '?' + pCh.toString();
+        sCh.onerror = finish;
+        document.head.appendChild(sCh);
+      });
     }
   }
 
