@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzf3mQ8yPYtCpJzVsXapRsVCO4NpslsV6mFQiLJGHB3SmRr1pwBvsf7KHGFF6pbsfCP/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQq2Kl_Wjyi1CyL-f5XozlHESgEfRQNHnSe8ilOM0SkBxRDBJA0YeRwwtt0t6Kp-ck/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -4711,9 +4711,42 @@ function setupPaymentStep(code) {
     + '<div style="font-size:12px;color:var(--gray);margin-top:6px;">Notez ce code &mdash; il vous sera demand&eacute; pour toute modification</div>'
     + '</div>';
 
+  // Encart Atout Normandie si sélectionné
+  var atoutBox = '';
+  if (reg.responsable && reg.responsable.atoutNormandie === 'oui') {
+    var an1 = '<div style="background:#e8f4fd;border:2px solid #1565c0;border-radius:12px;padding:20px;margin-bottom:20px;">';
+    an1 += '<div style="font-size:15px;font-weight:800;color:#1565c0;margin-bottom:14px;text-align:center;">&#x1F4B3; Comment utiliser votre carte Atout Normandie ?</div>';
+    an1 += '<div style="font-size:14px;font-weight:700;color:#1565c0;margin-bottom:14px;text-align:center;">4 &eacute;tapes super simples !</div>';
+    an1 += '<div style="display:flex;flex-direction:column;gap:10px;">';
+    an1 += '<div style="background:white;border-radius:8px;padding:12px;border-left:4px solid #1565c0;">';
+    an1 += '<div style="font-weight:700;color:#1565c0;margin-bottom:4px;">&#x2776; Je me connecte</div>';
+    an1 += '<div style="font-size:13px;color:#333;">Rendez-vous sur le site internet <strong>Atout Normandie</strong> et cliquez sur <strong>&laquo;&nbsp;Pr&eacute;paiement&nbsp;&raquo;</strong>.</div>';
+    an1 += '</div>';
+    an1 += '<div style="background:white;border-radius:8px;padding:12px;border-left:4px solid #1565c0;">';
+    an1 += '<div style="font-weight:700;color:#1565c0;margin-bottom:4px;">&#x2777; Je cr&eacute;e un coupon</div>';
+    an1 += '<div style="font-size:13px;color:#333;">S&eacute;lectionnez <strong>&laquo;&nbsp;Cr&eacute;er un coupon de pr&eacute;paiement&nbsp;&raquo;</strong>.</div>';
+    an1 += '</div>';
+    an1 += '<div style="background:white;border-radius:8px;padding:12px;border-left:4px solid #1565c0;">';
+    an1 += '<div style="font-weight:700;color:#1565c0;margin-bottom:4px;">&#x2778; Je renseigne les informations</div>';
+    an1 += '<div style="font-size:13px;color:#333;">Cat&eacute;gorie : <strong>SPORT</strong> &bull; Ville : <strong>ISNEAUVILLE</strong> &bull; Club : <strong>Foyer Rural Isneauville</strong><br>Indiquez le montant souhait&eacute; <strong>(maximum 30&euro;)</strong>.</div>';
+    an1 += '</div>';
+    an1 += '<div style="background:white;border-radius:8px;padding:12px;border-left:4px solid #1565c0;">';
+    an1 += '<div style="font-weight:700;color:#1565c0;margin-bottom:4px;">&#x2779; Je valide !</div>';
+    an1 += '<div style="font-size:13px;color:#333;">Une fois le montant renseign&eacute;, validez votre coupon.</div>';
+    an1 += '</div>';
+    an1 += '</div>';
+    an1 += '<div style="margin-top:14px;background:#fff8e1;border:1px solid #f9a825;border-radius:8px;padding:12px;">';
+    an1 += '<div style="font-size:13px;color:#856404;line-height:1.7;">&#x26A0;&#xFE0F; <strong>N&rsquo;oubliez pas d&rsquo;activer votre offre Atout Normandie avant de prendre votre adh&eacute;sion !</strong><br>';
+    an1 += 'Pr&eacute;voir un <strong>ch&egrave;que de caution de 30&euro;</strong> le temps que la R&eacute;gion Normandie nous verse le montant de l&rsquo;aide.</div>';
+    an1 += '</div>';
+    an1 += '<div style="margin-top:10px;text-align:right;font-size:13px;font-style:italic;color:#1565c0;font-weight:600;">L&rsquo;&eacute;quipe du FRI &#x1F49A;</div>';
+    an1 += '</div>';
+    atoutBox = an1;
+  }
+
   if (mode === 'helloasso') {
     document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
-    document.getElementById('step-b-content').innerHTML = codeBox
+    document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
       + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l\'association.</p>'
       + '<iframe id="haWidget" allowtransparency="true" scrolling="auto"'
       + ' src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville/widget"'
@@ -4730,7 +4763,7 @@ function setupPaymentStep(code) {
     var ch2 = showTrois ? Math.round(total * 0.30) : 0;
     var ch3 = showTrois ? total - Math.round(total*0.40) - Math.round(total*0.30) : 0;
     document.getElementById('step-b-title').textContent = 'Paiement par chèque';
-    document.getElementById('step-b-content').innerHTML = codeBox
+    document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
       + buildChequesHtml(total, ch1, ch2, ch3, showTrois)
       + '<div style="background:#e3f2fd;border:1px solid #1565c0;border-radius:10px;padding:14px;margin-top:14px;">'
       + '<div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:6px;">&#x1F4CB; Instructions</div>'
@@ -4743,7 +4776,7 @@ function setupPaymentStep(code) {
   } else {
     var modeLabel = { especes:'espèces', ancv:'coupon sport / ANCV' }[mode] || mode;
     document.getElementById('step-b-title').textContent = 'Règlement en ' + modeLabel;
-    document.getElementById('step-b-content').innerHTML = codeBox
+    document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
       + '<div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:20px;">'
       + '<div style="font-size:15px;font-weight:700;color:#856404;margin-bottom:12px;">&#x1F4CD; D&eacute;posez votre dossier au bureau du Foyer Rural</div>'
       + '<div style="font-size:14px;color:var(--dark);line-height:1.8;">'
