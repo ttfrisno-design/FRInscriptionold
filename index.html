@@ -1216,7 +1216,7 @@ let memberCount = 0;
 
 function addMember() {
   const id = memberCount++;
-  const m = { id, nom:'', prenom:'', ddn:'', sexe:'', email:'', activities:[], qs:{}, qsResult:null };
+  const m = { id, nom:'', prenom:'', ddn:'', sexe:'', email:'', activities:[], qs:{}, qsResult:null, ffttWant:false, ffttPrice:0 };
   state.members.push(m);
   renderMembers();
 }
@@ -1755,6 +1755,7 @@ function toggleSlot(memberId, actId) {
   refreshSemainierSlots(memberId);
   updateMemberTotal(memberId);
   updateSelectedBadge(memberId);
+  refreshFfttBlocks();
 }
 
 function refreshSemainierSlots(memberId) {
@@ -1864,7 +1865,114 @@ function memberHtml(m) {
       <div id="member-selected-${m.id}"><em style="color:var(--gray)">Aucune activité sélectionnée</em></div>
     </div>
     <div id="member-total-${m.id}" style="margin-top:12px;padding:10px 14px;background:var(--green-pale);border-radius:8px;font-weight:700;font-size:14px;color:var(--green);"></div>
+
+    <!-- BLOC FFTT — visible uniquement si le membre a une activité TT avec fftt -->
+    <div id="fftt-block-${m.id}" style="display:none;margin-top:14px;padding:14px 16px;background:#FFF3E0;border:2px solid #e65100;border-radius:10px;">
+      <div style="font-weight:700;font-size:14px;color:#bf360c;margin-bottom:8px;">🏓 Licence FFTT — Compétition</div>
+      <p style="font-size:13px;color:#5D4037;margin:0 0 10px;line-height:1.6;">
+        Vous avez sélectionné une activité Tennis de Table. Si vous souhaitez participer aux <strong>compétitions officielles FFTT</strong>, vous devez demander une licence au club.
+      </p>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13.5px;color:#4E342E;font-weight:600;">
+        <input type="checkbox" id="fftt-want-${m.id}" onchange="toggleFfttCategory(${m.id})" style="margin-top:3px;width:16px;height:16px;cursor:pointer;accent-color:#e65100;">
+        Je souhaite demander une licence FFTT pour participer aux compétitions
+      </label>
+      <div id="fftt-detail-${m.id}" style="display:none;margin-top:12px;">
+        <div style="font-size:13px;color:#5D4037;margin-bottom:8px;line-height:1.6;">
+          Sélectionnez la catégorie du licencié pour connaître le tarif :
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid #e65100;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;color:#bf360c;background:white;">
+            <input type="radio" name="fftt-cat-${m.id}" value="37" onchange="updateFfttPrice(${m.id})" style="accent-color:#e65100;">
+            Poussin / Benjamin / Minime — 37 €
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid #e65100;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;color:#bf360c;background:white;">
+            <input type="radio" name="fftt-cat-${m.id}" value="52" onchange="updateFfttPrice(${m.id})" style="accent-color:#e65100;">
+            Cadet — 52 €
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid #e65100;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;color:#bf360c;background:white;">
+            <input type="radio" name="fftt-cat-${m.id}" value="70" onchange="updateFfttPrice(${m.id})" style="accent-color:#e65100;">
+            Junior / Senior / Vétéran — 70 €
+          </label>
+        </div>
+        <div id="fftt-price-info-${m.id}" style="font-size:13px;color:#e65100;font-weight:700;margin-bottom:10px;"></div>
+        <div style="padding:12px 14px;background:white;border:1px solid #FFCCBC;border-radius:8px;font-size:13px;color:#4E342E;line-height:1.7;">
+          📋 <strong>Comment demander votre licence ?</strong><br>
+          1. Rendez-vous sur le site FFTT du club :<br>
+          &nbsp;&nbsp;&nbsp;<a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:700;text-decoration:none;">🔗 https://carte.fftt.com/club/09760374</a><br>
+          2. Remplissez le formulaire de demande de licence en ligne.<br>
+          3. Réglez le montant de la licence selon votre catégorie lors de votre passage en permanence.
+        </div>
+      </div>
+    </div>
+
   </div>`;
+}
+
+// ============================================================
+// FFTT — Licence compétition
+// ============================================================
+
+// Vérifie si un membre a au moins une activité TT avec option fftt
+function memberHasTTWithFftt(memberId) {
+  const m = state.members.find(m => m.id === memberId);
+  if (!m) return false;
+  return m.activities.some(actId => {
+    const act = getActById(actId);
+    return act && act.fftt;
+  });
+}
+
+// Affiche/masque le bloc FFTT selon les activités du membre
+function updateFfttBlock(memberId) {
+  const block = document.getElementById(`fftt-block-${memberId}`);
+  if (!block) return;
+  const hasTT = memberHasTTWithFftt(memberId);
+  block.style.display = hasTT ? 'block' : 'none';
+  // Si plus de TT, réinitialiser
+  if (!hasTT) {
+    const cb = document.getElementById(`fftt-want-${memberId}`);
+    if (cb) cb.checked = false;
+    const detail = document.getElementById(`fftt-detail-${memberId}`);
+    if (detail) detail.style.display = 'none';
+    const m = state.members.find(m => m.id === memberId);
+    if (m) { m.ffttWant = false; m.ffttPrice = 0; }
+    renderSummarySection();
+  }
+}
+
+// Toggle affichage du détail catégorie
+function toggleFfttCategory(memberId) {
+  const cb = document.getElementById(`fftt-want-${memberId}`);
+  const detail = document.getElementById(`fftt-detail-${memberId}`);
+  if (!cb || !detail) return;
+  detail.style.display = cb.checked ? 'block' : 'none';
+  const m = state.members.find(m => m.id === memberId);
+  if (m) {
+    m.ffttWant = cb.checked;
+    if (!cb.checked) { m.ffttPrice = 0; }
+  }
+  renderSummarySection();
+}
+
+// Met à jour le prix FFTT du membre selon la catégorie choisie
+function updateFfttPrice(memberId) {
+  const radios = document.querySelectorAll(`input[name="fftt-cat-${memberId}"]`);
+  let selectedVal = 0;
+  radios.forEach(r => { if (r.checked) selectedVal = parseInt(r.value); });
+  const infoEl = document.getElementById(`fftt-price-info-${memberId}`);
+  if (infoEl) infoEl.textContent = selectedVal ? `💶 Licence FFTT : ${selectedVal} € à régler en permanence` : '';
+  const m = state.members.find(m => m.id === memberId);
+  if (m) m.ffttPrice = selectedVal;
+  renderSummarySection();
+}
+
+// À appeler depuis toggleActivity pour rafraîchir le bloc FFTT
+function refreshFfttBlocks() {
+  state.members.forEach(m => updateFfttBlock(m.id));
+}
+
+function totalFftt() {
+  return state.members.reduce((sum, m) => sum + (m.ffttWant && m.ffttPrice ? m.ffttPrice : 0), 0);
 }
 
 function updateMemberTotal(memberId) {
@@ -2215,7 +2323,8 @@ function calcTotals() {
     discount,
     afterDiscount: totalBeforeDiscount - discount,
     fnsmr: totalFNSMR,
-    grandTotal: totalBeforeDiscount - discount + totalFNSMR,
+    fftt: totalFftt(),
+    grandTotal: totalBeforeDiscount - discount + totalFNSMR + totalFftt(),
     familyActCount
   };
 }
@@ -2295,6 +2404,7 @@ function renderSummary() {
           <tr><td>Remise 15% (${t.familyActCount} activités éligibles)</td><td style="text-align:right;color:var(--green)">- ${t.discount}€</td></tr>
           <tr><td>Total après remise</td><td style="text-align:right">${t.afterDiscount}€</td></tr>
           <tr><td>Adhésion FNSMR (${state.members.length} personne${state.members.length>1?'s':''} × 15€)</td><td style="text-align:right">${t.fnsmr}€</td></tr>
+          ${t.fftt > 0 ? `<tr><td style="color:#e65100;font-weight:600;">🏓 Licence(s) FFTT compétition</td><td style="text-align:right;color:#e65100;font-weight:600;">${t.fftt}€</td></tr>` : ''}
           <tr class="total-row"><td><strong>TOTAL À RÉGLER</strong></td><td style="text-align:right"><strong>${t.grandTotal}€</strong></td></tr>
         </tbody>
       </table>
@@ -2329,16 +2439,20 @@ function renderPayment() {
   });
   if (state.responsable.passJeunes === 'oui') docsList += '<li style="padding:6px 0">📎 Copie attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
   if (state.responsable.atoutNormandie === 'oui') docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
-  if (state.responsable.passSport === 'oui') docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>'
-    + '<li style="padding:10px 14px;margin-top:8px;background:#FFF7E6;border:1.5px solid #F5A623;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#5C3D00;">'
-    + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#B35A00;">🎫 Pass\'Sport État — réduction de 70 €</div>'
-    + '<div>Pour bénéficier de cette aide, vous devez impérativement nous remettre votre coupon Pass\'Sport État :</div>'
-    + '<ul style="margin:6px 0 4px 16px;padding:0;">'
-    + '<li><strong>En permanence</strong> (mardi 16h30–18h30, Salle des fêtes, Place A. Cramilly) avec le coupon original.</li>'
-    + '<li><strong>Par email</strong> à <a href="mailto:frisneauville@orange.fr" style="color:#B35A00;font-weight:600;">frisneauville@orange.fr</a> en joignant une photo ou scan du coupon <em>(objet : Pass\'Sport – [Votre nom])</em>.</li>'
-    + '</ul>'
-    + '<div style="font-style:italic;color:#8A5200;">⚠️ La réduction de 70 € ne sera appliquée qu\'à réception du coupon valide. Sans coupon, le tarif plein sera dû.</div>'
-    + '</li>';
+  if (state.responsable.passSport === 'oui') docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
+  // Note FFTT pour les membres ayant demandé une licence
+  state.members.forEach(m => {
+    if (m.ffttWant && m.ffttPrice) {
+      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
+        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
+        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
+        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
+        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
+        + '<li>Régler <strong>' + m.ffttPrice + ' €</strong> lors de votre passage en permanence.</li>'
+        + '</ul>'
+        + '</li>';
+    }
+  });
   docsList += '</ul>';
   document.getElementById('docs-list').innerHTML = docsList;
 }
@@ -3174,16 +3288,20 @@ function renderPayment() {
   });
   if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
   if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
-  if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>'
-    + '<li style="padding:10px 14px;margin-top:8px;background:#FFF7E6;border:1.5px solid #F5A623;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#5C3D00;">'
-    + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#B35A00;">🎫 Pass\'Sport État — réduction de 70 €</div>'
-    + '<div>Pour bénéficier de cette aide, vous devez impérativement nous remettre votre coupon Pass\'Sport État :</div>'
-    + '<ul style="margin:6px 0 4px 16px;padding:0;">'
-    + '<li><strong>En permanence</strong> (mardi 16h30–18h30, Salle des fêtes, Place A. Cramilly) avec le coupon original.</li>'
-    + '<li><strong>Par email</strong> à <a href="mailto:frisneauville@orange.fr" style="color:#B35A00;font-weight:600;">frisneauville@orange.fr</a> en joignant une photo ou scan du coupon <em>(objet : Pass\'Sport – [Votre nom])</em>.</li>'
-    + '</ul>'
-    + '<div style="font-style:italic;color:#8A5200;">⚠️ La réduction de 70 € ne sera appliquée qu\'à réception du coupon valide. Sans coupon, le tarif plein sera dû.</div>'
-    + '</li>';
+  if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
+  // Note FFTT pour les membres ayant demandé une licence
+  state.members.forEach(m => {
+    if (m.ffttWant && m.ffttPrice) {
+      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
+        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
+        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
+        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
+        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
+        + '<li>Régler <strong>' + m.ffttPrice + ' €</strong> lors de votre passage en permanence.</li>'
+        + '</ul>'
+        + '</li>';
+    }
+  });
   docsList += '</ul>';
   document.getElementById('docs-list').innerHTML = docsList;
 }
@@ -3639,16 +3757,16 @@ function showConfirmation(reg, offlineOnly = false, isPaid = false) {
           ${reg.members.map(m=>'<li style="padding:5px 0;border-bottom:1px solid var(--border)"><strong>'+m.prenom+' '+m.nom+'</strong> — '+(m.qsResult==='attestation_ok'?'✅ Attestation santé signée':m.qsResult==='certificat_requis'?'⚠️ Certificat médical obligatoire':'❓ QS non rempli')+'</li>').join('')}
           ${reg.responsable.passJeunes==='oui'?'<li style="padding:5px 0">📎 Attestation Pass\'jeunes 76</li>':''}
           ${reg.responsable.atoutNormandie==='oui'?'<li style="padding:5px 0">📎 QR Code Atout Normandie</li>':''}
-          ${reg.responsable.passSport==='oui'?`<li style="padding:5px 0">📎 Justificatif Pass'sport État</li>
-          <li style="padding:10px 14px;margin-top:8px;background:#FFF7E6;border:1.5px solid #F5A623;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#5C3D00;">
-            <div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#B35A00;">🎫 Pass'Sport État — réduction de 70 €</div>
-            <div>Pour bénéficier de cette aide, vous devez impérativement nous remettre votre coupon Pass'Sport État :</div>
+          ${reg.responsable.passSport==='oui'?'<li style="padding:5px 0">📎 Justificatif Pass\'sport État</li>':''}
+          ${reg.members.filter(m=>m.ffttWant&&m.ffttPrice).map(m=>`
+          <li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">
+            <div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ${m.prenom} (${m.ffttPrice} €)</div>
+            <div>Pour participer aux compétitions FFTT, vous devez :</div>
             <ul style="margin:6px 0 4px 16px;padding:0;">
-              <li><strong>En permanence</strong> (mardi 16h30–18h30, Salle des fêtes, Place A. Cramilly) avec le coupon original.</li>
-              <li><strong>Par email</strong> à <a href="mailto:frisneauville@orange.fr" style="color:#B35A00;font-weight:600;">frisneauville@orange.fr</a> en joignant une photo ou scan du coupon <em>(objet : Pass'Sport – ${reg.responsable.nom})</em>.</li>
+              <li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>
+              <li>Régler <strong>${m.ffttPrice} €</strong> lors de votre passage en permanence.</li>
             </ul>
-            <div style="font-style:italic;color:#8A5200;">⚠️ La réduction de 70 € ne sera appliquée qu'à réception du coupon valide. Sans coupon, le tarif plein sera dû.</div>
-          </li>`:''}
+          </li>`).join('')}
         </ul>
       </div>
       <div class="alert alert-info" style="max-width:480px;margin:0 auto;text-align:left">
