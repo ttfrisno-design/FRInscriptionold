@@ -1759,25 +1759,58 @@ function toggleSlot(memberId, actId) {
 }
 
 function refreshSemainierSlots(memberId) {
-  // Re-render all grids for this member to reflect linked state
   const m = state.members.find(m => m.id === memberId);
   if (!m) return;
   const isno = (state.responsable.commune || 'isno') === 'isno';
   const tabs = buildCategoryTabs();
 
-  tabs.forEach(tab => {
-    const gridWrap = document.getElementById(`sem-grid-${memberId}-${tab.key}`);
-    if (!gridWrap) return;
-    const color = catColor(tab.key);
-    // Re-render only the slots (not the whole grid structure)
-    tab.acts.forEach(act => {
-      const slotEl = document.getElementById(`slot-${memberId}-${act.id}`);
-      if (!slotEl) return;
-      const newHtml = slotHtml(act, memberId, color, isno);
-      const temp = document.createElement('div');
-      temp.innerHTML = newHtml;
-      const newEl = temp.firstElementChild;
-      slotEl.parentNode.replaceChild(newEl, slotEl);
+  // Mettre à jour les classes et styles de TOUS les slots dans TOUT le DOM
+  // (grilles statiques + grille fusionnée si présente)
+  const allSlotContainers = [
+    document.getElementById(`sem-grids-${memberId}`),
+    document.getElementById(`sem-merged-${memberId}`)
+  ].filter(Boolean);
+
+  allSlotContainers.forEach(container => {
+    container.querySelectorAll('.sem-slot').forEach(slotEl => {
+      const actId = slotEl.dataset.act;
+      if (!actId) return;
+      const act = getActById(actId);
+      if (!act) return;
+
+      const isSelected = m.activities.includes(actId);
+      const linkedId = act.linkedWith;
+      const linkedSelected = linkedId && m.activities.includes(linkedId);
+      const isInSelectedPair = isSelected || linkedSelected;
+
+      // Mettre à jour la classe selected
+      slotEl.classList.toggle('selected', isInSelectedPair);
+
+      // Mettre à jour le style border/shadow
+      if (isInSelectedPair) {
+        slotEl.style.borderColor = 'var(--dark)';
+        slotEl.style.boxShadow = '0 0 0 3px var(--dark)';
+      } else {
+        // Restaurer la couleur de bordure d'origine (couleur de la catégorie)
+        const color = (() => {
+          for (const tab of tabs) {
+            if (tab.acts.some(a => a.id === actId)) return catColor(tab.key);
+          }
+          return { bg: '#f5f5f5', fg: '#333' };
+        })();
+        const placeInfo = state.places[actId];
+        const isFull = placeInfo && placeInfo.available <= 0;
+        if (isFull) {
+          slotEl.style.borderColor = '#f5c6cb';
+        } else if (placeInfo && placeInfo.available <= 3) {
+          slotEl.style.borderColor = '#ffb380';
+        } else if (placeInfo && placeInfo.available <= 7) {
+          slotEl.style.borderColor = '#ffc107';
+        } else {
+          slotEl.style.borderColor = color.bg;
+        }
+        slotEl.style.boxShadow = '';
+      }
     });
   });
 }
