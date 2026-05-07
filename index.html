@@ -1772,13 +1772,13 @@ function refreshSemainierSlots(memberId) {
     container.querySelectorAll(`.sem-slot[data-member="${memberId}"]`).forEach(slotEl => {
       const actId = slotEl.dataset.act;
       if (!actId) return;
-      const act = getActById(actId);
-      if (!act) return;
 
       const isSelected = m.activities.includes(actId);
-      const linkedId = act.linkedWith;
-      const linkedSelected = linkedId && m.activities.includes(linkedId);
+      const act = getActById(actId);
+      const linkedId = act && act.linkedWith;
+      const linkedSelected = linkedId ? m.activities.includes(linkedId) : false;
       const isInSelectedPair = isSelected || linkedSelected;
+
 
       slotEl.classList.toggle('selected', isInSelectedPair);
 
@@ -1963,7 +1963,7 @@ function updateFfttBlock(memberId) {
     if (detail) detail.style.display = 'none';
     const m = state.members.find(m => m.id === memberId);
     if (m) { m.ffttWant = false; m.ffttPrice = 0; }
-    renderSummarySection();
+    renderSummary();
   }
 }
 
@@ -1978,7 +1978,7 @@ function toggleFfttCategory(memberId) {
     m.ffttWant = cb.checked;
     if (!cb.checked) { m.ffttPrice = 0; }
   }
-  renderSummarySection();
+  renderSummary();
 }
 
 // Met à jour le prix FFTT du membre selon la catégorie choisie
@@ -1990,7 +1990,7 @@ function updateFfttPrice(memberId) {
   if (infoEl) infoEl.textContent = selectedVal ? `💶 Licence FFTT : ${selectedVal} € à régler en permanence` : '';
   const m = state.members.find(m => m.id === memberId);
   if (m) m.ffttPrice = selectedVal;
-  renderSummarySection();
+  renderSummary();
 }
 
 // À appeler depuis toggleActivity pour rafraîchir le bloc FFTT
@@ -2232,7 +2232,7 @@ async function chargerDossierExistant() {
     + '</div>';
 
   // Recalculate totals with existing activities
-  renderSummarySection();
+  renderSummary();
 }
 
 // ============================================================
