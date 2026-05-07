@@ -1761,18 +1761,15 @@ function toggleSlot(memberId, actId) {
 function refreshSemainierSlots(memberId) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return;
-  const isno = (state.responsable.commune || 'isno') === 'isno';
   const tabs = buildCategoryTabs();
 
-  // Mettre à jour les classes et styles de TOUS les slots dans TOUT le DOM
-  // (grilles statiques + grille fusionnée si présente)
   const allSlotContainers = [
     document.getElementById(`sem-grids-${memberId}`),
     document.getElementById(`sem-merged-${memberId}`)
   ].filter(Boolean);
 
   allSlotContainers.forEach(container => {
-    container.querySelectorAll('.sem-slot').forEach(slotEl => {
+    container.querySelectorAll(`.sem-slot[data-member="${memberId}"]`).forEach(slotEl => {
       const actId = slotEl.dataset.act;
       if (!actId) return;
       const act = getActById(actId);
@@ -1783,15 +1780,12 @@ function refreshSemainierSlots(memberId) {
       const linkedSelected = linkedId && m.activities.includes(linkedId);
       const isInSelectedPair = isSelected || linkedSelected;
 
-      // Mettre à jour la classe selected
       slotEl.classList.toggle('selected', isInSelectedPair);
 
-      // Mettre à jour le style border/shadow
       if (isInSelectedPair) {
         slotEl.style.borderColor = 'var(--dark)';
         slotEl.style.boxShadow = '0 0 0 3px var(--dark)';
       } else {
-        // Restaurer la couleur de bordure d'origine (couleur de la catégorie)
         const color = (() => {
           for (const tab of tabs) {
             if (tab.acts.some(a => a.id === actId)) return catColor(tab.key);
