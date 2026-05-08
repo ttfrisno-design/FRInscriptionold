@@ -901,7 +901,7 @@
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQq2Kl_Wjyi1CyL-f5XozlHESgEfRQNHnSe8ilOM0SkBxRDBJA0YeRwwtt0t6Kp-ck/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuYc_xL2JXJpNOFxs9CXVErG40K_teT7OCq9vE_DGpqj7yEgsG43-qShLcBle5nQlq/exec';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -3055,33 +3055,33 @@ function envoyerPDFViaForm(filename, dataUri, membre, responsable, email, type) 
   document.head.appendChild(s);
 }
 
-// Envoi du PDF par email via Apps Script — utilise fetch no-cors avec payload séparé
+// Envoi du PDF QS Santé vers Drive via Apps Script — POST
 async function envoyerPDFParEmail(filename, pdfBase64, membre, responsable, email, isMineur) {
   const url = getAppsScriptUrl();
   if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') return;
 
-  // Découper le base64 en chunks de 8000 chars pour éviter les limites d'URL
-  // Apps Script reconstituera les morceaux
-  const chunkSize = 8000;
-  const chunks    = [];
-  for (let i = 0; i < pdfBase64.length; i += chunkSize) {
-    chunks.push(pdfBase64.slice(i, i + chunkSize));
-  }
+  // Un seul POST avec tout le payload
+  const payload = {
+    action:      'envoyerAttestationPDF',
+    filename:    filename,
+    membre:      membre,
+    responsable: responsable,
+    email:       email,
+    isMineur:    isMineur,
+    pdfBase64:   pdfBase64
+  };
 
-  // Envoyer le premier chunk avec les métadonnées
-  const meta = { filename, membre, responsable, email, isMineur, totalChunks: chunks.length };
-  for (let i = 0; i < chunks.length; i++) {
-    const payload = {
-      action: 'envoyerAttestationPDF',
-      chunk: chunks[i],
-      chunkIndex: i,
-      meta: i === 0 ? meta : null
-    };
-    const encoded  = encodeURIComponent(JSON.stringify(payload));
-    await fetch(url + '?payload=' + encoded + '&_t=' + Date.now(),
-      { method: 'GET', mode: 'no-cors', cache: 'no-store' });
-    // Petit délai entre chunks
-    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 200));
+  try {
+    await fetch(url, {
+      method:  'POST',
+      mode:    'no-cors',
+      cache:   'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+    console.log('QS Santé envoyé vers Drive :', filename);
+  } catch(e) {
+    console.warn('Envoi QS Santé Drive KO :', e);
   }
 }
 
