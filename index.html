@@ -3061,12 +3061,12 @@ function envoyerPDFViaForm(filename, dataUri, membre, responsable, email, type) 
   document.head.appendChild(s);
 }
 
-// Envoi du PDF QS Santé vers Drive via Apps Script — même mécanisme que les autres actions
+// Envoi du PDF QS Santé vers Drive — via formulaire HTML caché (POST réel)
 async function envoyerPDFParEmail(filename, pdfBase64, membre, responsable, email, isMineur) {
   const url = getAppsScriptUrl();
   if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') return;
 
-  const payload = {
+  const payload = JSON.stringify({
     action:      'envoyerAttestationPDF',
     filename:    filename,
     membre:      membre,
@@ -3074,15 +3074,47 @@ async function envoyerPDFParEmail(filename, pdfBase64, membre, responsable, emai
     email:       email,
     isMineur:    isMineur,
     pdfBase64:   pdfBase64
-  };
+  });
 
   console.log('[FRI] Envoi QS Santé Drive — fichier:', filename, '— taille base64:', pdfBase64.length);
-  try {
-    await callAppsScriptFetch(url, payload);
-    console.log('[FRI] QS Santé envoyé vers Drive ✅');
-  } catch(e) {
-    console.warn('[FRI] Envoi QS Santé Drive KO :', e);
-  }
+
+  // Créer un formulaire HTML caché et le soumettre — c'est un vrai POST
+  // Apps Script reçoit le body via e.postData.contents
+  return new Promise((resolve) => {
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.name  = 'fri_qs_iframe_' + Date.now();
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      const form        = document.createElement('form');
+      form.method       = 'POST';
+      form.action       = url;
+      form.target       = iframe.name;
+      form.style.display = 'none';
+
+      const input       = document.createElement('input');
+      input.type        = 'hidden';
+      input.name        = 'payload';
+      input.value       = payload;
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
+
+      // Nettoyage après 15s
+      setTimeout(() => {
+        try { document.body.removeChild(form); } catch(e) {}
+        try { document.body.removeChild(iframe); } catch(e) {}
+        console.log('[FRI] QS Santé envoyé vers Drive ✅');
+        resolve();
+      }, 15000);
+
+    } catch(e) {
+      console.warn('[FRI] Envoi QS Santé KO :', e);
+      resolve();
+    }
+  });
 }
 
 function openHelloAsso() {
@@ -3601,19 +3633,17 @@ async function lireSheetPublic() {
 }
 
 // Envoi vers Apps Script via fetch no-cors
-// Apps Script reçoit la requête AVANT de rediriger — le code s'exécute
-// mode:'no-cors' = pas de preflight, réponse opaque ignorée, mais la requête part
 async function callAppsScriptFetch(url, payload) {
   const payloadStr = JSON.stringify(payload);
   console.log('[FRI] POST payload size:', payloadStr.length);
 
-  // Utiliser fetch POST — seule méthode qui transmet le body à Apps Script
-  // Apps Script reçoit via doPost(e) → e.postData.contents
+  // Encoder le payload dans un champ de formulaire — Apps Script lit e.postData.contents
+  // même en mode no-cors avec Content-Type text/plain
   try {
     const response = await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: payloadStr
     });
     console.log('[FRI] POST envoyé (no-cors)');
