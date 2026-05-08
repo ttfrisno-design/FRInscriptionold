@@ -2498,7 +2498,8 @@ function generateDossierCode() {
 
 function saveDossier() {
   captureResponsable();
-  const code = generateDossierCode();
+  // Réutiliser le code généré lors du QS Santé si disponible
+  const code = state.codeDossierPreview || generateDossierCode();
   const reg = {
     date: new Date().toLocaleDateString('fr-FR'),
     id: Date.now(),
@@ -2978,7 +2979,11 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   // ── Téléchargement ──
   const prenom   = (m.prenom || 'membre').replace(/\s+/g,'_');
   const nom      = (m.nom    || '').replace(/\s+/g,'_');
-  const codeDoss = state.responsable.codeDossier || state.code || '';
+  // Générer le code dossier maintenant si pas encore fait — sera réutilisé à la soumission
+  if (!state.codeDossierPreview) {
+    state.codeDossierPreview = generateDossierCode();
+  }
+  const codeDoss = state.codeDossierPreview;
   const filename = (codeDoss ? codeDoss + '_' : '') + prenom + '-' + nom + '_QS-Sante.pdf';
 
   // Ouvrir le PDF dans un nouvel onglet (pour enregistrement ou impression)
