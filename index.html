@@ -3000,7 +3000,13 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
 
   // ── Envoi PDF vers Drive via Apps Script ──
   try {
-    const pdfBase64 = doc.output('datauristring').split(',')[1]; // extraire le base64 pur
+    // Convertir le PDF en base64 via ArrayBuffer (plus fiable que datauristring)
+    const pdfArrayBuffer = doc.output('arraybuffer');
+    const pdfUint8 = new Uint8Array(pdfArrayBuffer);
+    let binary = '';
+    for (let i = 0; i < pdfUint8.length; i++) binary += String.fromCharCode(pdfUint8[i]);
+    const pdfBase64 = btoa(binary);
+    console.log('[FRI] PDF généré — taille arraybuffer:', pdfUint8.length, '— base64:', pdfBase64.length);
     envoyerPDFParEmail(
       filename,
       pdfBase64,
@@ -3746,7 +3752,43 @@ async function retryQueue() {
   return sent;
 }
 
-async function testConnectionIframe(url) {
+async function testPostGAS() {
+  const url = getAppsScriptUrl();
+  if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') {
+    console.error('❌ URL GAS non configurée');
+    return;
+  }
+  console.log('Test POST GAS vers :', url);
+
+  // Test 1 : ping simple
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'ping' })
+    });
+    console.log('✅ POST ping envoyé');
+  } catch(e) { console.error('❌ POST ping KO:', e); }
+
+  // Test 2 : créer dossier Drive (mini payload)
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'envoyerAttestationPDF',
+        filename: 'TEST_QS-Sante.pdf',
+        membre: 'Test Membre',
+        pdfBase64: btoa('test pdf content FRI')
+      })
+    });
+    console.log('✅ POST testQS envoyé — vérifiez Drive et logs GAS');
+  } catch(e) { console.error('❌ POST testQS KO:', e); }
+}
+// Exposer globalement pour test depuis la console navigateur
+window.testPostGAS = testPostGAS;
   const result = await callAppsScriptJsonp(url, { action: 'ping' });
   return result.ok ? 'ok' : 'timeout';
 }
