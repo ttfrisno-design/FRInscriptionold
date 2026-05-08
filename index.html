@@ -2998,14 +2998,18 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
     showToast('✅ PDF ouvert dans un nouvel onglet — enregistrez ou imprimez', 'green');
   }
 
-  // ── Envoi notification email ──
+  // ── Envoi PDF vers Drive via Apps Script ──
   try {
-    envoyerPDFViaForm(filename, doc.output('datauristring'),
+    const pdfBase64 = doc.output('datauristring').split(',')[1]; // extraire le base64 pur
+    envoyerPDFParEmail(
+      filename,
+      pdfBase64,
       m.prenom + ' ' + m.nom,
       (state.responsable.prenom||'') + ' ' + (state.responsable.nom||''),
       state.responsable.email1 || '',
-      isMineur ? 'Mineur' : 'Majeur');
-  } catch(e) { console.warn('Envoi PDF email:', e); }
+      isMineur
+    );
+  } catch(e) { console.warn('Envoi PDF Drive:', e); }
 
   } catch(pdfErr) {
     console.error('Erreur génération PDF:', pdfErr);
