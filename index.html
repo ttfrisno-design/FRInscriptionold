@@ -3055,12 +3055,11 @@ function envoyerPDFViaForm(filename, dataUri, membre, responsable, email, type) 
   document.head.appendChild(s);
 }
 
-// Envoi du PDF QS Santé vers Drive via Apps Script — POST
+// Envoi du PDF QS Santé vers Drive via Apps Script — même mécanisme que les autres actions
 async function envoyerPDFParEmail(filename, pdfBase64, membre, responsable, email, isMineur) {
   const url = getAppsScriptUrl();
   if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') return;
 
-  // Un seul POST avec tout le payload
   const payload = {
     action:      'envoyerAttestationPDF',
     filename:    filename,
@@ -3071,17 +3070,12 @@ async function envoyerPDFParEmail(filename, pdfBase64, membre, responsable, emai
     pdfBase64:   pdfBase64
   };
 
+  console.log('[FRI] Envoi QS Santé Drive — fichier:', filename, '— taille base64:', pdfBase64.length);
   try {
-    await fetch(url, {
-      method:  'POST',
-      mode:    'no-cors',
-      cache:   'no-store',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
-    });
-    console.log('QS Santé envoyé vers Drive :', filename);
+    await callAppsScriptFetch(url, payload);
+    console.log('[FRI] QS Santé envoyé vers Drive ✅');
   } catch(e) {
-    console.warn('Envoi QS Santé Drive KO :', e);
+    console.warn('[FRI] Envoi QS Santé Drive KO :', e);
   }
 }
 
