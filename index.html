@@ -4843,12 +4843,41 @@ function showAdminConfigBanner() {
   }
 }
 
-function deleteRegistration(id) {
+async function deleteRegistration(id) {
   if (!requireAdmin()) return;
-  if (!confirm('Supprimer cette inscription ?')) return;
-  let regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-  regs = regs.filter(r => r.id !== id);
-  localStorage.setItem('fri_registrations', JSON.stringify(regs));
+
+  // Trouver le dossier
+  const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+  const reg  = regs.find(r => r.id === id);
+  if (!reg) return;
+
+  const nom  = reg.responsable ? (reg.responsable.nom + ' ' + reg.responsable.prenom) : 'inconnu';
+  const code = reg.code || '—';
+
+  if (!confirm(`Supprimer le dossier ${code} — ${nom} ?\n\nCette action supprime le dossier localement.\nLes lignes dans Google Sheets seront également supprimées.`)) return;
+
+  // 1. Supprimer du localStorage
+  const updated = regs.filter(r => r.id !== id);
+  localStorage.setItem('fri_registrations', JSON.stringify(updated));
+
+  // 2. Supprimer du Google Sheet via GAS
+  const url = getAppsScriptUrl();
+  if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI' && code !== '—') {
+    try {
+      await callAppsScriptFetch(url, {
+        action: 'supprimerDossier',
+        _token: FRI_SECRET_TOKEN,
+        code:   code
+      });
+      showToast(`✅ Dossier ${code} supprimé`, 'green');
+    } catch(e) {
+      console.warn('Suppression GAS KO:', e);
+      showToast(`⚠️ Dossier supprimé localement — Sheet à vérifier`, 'orange');
+    }
+  } else {
+    showToast(`✅ Dossier ${code} supprimé localement`, 'green');
+  }
+
   renderAdmin();
   renderAdminStats();
 }
