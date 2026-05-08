@@ -2978,7 +2978,8 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   // ── Téléchargement ──
   const prenom   = (m.prenom || 'membre').replace(/\s+/g,'_');
   const nom      = (m.nom    || '').replace(/\s+/g,'_');
-  const filename = 'Attestation_sante_' + (isMineur ? 'mineur' : 'majeur') + '_' + prenom + '_' + nom + '.pdf';
+  const codeDoss = state.responsable.codeDossier || state.code || '';
+  const filename = (codeDoss ? codeDoss + '_' : '') + prenom + '-' + nom + '_QS-Sante.pdf';
 
   // Ouvrir le PDF dans un nouvel onglet (pour enregistrement ou impression)
   const pdfBlob = doc.output('blob');
