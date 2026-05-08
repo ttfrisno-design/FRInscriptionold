@@ -2634,12 +2634,25 @@ function toggleTroisCheques(total, ch1, ch2, ch3) {
 // ============================================================
 
 function genererAttestationPDF(memberId) {
-  // Demander la signature avant de générer le PDF
   const m = state.members.find(mb => mb.id === memberId);
   if (!m) return;
-  const age = getAge(m.ddn);
+  const age      = getAge(m.ddn);
   const isMineur = age < 18;
-  const r = state.responsable;
+  const r        = state.responsable;
+
+  // ── Consentement explicite données de santé (article 9 RGPD) ──
+  const nomMembre = (m.prenom || '') + ' ' + (m.nom || '');
+  const consentOk = confirm(
+    `🔒 Consentement pour les données de santé\n\n` +
+    `Vous allez remplir le questionnaire de santé sportive pour ${nomMembre}.\n\n` +
+    `Ces données sont des données de santé sensibles (article 9 RGPD). ` +
+    `Elles seront utilisées uniquement pour valider l'aptitude à la pratique sportive ` +
+    `et conservées jusqu'au 31 août 2027.\n\n` +
+    `En cliquant OK, vous consentez explicitement à ce traitement.\n\n` +
+    `Annuler = refuser le traitement des données de santé.`
+  );
+  if (!consentOk) return;
+
   const sigLabel = isMineur
     ? 'Signature du parent / responsable légal de ' + m.prenom + ' ' + m.nom
     : 'Signature de ' + r.prenom + ' ' + r.nom;
@@ -2651,6 +2664,13 @@ function genererAttestationPDF(memberId) {
 
 async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   try {
+  // Lire nom/prénom depuis le DOM pour s'assurer d'avoir les valeurs saisies
+  state.members.forEach(mb => {
+    const elNom    = document.getElementById('m-' + mb.id + '-nom');
+    const elPrenom = document.getElementById('m-' + mb.id + '-prenom');
+    if (elNom    && elNom.value.trim())    mb.nom    = elNom.value.trim().toUpperCase();
+    if (elPrenom && elPrenom.value.trim()) mb.prenom = elPrenom.value.trim();
+  });
   const m = state.members.find(mb => mb.id === memberId);
   if (!m) { console.error('Membre introuvable:', memberId); return; }
   const r = state.responsable;
@@ -5194,6 +5214,124 @@ async function validerFormulaireCheques(code, total, showTrois) {
   await finaliserInscription(code);
 }
 
+
+<!-- ============================================================
+     MODAL POLITIQUE DE CONFIDENTIALITÉ & MENTIONS LÉGALES
+     ============================================================ -->
+<div id="modal-rgpd" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);overflow-y:auto;padding:20px">
+  <div style="max-width:680px;margin:40px auto;background:white;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
+    <!-- En-tête -->
+    <div style="background:#1a2e22;padding:22px 28px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="color:#52b788;font-weight:700;font-size:16px">🔒 Protection des données personnelles</div>
+        <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:3px">Foyer Rural d'Isneauville — Saison 2026/2027</div>
+      </div>
+      <button onclick="document.getElementById('modal-rgpd').style.display='none'"
+        style="background:rgba(255,255,255,0.1);border:none;color:white;font-size:20px;cursor:pointer;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+
+    <!-- Contenu -->
+    <div style="padding:28px;font-size:13.5px;line-height:1.8;color:#333">
+
+      <!-- Mentions légales -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:0 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">📋 Mentions légales</h3>
+      <p><strong>Responsable du traitement :</strong> Foyer Rural d'Isneauville (FRI)<br>
+      <strong>Adresse :</strong> Salle des fêtes, Place A. Cramilly, 76230 Isneauville<br>
+      <strong>Email :</strong> <a href="mailto:frisneauville@orange.fr" style="color:#2d6a4f">frisneauville@orange.fr</a><br>
+      <strong>Téléphone :</strong> 02.35.59.01.01<br>
+      <strong>Site web :</strong> www.frisneauville.fr</p>
+
+      <!-- Données collectées -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">📂 Données collectées</h3>
+      <p>Dans le cadre de votre inscription aux activités, nous collectons les données suivantes :</p>
+      <ul style="margin:8px 0 8px 20px;padding:0">
+        <li><strong>Identité :</strong> nom, prénom, date de naissance, sexe</li>
+        <li><strong>Coordonnées :</strong> adresse, code postal, ville, téléphone, email</li>
+        <li><strong>Données de santé :</strong> réponses au questionnaire de santé sportive (données sensibles — article 9 RGPD)</li>
+        <li><strong>Données financières :</strong> mode de paiement, montant réglé (sans données bancaires)</li>
+        <li><strong>Activités choisies</strong> et créneaux horaires</li>
+      </ul>
+
+      <!-- Finalité -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">🎯 Finalité du traitement</h3>
+      <p>Vos données sont utilisées exclusivement pour :</p>
+      <ul style="margin:8px 0 8px 20px;padding:0">
+        <li>La gestion administrative de votre inscription</li>
+        <li>Le suivi des paiements et l'émission de reçus</li>
+        <li>La gestion des listes d'activités et des effectifs</li>
+        <li>L'envoi d'informations relatives à vos activités</li>
+        <li>Le respect des obligations légales (déclaration FNSMR)</li>
+      </ul>
+
+      <!-- Base légale -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">⚖️ Base légale</h3>
+      <p>Le traitement est fondé sur :</p>
+      <ul style="margin:8px 0 8px 20px;padding:0">
+        <li><strong>Votre consentement explicite</strong> (article 6.1.a et 9.2.a RGPD) pour les données de santé</li>
+        <li><strong>L'exécution d'un contrat</strong> (article 6.1.b RGPD) pour la gestion des inscriptions</li>
+        <li><strong>L'intérêt légitime</strong> (article 6.1.f RGPD) pour la gestion associative</li>
+      </ul>
+
+      <!-- Durée de conservation -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">⏳ Durée de conservation</h3>
+      <p>Vos données sont conservées <strong>jusqu'à la fin de la saison sportive en cours</strong> (31 août 2027), puis supprimées. Les données comptables (reçus de paiement) sont conservées <strong>10 ans</strong> conformément aux obligations légales.</p>
+
+      <!-- Sous-traitants -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">🔗 Sous-traitants et hébergement</h3>
+      <p>Vos données sont hébergées sur les serveurs de <strong>Google (Google Sheets, Google Drive, Gmail)</strong> dans le cadre d'un accord de traitement des données conforme au RGPD. Google agit en qualité de sous-traitant.</p>
+      <p>Aucune donnée n'est transmise à des tiers à des fins commerciales.</p>
+
+      <!-- Droits -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">✅ Vos droits</h3>
+      <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+      <ul style="margin:8px 0 8px 20px;padding:0">
+        <li><strong>Droit d'accès</strong> — obtenir une copie de vos données</li>
+        <li><strong>Droit de rectification</strong> — corriger des données inexactes</li>
+        <li><strong>Droit à l'effacement</strong> — demander la suppression de vos données</li>
+        <li><strong>Droit d'opposition</strong> — vous opposer au traitement</li>
+        <li><strong>Droit à la portabilité</strong> — recevoir vos données dans un format structuré</li>
+        <li><strong>Droit de retrait du consentement</strong> — à tout moment, sans effet rétroactif</li>
+      </ul>
+      <p>Pour exercer vos droits : <a href="mailto:frisneauville@orange.fr" style="color:#2d6a4f;font-weight:600">frisneauville@orange.fr</a><br>
+      En cas de réclamation non résolue, vous pouvez saisir la <strong>CNIL</strong> : <a href="https://www.cnil.fr" target="_blank" style="color:#2d6a4f">www.cnil.fr</a></p>
+
+      <!-- Sécurité -->
+      <h3 style="color:#1a2e22;font-size:15px;margin:20px 0 10px;border-bottom:2px solid #d8f3dc;padding-bottom:6px">🛡️ Sécurité</h3>
+      <p>Vos données sont protégées par des mesures techniques et organisationnelles appropriées : accès restreint aux données, authentification requise pour l'administration, transmission sécurisée (HTTPS), token d'authentification sur les échanges avec le serveur.</p>
+
+      <div style="background:#f0f7f3;border-radius:8px;padding:14px;margin-top:20px;font-size:12px;color:#555;text-align:center">
+        Dernière mise à jour : mai 2026 — Foyer Rural d'Isneauville
+      </div>
+    </div>
+
+    <div style="padding:16px 28px;border-top:1px solid #eee;text-align:center">
+      <button onclick="document.getElementById('modal-rgpd').style.display='none'"
+        style="background:#1a2e22;color:white;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">
+        J'ai compris — Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Footer RGPD -->
+<footer style="background:#1a2e22;color:rgba(255,255,255,0.5);text-align:center;padding:18px 20px;font-size:12px;line-height:1.8;margin-top:40px">
+  <div style="max-width:700px;margin:0 auto">
+    <div style="color:rgba(255,255,255,0.8);font-weight:600;margin-bottom:6px">Foyer Rural d'Isneauville — Saison 2026/2027</div>
+    Salle des fêtes, Place A. Cramilly, 76230 Isneauville &nbsp;|&nbsp;
+    <a href="mailto:frisneauville@orange.fr" style="color:#52b788">frisneauville@orange.fr</a> &nbsp;|&nbsp;
+    02.35.59.01.01
+    <div style="margin-top:8px">
+      <a href="#" onclick="document.getElementById('modal-rgpd').style.display='block';return false;"
+        style="color:#52b788;text-decoration:underline;cursor:pointer">
+        🔒 Politique de confidentialité &amp; Mentions légales
+      </a>
+      &nbsp;|&nbsp;
+      <span>Données hébergées par Google (RGPD)</span>
+      &nbsp;|&nbsp;
+      <a href="https://www.cnil.fr" target="_blank" style="color:#52b788">CNIL</a>
+    </div>
+  </div>
+</footer>
 
 </script>
 </body>
