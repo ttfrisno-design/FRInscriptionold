@@ -686,6 +686,23 @@
         Il vous sera également envoyé par email.
       </div>
     </div>
+    <!-- Case RGPD obligatoire -->
+    <div id="rgpd-consent-block" style="margin-bottom:14px;padding:14px 16px;background:#f8f9fa;border:1.5px solid #dee2e6;border-radius:10px;font-size:13px;line-height:1.7;color:#444">
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="rgpd-consent" onchange="checkRgpdConsent()" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:var(--green);cursor:pointer;">
+        <span>
+          J'ai lu et j'accepte que les données personnelles saisies dans ce formulaire soient collectées et traitées par le <strong>Foyer Rural d'Isneauville</strong> dans le seul but de gérer mon inscription aux activités de la saison 2026/2027.<br>
+          <span style="color:#666;font-size:12px;">
+            Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Contact : 
+            <a href="mailto:frisneauville@orange.fr" style="color:var(--green)">frisneauville@orange.fr</a>. 
+            Les données sont conservées jusqu'à la fin de la saison sportive.
+          </span>
+        </span>
+      </label>
+      <div id="rgpd-error" style="display:none;color:#c0392b;font-size:12px;font-weight:600;margin-top:8px;">
+        ⚠️ Vous devez accepter la politique de confidentialité pour continuer.
+      </div>
+    </div>
     <button class="btn btn-primary" id="btn-save-dossier" onclick="saveDossier()" style="width:100%;justify-content:center;">
       💾 Enregistrer mon dossier et obtenir mon code
     </button>
@@ -902,6 +919,9 @@
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRZVMOhQZaY6fuH6PHztWmMIvMdhaDPnaFvcEj3NfsWOb2eLHHUChI_nHx-wwdwaA/exec';
+// Token secret partagé avec le GAS — à changer après déploiement
+// Doit être identique à FRI_SECRET_TOKEN dans Code_GAS_FRI.js
+const FRI_SECRET_TOKEN = 'FRI2026_xK9mP3qZ';
 const SHEET_ID_PUBLIC  = '13fMDuTGVDs7AeEYDVvu47dCFLLY0Wn8jHD7BalKsmEc'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -2496,7 +2516,25 @@ function generateDossierCode() {
   return code;
 }
 
+function checkRgpdConsent() {
+  const cb  = document.getElementById('rgpd-consent');
+  const err = document.getElementById('rgpd-error');
+  const btn = document.getElementById('btn-save-dossier');
+  if (cb && err && btn) {
+    err.style.display = cb.checked ? 'none' : 'none'; // reset
+    btn.style.opacity = cb.checked ? '1' : '0.5';
+  }
+}
+
 function saveDossier() {
+  // Vérification consentement RGPD
+  const rgpdCb = document.getElementById('rgpd-consent');
+  if (!rgpdCb || !rgpdCb.checked) {
+    const err = document.getElementById('rgpd-error');
+    if (err) err.style.display = 'block';
+    document.getElementById('rgpd-consent-block').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
   captureResponsable();
   // Réutiliser le code généré lors du QS Santé si disponible
   const code = state.codeDossierPreview || generateDossierCode();
@@ -3073,6 +3111,7 @@ async function envoyerPDFParEmail(filename, pdfBase64, membre, responsable, emai
 
   const payload = JSON.stringify({
     action:      'envoyerAttestationPDF',
+    _token:      FRI_SECRET_TOKEN,
     filename:    filename,
     membre:      membre,
     responsable: responsable,
@@ -3639,6 +3678,8 @@ async function lireSheetPublic() {
 
 // Envoi vers Apps Script via fetch no-cors
 async function callAppsScriptFetch(url, payload) {
+  // Ajouter le token de sécurité à chaque requête
+  payload._token = FRI_SECRET_TOKEN;
   const payloadStr = JSON.stringify(payload);
   console.log('[FRI] POST payload size:', payloadStr.length);
 
@@ -3681,7 +3722,7 @@ async function callAppsScriptFetch(url, payload) {
 function callAppsScriptValidate(url, code) {
   return new Promise((resolve) => {
     const cbName = '_friVal_' + Date.now();
-    const payload = { action: 'validerPaiement', code: code, status: 'paid', rows: [] };
+    const payload = { action: 'validerPaiement', _token: FRI_SECRET_TOKEN, code: code, status: 'paid', rows: [] };
     const params = new URLSearchParams();
     params.set('payload', JSON.stringify(payload));
     params.set('code', code);
