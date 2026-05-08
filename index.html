@@ -3789,6 +3789,8 @@ async function testPostGAS() {
 }
 // Exposer globalement pour test depuis la console navigateur
 window.testPostGAS = testPostGAS;
+
+async function testConnectionIframe(url) {
   const result = await callAppsScriptJsonp(url, { action: 'ping' });
   return result.ok ? 'ok' : 'timeout';
 }
