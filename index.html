@@ -541,7 +541,7 @@
       </div>
       <div class="field">
         <label>Ville <span class="req">*</span></label>
-        <input type="text" id="rl-ville" placeholder="ISNEAUVILLE" oninput="detectCommune()">
+        <input type="text" id="rl-ville" placeholder="ISNEAUVILLE" oninput="detectCommune()" onchange="detectCommune()" onblur="detectCommune()">
       </div>
       <div class="field">
         <label>Tarif applicable</label>
@@ -1134,6 +1134,7 @@ function goStep(n) {
   document.getElementById('progress-fill').style.width = Math.round(n*100/6) + '%';
   state.step = n;
   window.scrollTo({top:0, behavior:'smooth'});
+  if (n === 1) setTimeout(detectCommune, 300); // détecter autofill navigateur
   if (n === 3) renderHealth();
   if (n === 4) renderSummary();
   if (n === 5) renderPayment();
@@ -5361,6 +5362,17 @@ async function validerFormulaireCheques(code, total, showTrois) {
     </div>
   </div>
 </footer>
+// Détection autofill navigateur — déclencher detectCommune après le chargement
+// L'autofill peut remplir les champs sans déclencher oninput
+document.addEventListener('DOMContentLoaded', function() {
+  // Vérifier plusieurs fois car certains navigateurs autofill en différé
+  [300, 800, 1500].forEach(function(delay) {
+    setTimeout(function() {
+      const villeEl = document.getElementById('rl-ville');
+      if (villeEl && villeEl.value.trim()) detectCommune();
+    }, delay);
+  });
+});
 
 </script>
 </body>
