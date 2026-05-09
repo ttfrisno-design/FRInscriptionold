@@ -2639,27 +2639,56 @@ function genererAttestationPDF(memberId) {
   const age      = getAge(m.ddn);
   const isMineur = age < 18;
   const r        = state.responsable;
+  const nomMembre = ((m.prenom || '') + ' ' + (m.nom || '')).trim() || 'ce membre';
 
-  // ── Consentement explicite données de santé (article 9 RGPD) ──
-  const nomMembre = (m.prenom || '') + ' ' + (m.nom || '');
-  const consentOk = confirm(
-    `🔒 Consentement pour les données de santé\n\n` +
-    `Vous allez remplir le questionnaire de santé sportive pour ${nomMembre}.\n\n` +
-    `Ces données sont des données de santé sensibles (article 9 RGPD). ` +
-    `Elles seront utilisées uniquement pour valider l'aptitude à la pratique sportive ` +
-    `et conservées jusqu'au 31 août 2027.\n\n` +
-    `En cliquant OK, vous consentez explicitement à ce traitement.\n\n` +
-    `Annuler = refuser le traitement des données de santé.`
-  );
-  if (!consentOk) return;
+  // ── Consentement explicite données de santé (article 9 RGPD) via modal HTML ──
+  // Utiliser un modal au lieu de confirm() qui peut être bloqué sur certains hébergements
+  const modalId = 'modal-consent-qs-' + memberId;
+  // Supprimer un éventuel modal précédent
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
 
-  const sigLabel = isMineur
-    ? 'Signature du parent / responsable légal de ' + m.prenom + ' ' + m.nom
-    : 'Signature de ' + r.prenom + ' ' + r.nom;
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:480px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
+      <div style="font-size:28px;text-align:center;margin-bottom:12px">🔒</div>
+      <h3 style="color:#1a2e22;text-align:center;margin:0 0 14px;font-size:17px">Consentement — Données de santé</h3>
+      <p style="font-size:13.5px;line-height:1.7;color:#444;margin:0 0 12px">
+        Vous allez remplir le questionnaire de santé sportive pour <strong>${nomMembre}</strong>.
+      </p>
+      <div style="background:#f8f9fa;border-left:3px solid #2d6a4f;border-radius:6px;padding:12px 14px;font-size:12.5px;color:#555;line-height:1.7;margin-bottom:18px">
+        Ces données sont des <strong>données de santé sensibles</strong> (article 9 RGPD).<br>
+        Elles seront utilisées uniquement pour valider l'aptitude à la pratique sportive<br>
+        et conservées jusqu'au <strong>31 août 2027</strong>.
+      </div>
+      <div style="display:flex;gap:10px">
+        <button id="consent-refus-${memberId}"
+          style="flex:1;padding:11px;border:1.5px solid #ccc;border-radius:8px;background:white;color:#666;font-size:13px;cursor:pointer;font-weight:600">
+          ✕ Refuser
+        </button>
+        <button id="consent-ok-${memberId}"
+          style="flex:2;padding:11px;border:none;border-radius:8px;background:#1a2e22;color:white;font-size:13px;cursor:pointer;font-weight:700">
+          ✅ J'accepte — Continuer
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
 
-  ouvrirSignature(sigLabel, function(signatureDataUrl) {
-    _genererPDFAvecSignature(memberId, signatureDataUrl);
-  });
+  document.getElementById('consent-refus-' + memberId).onclick = function() {
+    modal.remove();
+  };
+
+  document.getElementById('consent-ok-' + memberId).onclick = function() {
+    modal.remove();
+    const sigLabel = isMineur
+      ? 'Signature du parent / responsable légal de ' + m.prenom + ' ' + m.nom
+      : 'Signature de ' + r.prenom + ' ' + r.nom;
+    ouvrirSignature(sigLabel, function(signatureDataUrl) {
+      _genererPDFAvecSignature(memberId, signatureDataUrl);
+    });
+  };
 }
 
 async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
@@ -5043,6 +5072,21 @@ function setupPaymentStep(code) {
   cardB.style.borderLeftColor = 'var(--green)';
   document.getElementById('step-b-num').style.background = 'var(--green)';
   document.getElementById('card-step-c').style.display = 'none';
+
+  // Afficher l'étape de confirmation uniquement pour HelloAsso
+  if (mode === 'helloasso') {
+    var cardC = document.getElementById('card-step-c');
+    cardC.style.display = '';
+    cardC.style.opacity = '1';
+    cardC.style.pointerEvents = '';
+    cardC.style.borderLeftColor = 'var(--gold)';
+    document.getElementById('step-c-num').style.background = 'var(--gold)';
+    // Préremplir le code et l'email
+    var emailEl = document.getElementById('confirm-email');
+    var codeEl  = document.getElementById('confirm-code');
+    if (emailEl && reg.responsable.email1) emailEl.value = reg.responsable.email1;
+    if (codeEl  && code) codeEl.value = code;
+  }
 
   // Encart code dossier
   var codeBox = '<div style="background:var(--green-pale);border:2px solid var(--green);border-radius:12px;padding:18px;margin-bottom:20px;text-align:center;">'
