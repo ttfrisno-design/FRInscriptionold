@@ -3236,7 +3236,7 @@ async function finaliserInscription(code) {
   overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;">'
     + '<div style="font-size:40px;margin-bottom:12px;">⏳</div>'
     + '<div style="font-size:16px;font-weight:700;color:#1a2e22;margin-bottom:8px;">Enregistrement en cours...</div>'
-    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes,<br>votre dossier est en cours d'envoi.</div>'
+    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes,<br>votre dossier est en cours d\'envoi.</div>'
     + '</div>';
   document.body.appendChild(overlay);
 
@@ -5362,17 +5362,20 @@ async function validerFormulaireCheques(code, total, showTrois) {
     </div>
   </div>
 </footer>
-// Détection autofill navigateur — déclencher detectCommune après le chargement
-// L'autofill peut remplir les champs sans déclencher oninput
-document.addEventListener('DOMContentLoaded', function() {
-  // Vérifier plusieurs fois car certains navigateurs autofill en différé
-  [300, 800, 1500].forEach(function(delay) {
-    setTimeout(function() {
-      const villeEl = document.getElementById('rl-ville');
-      if (villeEl && villeEl.value.trim()) detectCommune();
-    }, delay);
-  });
-});
+// Surveillance autofill — vérifie le champ ville toutes les 500ms
+// car l'autofill navigateur ne déclenche pas oninput/onchange
+(function() {
+  var lastVille = '';
+  setInterval(function() {
+    var el = document.getElementById('rl-ville');
+    if (!el) return;
+    var v = el.value;
+    if (v !== lastVille) {
+      lastVille = v;
+      detectCommune();
+    }
+  }, 500);
+})();
 
 </script>
 </body>
