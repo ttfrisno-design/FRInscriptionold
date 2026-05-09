@@ -2557,9 +2557,14 @@ function saveDossier() {
   document.getElementById('dossier-code').textContent = code;
   document.getElementById('dossier-box').style.display = 'block';
 
-
   // Appeler setupPaymentStep pour gérer le paiement selon le mode choisi
   setupPaymentStep(code);
+
+  // Scroller vers le bloc de paiement pour que l'utilisateur le voit
+  setTimeout(() => {
+    const cardB = document.getElementById('card-step-b');
+    if (cardB) cardB.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
 }
 
 function buildChequeRow(n, label, montant, readonly, suffix) {
@@ -3221,29 +3226,23 @@ function openHelloAsso() {
 }
 
 async function finaliserInscription(code) {
-  // Afficher un message d'attente
-  const btn = document.querySelector('[onclick*="confirmDossierSansPaiement"]');
-  const origText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Enregistrement en cours... veuillez patienter';
-    btn.style.opacity = '0.7';
-  }
-  // Afficher un overlay d'attente
+  const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
+
   const overlay = document.createElement('div');
   overlay.id = 'fri-loading-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;">'
     + '<div style="font-size:40px;margin-bottom:12px;">⏳</div>'
     + '<div style="font-size:16px;font-weight:700;color:#1a2e22;margin-bottom:8px;">Enregistrement en cours...</div>'
-    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes,<br>votre dossier est en cours d\'envoi.</div>'
+    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes,<br>votre dossier est en cours d'envoi.</div>'
     + '</div>';
   document.body.appendChild(overlay);
 
   const removeOverlay = () => {
     const ol = document.getElementById('fri-loading-overlay');
     if (ol) ol.remove();
-    if (btn) { btn.disabled = false; btn.innerHTML = origText; btn.style.opacity = ''; }
+    btns.forEach(b => { b.disabled = false; b.style.opacity = ''; });
   };
 
   const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
@@ -3251,84 +3250,70 @@ async function finaliserInscription(code) {
   if (!reg) { removeOverlay(); alert('Dossier introuvable.'); return; }
 
   try {
+    reg.status = 'pending_manual';
+    reg.dateDossier = new Date().toLocaleDateString('fr-FR');
 
-  // Validation chèques déjà faite par validerFormulaireCheques()
+    delete pending[code];
+    localStorage.setItem('fri_pending', JSON.stringify(pending));
+    const existing = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+    if (!existing.find(r => r.id === reg.id)) existing.push(reg);
+    localStorage.setItem('fri_registrations', JSON.stringify(existing));
+    state.registrations = existing;
 
-  // Mark as pending_manual
-  reg.status = 'pending_manual';
-  reg.dateDossier = new Date().toLocaleDateString('fr-FR');
+    console.log('[FRI] reg.cheques au moment envoi:', JSON.stringify(reg.cheques));
+    await sendToGoogleSheets(reg);
 
-  // Move from pending to registrations (seulement si validation OK)
-  delete pending[code];
-  localStorage.setItem('fri_pending', JSON.stringify(pending));
-  const existing = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-  if (!existing.find(r => r.id === reg.id)) existing.push(reg);
-  localStorage.setItem('fri_registrations', JSON.stringify(existing));
-  state.registrations = existing;
+    removeOverlay();
 
-  // Les chèques sont déjà dans reg.cheques (sauvegardés par validerFormulaireCheques)
-  // Ne pas relire depuis le DOM qui peut être vide à ce stade
-  console.log("[FRI] reg.cheques au moment envoi:", JSON.stringify(reg.cheques));
+    const modeLabelFinal = {
+      cheque: "Chèque à l'ordre du FRI",
+      especes: 'Espèces',
+      ancv: 'Coupon sport / ANCV',
+      helloasso: 'HelloAsso'
+    }[reg.responsable.modePaiement] || reg.responsable.modePaiement;
 
-  // Send to Google Sheets AVANT goStep (les DOM des chèques doivent encore exister)
-  await sendToGoogleSheets(reg);
+    goStep(6);
+    document.getElementById('section-6-content').innerHTML = `
+      <div style="max-width:540px;margin:0 auto;padding:20px 0">
+        <div style="text-align:center;margin-bottom:24px">
+          <div style="font-size:56px;margin-bottom:12px">📋</div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;color:var(--dark);margin-bottom:6px">Dossier enregistré !</div>
+          <div style="font-size:15px;color:var(--gray)">Merci <strong>${reg.responsable.prenom} ${reg.responsable.nom}</strong></div>
+          <div style="font-size:13px;color:var(--gray);margin-top:6px;">Mode de règlement : <strong>${modeLabelFinal}</strong></div>
+        </div>
+        <div style="background:var(--green-pale);border:2px solid var(--green-light);border-radius:12px;padding:18px 20px;text-align:center;margin-bottom:20px;">
+          <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📋 Numéro de dossier</div>
+          <div style="font-family:monospace;font-size:32px;font-weight:900;color:var(--dark);letter-spacing:6px;margin-bottom:8px">${code}</div>
+          <div style="font-size:12px;color:var(--gray);line-height:1.5">⚠️ Conservez ce numéro — indispensable pour toute<br>correspondance auprès du Foyer Rural.</div>
+        </div>
+        <div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:20px;margin-bottom:16px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+            <div style="font-size:28px;flex-shrink:0">⏳</div>
+            <div>
+              <div style="font-size:15px;font-weight:700;color:#856404;">En attente de validation du paiement</div>
+              <div style="font-size:13px;color:#6b5a00;margin-top:4px;">Mode de règlement : <strong>${modeLabelFinal}</strong></div>
+            </div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:12px 14px;font-size:14px;color:var(--dark);line-height:1.7;">
+            Votre inscription sera <strong>définitivement confirmée</strong> après réception et vérification de votre paiement.<br>
+            Vous recevrez un <strong>email de confirmation</strong> dès validation par le Foyer Rural.
+          </div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:12px;padding:18px 20px;font-size:14px;color:var(--dark);line-height:1.8;">
+          <div style="font-weight:700;color:var(--green);margin-bottom:8px;">📅 Apportez votre règlement lors des permanences</div>
+          <strong>Mardis de 16h30 à 18h30</strong><br>
+          Salle des fêtes — Place A. Cramilly, 76230 Isneauville<br>
+          📧 <a href="mailto:frisneauville@orange.fr" style="color:var(--green);">frisneauville@orange.fr</a>
+          &nbsp;·&nbsp;
+          📞 <a href="tel:0235590101" style="color:var(--green);">02.35.59.01.01</a>
+        </div>
+      </div>`;
 
-  removeOverlay();
-  goStep(6);
   } catch(err) {
     removeOverlay();
     console.error('Erreur inscription:', err);
     alert('Une erreur est survenue. Veuillez réessayer.');
   }
-  const modeLabelFinal = {
-    cheque: 'Ch\u00e8que \u00e0 l\'ordre du FRI',
-    especes: 'Espèces',
-    ancv: 'Coupon sport / ANCV',
-    helloasso: 'HelloAsso'
-  }[reg.responsable.modePaiement] || reg.responsable.modePaiement;
-
-  document.getElementById('section-6-content').innerHTML = `
-    <div style="max-width:540px;margin:0 auto;padding:20px 0">
-
-      <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:56px;margin-bottom:12px">📋</div>
-        <div style="font-family:'Playfair Display',serif;font-size:26px;color:var(--dark);margin-bottom:6px">Dossier enregistré !</div>
-        <div style="font-size:15px;color:var(--gray)">Merci <strong>${reg.responsable.prenom} ${reg.responsable.nom}</strong></div>
-        <div style="font-size:13px;color:var(--gray);margin-top:6px;">Mode de règlement : <strong>${modeLabelFinal}</strong></div>
-      </div>
-
-      <div style="background:var(--green-pale);border:2px solid var(--green-light);border-radius:12px;padding:18px 20px;text-align:center;margin-bottom:20px;">
-        <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📋 Numéro de dossier</div>
-        <div style="font-family:monospace;font-size:32px;font-weight:900;color:var(--dark);letter-spacing:6px;margin-bottom:8px">${code}</div>
-        <div style="font-size:12px;color:var(--gray);line-height:1.5">⚠️ Conservez ce numéro — indispensable pour toute<br>correspondance et réclamation auprès du Foyer Rural.</div>
-      </div>
-
-      <div style="border:2px solid #e8c84a;border-radius:12px;background:#fffdf0;padding:20px;margin-bottom:16px;">
-        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
-          <div style="font-size:28px;flex-shrink:0">⏳</div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:#856404;">En attente de validation du paiement</div>
-            <div style="font-size:13px;color:#6b5a00;margin-top:4px;">Mode de règlement : <strong>${modeLabelFinal}</strong></div>
-          </div>
-        </div>
-        <div style="background:white;border-radius:8px;padding:12px 14px;font-size:14px;color:var(--dark);line-height:1.7;">
-          Votre inscription sera <strong>définitivement confirmée</strong> après réception
-          et vérification de votre paiement par l'association.<br>
-          Vous recevrez un <strong>email de confirmation</strong> dès validation par le Foyer Rural.
-        </div>
-      </div>
-
-      <div style="border:1px solid var(--border);border-radius:12px;background:var(--white);padding:18px 20px;font-size:14px;color:var(--dark);line-height:1.8;">
-        <div style="font-weight:700;color:var(--green);margin-bottom:8px;">📅 Apportez votre règlement lors des permanences</div>
-        <strong>Mardis de 16h30 à 18h30</strong><br>
-        Salle des fêtes — Place A. Cramilly, 76230 Isneauville<br>
-        📧 <a href="mailto:frisneauville@orange.fr" style="color:var(--green);">frisneauville@orange.fr</a>
-        &nbsp;·&nbsp;
-        📞 <a href="tel:0235590101" style="color:var(--green);">02.35.59.01.01</a>
-      </div>
-
-    </div>`;
-
 }
 
 async function confirmPayment() {
@@ -4963,8 +4948,8 @@ function exportSingleExcel(id) {
 })();
 </script>
 <!-- Modal Signature -->
-<div id="signature-modal" style="display:none">
-  <div id="signature-box">
+<div id="signature-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;padding:20px">
+  <div id="signature-box" style="background:white;border-radius:14px;padding:24px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
     <div style="font-size:18px;font-weight:700;color:var(--dark);margin-bottom:6px;">✍️ Signature électronique</div>
     <div id="signature-who" style="font-size:13px;color:var(--gray);margin-bottom:16px;"></div>
     <canvas id="signature-canvas" width="450" height="180" style="border:2px solid black;border-radius:4px;display:block;"></canvas>
