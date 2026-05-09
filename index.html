@@ -1200,8 +1200,8 @@ function captureResponsable() {
 
 function detectCommune() {
   const ville = (document.getElementById('rl-ville')?.value || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, ''); // supprimer accents
-  const isno = ['isneauville', 'isneauville-sur-seine', '76230'].some(v => ville.includes(v));
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // supprimer accents
+  const isno = ['isneauville', '76230'].some(v => ville.includes(v));
   const badge = document.getElementById('commune-badge');
   const input = document.getElementById('rl-commune');
   if (badge && input) {
@@ -1210,7 +1210,7 @@ function detectCommune() {
       badge.style.borderColor = '#a5d6a7';
       badge.style.color = '#1b5e20';
       badge.innerHTML = '🏠 Saisissez votre ville';
-      input.value = 'isno'; // défaut
+      input.value = 'isno';
     } else if (isno) {
       badge.style.background = '#e8f5e9';
       badge.style.borderColor = '#4caf50';
