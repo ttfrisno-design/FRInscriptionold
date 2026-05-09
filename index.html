@@ -2363,7 +2363,7 @@ function calcTotals() {
     return acc;
   }, 0);
   const familyActCount = familyActCountNew + (dossiersExistantsActCount || 0);
-  const discount = familyActCount >= 3 ? Math.round(discountableTotal * 0.15) : 0;
+  const discount = familyActCount >= 3 ? Math.round(discountableTotal * 0.15 * 100) / 100 : 0;
 
   return {
     totalBeforeDiscount,
@@ -2690,7 +2690,7 @@ function genererAttestationPDF(memberId) {
     modal.remove();
     const sigLabel = isMineur
       ? 'Signature du parent / responsable légal de ' + m.prenom + ' ' + m.nom
-      : 'Signature de ' + r.prenom + ' ' + r.nom;
+      : 'Signature de ' + m.prenom + ' ' + m.nom;
     ouvrirSignature(sigLabel, function(signatureDataUrl) {
       _genererPDFAvecSignature(memberId, signatureDataUrl);
     });
@@ -3006,11 +3006,11 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   doc.setFont('helvetica','normal');
   doc.text('Prénom : ', M, y);
   doc.setFont('helvetica','bold');
-  doc.text(r.prenom || '......................................................', M + 22, y);
+  doc.text((isMineur ? r.prenom : m.prenom) || '......................................................', M + 22, y);
   doc.setFont('helvetica','normal');
   doc.text('   Nom : ', M + 95, y);
   doc.setFont('helvetica','bold');
-  doc.text(r.nom || '......................................................', M + 110, y);
+  doc.text((isMineur ? r.nom : m.nom) || '......................................................', M + 110, y);
   y += 12;
 
   if (isMineur) {
