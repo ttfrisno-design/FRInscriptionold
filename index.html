@@ -141,7 +141,10 @@
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-grid.triple { grid-template-columns: 2fr 1fr 1fr; }
   .form-grid.full { grid-template-columns: 1fr; }
-  @media (max-width: 600px) { .form-grid, .form-grid.triple { grid-template-columns: 1fr; } }
+  .ville-tarif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) {
+    .form-grid, .form-grid.triple, .ville-tarif-grid { grid-template-columns: 1fr; }
+  }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 13px; font-weight: 600; color: var(--dark); }
   .field label .req { color: var(--red); margin-left: 3px; }
@@ -522,7 +525,7 @@
 
   <div class="card">
     <div class="card-title"><span class="icon">📋</span> Coordonnées</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;">
+    <div class="form-grid ville-tarif-grid" style="align-items:end;">
       <div class="field">
         <label>Nom <span class="req">*</span></label>
         <input type="text" id="rl-nom" placeholder="DUPONT" oninput="autosave()">
