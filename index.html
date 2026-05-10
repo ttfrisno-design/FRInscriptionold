@@ -20,6 +20,7 @@
     --shadow: 0 4px 24px rgba(45,106,79,0.12);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { max-width: 100%; overflow-x: hidden; }
   body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--dark); min-height: 100vh; }
 
   /* HEADER */
@@ -144,6 +145,29 @@
   .ville-tarif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 600px) {
     .form-grid, .form-grid.triple, .ville-tarif-grid { grid-template-columns: 1fr; }
+
+    /* Barre d'étapes mobile — numéros uniquement, texte masqué */
+    .steps-nav { padding: 10px 8px; top: 56px; }
+    .steps-inner { gap: 0; justify-content: space-between; }
+    .step-item { flex: 1; padding: 6px 2px; gap: 4px; flex-direction: column; align-items: center; min-width: 0; }
+    .step-label { font-size: 9px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48px; }
+    .step-num { width: 22px; height: 22px; font-size: 11px; }
+    .step-arrow { display: none; }
+
+    /* Conteneur principal — pas de débordement */
+    .main-container { padding: 12px 10px; }
+    .card { padding: 14px 12px; }
+    .section { padding: 0; }
+
+    /* Champs — largeur max */
+    .field input, .field select, .field textarea {
+      font-size: 16px; /* évite le zoom auto iOS */
+      width: 100%; box-sizing: border-box;
+    }
+
+    /* En-tête mobile */
+    header { padding: 10px 12px; }
+    .logo-text h1 { font-size: 14px; }
   }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 13px; font-weight: 600; color: var(--dark); }
