@@ -565,7 +565,9 @@
       </div>
       <div class="field">
         <label>Code postal <span class="req">*</span></label>
-        <input type="text" id="rl-cp" placeholder="76230" maxlength="5" oninput="autosave()">
+        <input type="text" id="rl-cp" placeholder="76230" maxlength="5"
+               oninput="autosave(); validateCPLive(this)"
+               pattern="\d{5}" inputmode="numeric">
       </div>
       <div class="field">
         <label>Ville <span class="req">*</span></label>
@@ -580,11 +582,16 @@
       </div>
       <div class="field">
         <label>Téléphone <span class="req">*</span></label>
-        <input type="tel" id="rl-tel1" placeholder="06 XX XX XX XX" oninput="autosave()">
+        <input type="tel" id="rl-tel1" placeholder="06 XX XX XX XX"
+               oninput="autosave(); validateTelLive(this)"
+               onblur="validateTelLive(this)"
+               maxlength="14" inputmode="tel">
       </div>
       <div class="field">
         <label>E-mail <span class="req">*</span></label>
-        <input type="email" id="rl-email1" placeholder="marie.dupont@exemple.fr" oninput="autosave()">
+        <input type="email" id="rl-email1" placeholder="marie.dupont@exemple.fr"
+               oninput="autosave(); validateEmailLive(this)"
+               onblur="validateEmailLive(this)">
       </div>
     </div>
   </div>
@@ -1180,24 +1187,128 @@ function nextStep(from) {
 function validateStep1() {
   const fields = ['rl-nom','rl-prenom','rl-adresse','rl-cp','rl-ville','rl-tel1','rl-email1'];
   let ok = true;
+  const errors = [];
+
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (!el.value.trim()) { el.classList.add('error'); ok = false; }
     else el.classList.remove('error');
   });
-  if (!ok) { alert('Veuillez remplir tous les champs obligatoires (*)'); return false; }
+  if (!ok) { showToast('Veuillez remplir tous les champs obligatoires (*)', 'red'); return false; }
+
+  // Validation code postal : exactement 5 chiffres
+  const cpEl = document.getElementById('rl-cp');
+  if (!/^\d{5}$/.test(cpEl.value.trim())) {
+    cpEl.classList.add('error');
+    errors.push('Le code postal doit contenir exactement 5 chiffres.');
+  } else {
+    cpEl.classList.remove('error');
+  }
+
+  // Validation téléphone mobile
+  const telEl = document.getElementById('rl-tel1');
+  const telRaw = telEl.value.trim().replace(/[\s.\-]/g, '');
+  if (!/^(0[67]\d{8}|(\+33|0033)[67]\d{8})$/.test(telRaw)) {
+    telEl.classList.add('error');
+    errors.push('Le numéro de mobile est invalide (format attendu : 06 ou 07 + 8 chiffres).');
+  } else {
+    telEl.classList.remove('error');
+  }
+
+  // Validation email responsable
+  const emailEl = document.getElementById('rl-email1');
+  if (!isValidEmail(emailEl.value.trim())) {
+    emailEl.classList.add('error');
+    errors.push('L\'adresse e-mail du responsable est invalide.');
+  } else {
+    emailEl.classList.remove('error');
+  }
+
+  // Validation email 2 si renseigné
+  const email2El = document.getElementById('rl-email2');
+  if (email2El && email2El.value.trim() && !isValidEmail(email2El.value.trim())) {
+    email2El.classList.add('error');
+    errors.push('L\'adresse e-mail secondaire est invalide.');
+  }
+
+  if (errors.length > 0) {
+    showToast(errors[0], 'red');
+    return false;
+  }
+
   captureResponsable();
   return true;
 }
 
+// Validation téléphone mobile français en temps réel
+function validateTelLive(el) {
+  // Normaliser : supprimer espaces, tirets, points
+  const raw = el.value.replace(/[\s.\-]/g, '');
+  if (!raw) { el.classList.remove('error'); el.style.borderColor = ''; return; }
+  // Format accepté : 06/07 + 8 chiffres, ou +336/+337 + 8 chiffres
+  const valid = /^(0[67]\d{8}|(\+33|0033)[67]\d{8})$/.test(raw);
+  if (valid) {
+    el.classList.remove('error');
+    el.style.borderColor = 'var(--green)';
+  } else if (raw.length >= 10) {
+    el.classList.add('error');
+    el.style.borderColor = '';
+  } else {
+    el.classList.remove('error');
+    el.style.borderColor = '';
+  }
+}
+
+// Validation code postal en temps réel
+function validateCPLive(el) {
+  const val = el.value.replace(/\D/g, ''); // forcer chiffres uniquement
+  el.value = val;
+  if (val.length === 5 && /^\d{5}$/.test(val)) {
+    el.classList.remove('error');
+    el.style.borderColor = 'var(--green)';
+  } else if (val.length > 0) {
+    el.classList.add('error');
+    el.style.borderColor = '';
+  } else {
+    el.classList.remove('error');
+    el.style.borderColor = '';
+  }
+  detectCommune();
+}
+
+// Validation email en temps réel (au blur uniquement pour ne pas gêner la saisie)
+function validateEmailLive(el) {
+  const val = el.value.trim();
+  if (!val) { el.classList.remove('error'); el.style.borderColor = ''; return; }
+  if (isValidEmail(val)) {
+    el.classList.remove('error');
+    el.style.borderColor = 'var(--green)';
+  } else {
+    el.classList.add('error');
+    el.style.borderColor = '';
+  }
+}
+
+// Validation format email
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
 function validateStep2() {
-  if (state.members.length === 0) { alert('Veuillez ajouter au moins un membre.'); return false; }
+  if (state.members.length === 0) { showToast('Veuillez ajouter au moins un membre.', 'red'); return false; }
   for (let m of state.members) {
     if (!m.nom || !m.prenom || !m.ddn || !m.sexe) {
-      alert('Veuillez compléter toutes les informations des membres.'); return false;
+      showToast(`Veuillez compléter toutes les informations de ${m.prenom || 'ce membre'}.`, 'red'); return false;
+    }
+    // Validation email membre si renseigné
+    if (m.email && !isValidEmail(m.email)) {
+      const emailEl = document.getElementById('m-' + m.id + '-email');
+      if (emailEl) emailEl.classList.add('error');
+      showToast(`L'adresse e-mail de ${m.prenom} est invalide.`, 'red');
+      return false;
     }
     if (!m.activities || m.activities.length === 0) {
-      alert(`Veuillez sélectionner au moins une activité pour ${m.prenom}.`); return false;
+      showToast(`Veuillez sélectionner au moins une activité pour ${m.prenom}.`, 'red'); return false;
     }
   }
   return true;
