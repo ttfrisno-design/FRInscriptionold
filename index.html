@@ -143,8 +143,9 @@
   .form-grid.triple { grid-template-columns: 2fr 1fr 1fr; }
   .form-grid.full { grid-template-columns: 1fr; }
   .ville-tarif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .membre-sexe-email-grid { grid-template-columns: 160px 1fr; }
   @media (max-width: 600px) {
-    .form-grid, .form-grid.triple, .ville-tarif-grid { grid-template-columns: 1fr; }
+    .form-grid, .form-grid.triple, .ville-tarif-grid, .membre-sexe-email-grid { grid-template-columns: 1fr; }
 
     /* Barre d'étapes mobile — numéros uniquement, texte masqué */
     .steps-nav { padding: 10px 8px; top: 56px; }
@@ -1920,7 +1921,7 @@ function memberHtml(m) {
         <input type="date" id="m-${m.id}-ddn" value="${m.ddn}">
       </div>
     </div>
-    <div class="form-grid" style="grid-template-columns:180px 180px 1fr;gap:14px">
+    <div class="form-grid membre-sexe-email-grid" style="gap:14px">
       <div class="field">
         <label>Sexe <span class="req">*</span></label>
         <select id="m-${m.id}-sexe">
@@ -1929,7 +1930,7 @@ function memberHtml(m) {
           <option value="M" ${m.sexe==='M'?'selected':''}>Masculin</option>
         </select>
       </div>
-      <div class="field" style="grid-column:2/4">
+      <div class="field">
         <label>E-mail membre <span style="font-size:11px;color:var(--gray);font-weight:400">(facultatif)</span></label>
         <input type="email" id="m-${m.id}-email" value="${m.email||''}" placeholder="prenom.nom@exemple.fr">
       </div>
@@ -5392,9 +5393,9 @@ async function validerFormulaireCheques(code, total, showTrois) {
     </div>
   </div>
 </footer>
+<script>
 // Surveillance autofill — vérifie le champ ville toutes les 500ms
 // car l'autofill navigateur ne déclenche pas oninput/onchange
-<script>
 (function() {
   var lastVille = '';
   setInterval(function() {
