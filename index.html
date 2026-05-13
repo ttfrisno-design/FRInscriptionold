@@ -609,56 +609,6 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title"><span class="icon">🎫</span> Aides & Pass</div>
-    <div class="form-grid">
-      <div class="field">
-        <label>Pass'jeunes 76 / Handipass'sport 76</label>
-        <select id="pass-jeunes" onchange="autosave()">
-          <option value="non">Non concerné</option>
-          <option value="oui">Oui — joindre attestation</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Atout Normandie</label>
-        <select id="atout-normandie" onchange="autosave()">
-          <option value="non">Non concerné</option>
-          <option value="oui">Oui — joindre QR Code + code 4 chiffres</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Pass'sport État</label>
-        <select id="pass-sport" onchange="autosave()">
-          <option value="non">Non concerné</option>
-          <option value="oui">Oui — joindre justificatif + code</option>
-        </select>
-      </div>
-      <div style="margin-top:4px;margin-bottom:12px;padding:10px 14px;background:#fff8e1;border:1px solid #e8c84a;border-radius:8px;font-size:13px;color:#856404;line-height:1.6;">
-        ⚠️ <strong>Note :</strong> Merci de déposer un chèque de caution du montant des aides en attendant la validation de celles-ci au bureau du foyer rural.
-      </div>
-      <div class="field">
-        <label>Mode de règlement</label>
-        <select id="mode-paiement" onchange="autosave()">
-          <option value="helloasso">HelloAsso (en ligne)</option>
-          <option value="cheque">Chèque(s) à l'ordre du FRI</option>
-          <option value="especes">Espèces</option>
-          <option value="ancv">Coupon sport / ANCV</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:center;padding:12px 16px;background:linear-gradient(135deg,#e8f5e9,#f0f7f3);border:1px solid #a5d6a7;border-radius:10px;gap:12px;">
-        <div style="font-size:26px;flex-shrink:0">💚</div>
-        <div style="font-size:13px;color:#1b5e20;line-height:1.6;">
-          <strong>Le Foyer Rural vous remercie de privilégier le règlement en ligne</strong><br>
-          <a href="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville"
-            target="_blank" style="color:#2e7d32;font-weight:700;text-decoration:none;">
-            💳 Payer via HelloAsso →
-          </a>
-          <span style="font-size:11px;color:#388e3c;margin-left:6px;">Paiement sécurisé, sans frais pour l'association</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="btn-nav">
     <div></div>
     <button class="btn btn-primary" onclick="nextStep(1)">Continuer → Membres & Activités</button>
@@ -756,10 +706,111 @@
     </button>
   </div>
 
-  <!-- ÉTAPE B : Paiement (HelloAsso ou autre) -->
+  <!-- ÉTAPE B : Aides & Pass + Avoirs + Coupon ANCV + Mode de règlement -->
+  <div class="card" id="card-step-b2" style="border-left:4px solid var(--gold);margin-top:12px">
+    <div class="card-title">
+      <span style="background:var(--gold);color:var(--dark);border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
+      Aides, Avoirs &amp; Mode de règlement
+    </div>
+
+    <!-- Aides et Pass -->
+    <div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🎫 Aides &amp; Pass</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Pass'jeunes 76 / Handipass'sport 76</label>
+        <select id="pass-jeunes" onchange="autosave();recalcSolde()">
+          <option value="non">Non concerné</option>
+          <option value="oui">Oui — joindre attestation</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Atout Normandie</label>
+        <select id="atout-normandie" onchange="autosave();recalcSolde()">
+          <option value="non">Non concerné</option>
+          <option value="oui">Oui — joindre QR Code + code 4 chiffres</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Pass'sport État <span style="font-size:11px;color:var(--gray);font-weight:400">(70 € de réduction)</span></label>
+        <select id="pass-sport" onchange="autosave();recalcSolde()">
+          <option value="non">Non concerné</option>
+          <option value="oui">Oui — 70 € déduits du solde</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Coupon sport / ANCV</label>
+        <select id="ancv-select" onchange="autosave();toggleAncvMontant();recalcSolde()">
+          <option value="non">Non concerné</option>
+          <option value="oui">Oui — préciser le montant</option>
+        </select>
+      </div>
+      <div class="field" id="ancv-montant-field" style="display:none">
+        <label>Montant coupon ANCV (€)</label>
+        <input type="number" id="ancv-montant" min="0" step="1" placeholder="Ex: 25"
+               oninput="autosave();recalcSolde()" style="width:100%;box-sizing:border-box">
+      </div>
+    </div>
+
+    <!-- Avoir -->
+    <div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">💳 Avoir</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Avoir sur la saison</label>
+        <select id="avoir-select" onchange="autosave();toggleAvoirMontant();recalcSolde()">
+          <option value="non">Non concerné</option>
+          <option value="oui">Oui — préciser le montant</option>
+        </select>
+      </div>
+      <div class="field" id="avoir-montant-field" style="display:none">
+        <label>Montant de l'avoir (€)</label>
+        <input type="number" id="avoir-montant" min="0" step="0.01" placeholder="Ex: 50.00"
+               oninput="autosave();recalcSolde()" style="width:100%;box-sizing:border-box">
+      </div>
+    </div>
+
+    <!-- Note chèque de caution -->
+    <div style="margin-top:10px;margin-bottom:12px;padding:10px 14px;background:#fff8e1;border:1px solid #e8c84a;border-radius:8px;font-size:13px;color:#856404;line-height:1.6;">
+      ⚠️ <strong>Note :</strong> Merci de déposer un chèque de caution du montant des aides en attendant la validation de celles-ci au bureau du foyer rural.
+    </div>
+
+    <!-- Solde à régler -->
+    <div id="solde-box" style="background:var(--green-pale);border:2px solid var(--green-light);border-radius:10px;padding:14px 18px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">💰 Solde à régler</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div id="solde-detail" style="font-size:13px;color:var(--gray);line-height:1.8"></div>
+        <div id="solde-total" style="font-size:24px;font-weight:900;color:var(--dark)"></div>
+      </div>
+    </div>
+
+    <!-- Mode de règlement -->
+    <div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">💳 Mode de règlement du solde</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Mode de règlement</label>
+        <select id="mode-paiement" onchange="autosave()">
+          <option value="helloasso">HelloAsso (en ligne)</option>
+          <option value="cheque">Chèque(s) à l'ordre du FRI</option>
+          <option value="especes">Espèces</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;padding:12px 16px;background:linear-gradient(135deg,#e8f5e9,#f0f7f3);border:1px solid #a5d6a7;border-radius:10px;gap:12px;">
+        <div style="font-size:26px;flex-shrink:0">💚</div>
+        <div style="font-size:13px;color:#1b5e20;line-height:1.6;">
+          <strong>Le Foyer Rural vous remercie de privilégier le règlement en ligne</strong><br>
+          <a href="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville"
+            target="_blank" style="color:#2e7d32;font-weight:700;text-decoration:none;">
+            💳 Payer via HelloAsso →
+          </a>
+          <span style="font-size:11px;color:#388e3c;margin-left:6px;">Paiement sécurisé, sans frais pour l'association</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉTAPE C : Paiement (HelloAsso ou autre) -->
   <div class="card" id="card-step-b" style="border-left:4px solid #ccc;opacity:0.5;pointer-events:none">
     <div class="card-title">
-      <span style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px" id="step-b-num">2</span>
+      <span style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px" id="step-b-num">3</span>
       <span id="step-b-title">Paiement</span>
     </div>
     <div id="step-b-content"></div>
@@ -767,7 +818,7 @@
 
   <!-- ÉTAPE C : Confirmer le paiement (HelloAsso uniquement) -->
   <div class="card" id="card-step-c" style="border-left:4px solid #ccc;opacity:0.5;pointer-events:none">
-    <div class="card-title"><span style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px" id="step-c-num">3</span> Confirmez votre paiement HelloAsso</div>
+    <div class="card-title"><span style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px" id="step-c-num">4</span> Confirmez votre paiement HelloAsso</div>
     <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">
       Une fois le paiement effectué sur HelloAsso, saisissez votre email et votre code de dossier pour valider définitivement votre inscription.
     </p>
@@ -1185,7 +1236,7 @@ function goStep(n) {
   if (n === 1) setTimeout(detectCommune, 300); // détecter autofill navigateur
   if (n === 3) renderHealth();
   if (n === 4) renderSummary();
-  if (n === 5) renderPayment();
+  if (n === 5) { renderPayment(); recalcSolde(); }
 }
 
 function nextStep(from) {
@@ -1302,6 +1353,57 @@ function validateEmailLive(el) {
   }
 }
 
+// ── Afficher/masquer champs ANCV et Avoir ──
+function toggleAncvMontant() {
+  const ancv = document.getElementById('ancv-select');
+  const field = document.getElementById('ancv-montant-field');
+  if (ancv && field) field.style.display = ancv.value === 'oui' ? '' : 'none';
+}
+function toggleAvoirMontant() {
+  const avoir = document.getElementById('avoir-select');
+  const field = document.getElementById('avoir-montant-field');
+  if (avoir && field) field.style.display = avoir.value === 'oui' ? '' : 'none';
+}
+
+// ── Recalculer le solde après déductions ──
+function recalcSolde() {
+  const t = calcTotals();
+  const total = t.grandTotal || 0;
+
+  // Déductions
+  const passSport   = (document.getElementById('pass-sport')?.value   === 'oui') ? 70    : 0;
+  const ancvOui     = (document.getElementById('ancv-select')?.value  === 'oui');
+  const ancvMontant = ancvOui ? (parseFloat(document.getElementById('ancv-montant')?.value) || 0) : 0;
+  const avoirOui    = (document.getElementById('avoir-select')?.value === 'oui');
+  const avoirMontant= avoirOui ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
+
+  const totalDeductions = passSport + ancvMontant + avoirMontant;
+  const solde = Math.max(0, Math.round((total - totalDeductions) * 100) / 100);
+
+  // Sauvegarder dans state
+  state.solde         = solde;
+  state.deductions    = { passSport, ancvMontant, avoirMontant, total: totalDeductions };
+
+  // Afficher le détail
+  const detailEl = document.getElementById('solde-detail');
+  const totalEl  = document.getElementById('solde-total');
+  if (!detailEl || !totalEl) return;
+
+  let detail = `Total activités : <strong>${total.toFixed(2)} €</strong><br>`;
+  if (passSport > 0)    detail += `Pass'sport État : <span style="color:var(--green)">- ${passSport.toFixed(2)} €</span><br>`;
+  if (ancvMontant > 0)  detail += `Coupon ANCV : <span style="color:var(--green)">- ${ancvMontant.toFixed(2)} €</span><br>`;
+  if (avoirMontant > 0) detail += `Avoir : <span style="color:var(--green)">- ${avoirMontant.toFixed(2)} €</span><br>`;
+  if (totalDeductions > 0) detail += `Total déductions : <span style="color:var(--green);font-weight:700">- ${totalDeductions.toFixed(2)} €</span>`;
+
+  detailEl.innerHTML = detail;
+  totalEl.innerHTML  = `<span style="color:${solde > 0 ? 'var(--dark)' : 'var(--green)'}">
+    ${solde > 0 ? solde.toFixed(2) + ' €' : '✅ Soldé'}</span>`;
+
+  // Mettre à jour le montant dans setupPaymentStep si déjà ouvert
+  const amountEl = document.getElementById('amount-display');
+  if (amountEl) amountEl.textContent = `Solde à régler : ${solde.toFixed(2)} €`;
+}
+
 // Validation format email
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
@@ -1342,10 +1444,15 @@ function captureResponsable() {
     tel2:  document.getElementById('rl-tel2')  ? document.getElementById('rl-tel2').value.trim()  : '',
     email1: document.getElementById('rl-email1').value.trim(),
     email2: document.getElementById('rl-email2') ? document.getElementById('rl-email2').value.trim() : '',
-    passJeunes: document.getElementById('pass-jeunes').value,
+    passJeunes:     document.getElementById('pass-jeunes').value,
     atoutNormandie: document.getElementById('atout-normandie').value,
-    passSport: document.getElementById('pass-sport').value,
-    modePaiement: document.getElementById('mode-paiement').value
+    passSport:      document.getElementById('pass-sport').value,
+    ancv:           document.getElementById('ancv-select')?.value || 'non',
+    ancvMontant:    parseFloat(document.getElementById('ancv-montant')?.value) || 0,
+    avoir:          document.getElementById('avoir-select')?.value || 'non',
+    avoirMontant:   parseFloat(document.getElementById('avoir-montant')?.value) || 0,
+    solde:          state.solde || calcTotals().grandTotal,
+    modePaiement:   document.getElementById('mode-paiement').value
   };
 }
 
@@ -5205,11 +5312,20 @@ function setupPaymentStep(code) {
   if (!reg) return;
 
   var mode  = reg.responsable.modePaiement || 'helloasso';
-  var total = calcTotals().grandTotal || 0;
+  var total = (state.solde !== undefined ? state.solde : calcTotals().grandTotal) || 0;
   var cardB = document.getElementById('card-step-b');
   cardB.style.opacity = '1'; cardB.style.pointerEvents = '';
   cardB.style.borderLeftColor = 'var(--green)';
   document.getElementById('step-b-num').style.background = 'var(--green)';
+
+  // Activer aussi la rubrique 2 (Aides & Pass)
+  var cardB2 = document.getElementById('card-step-b2');
+  if (cardB2) {
+    cardB2.style.opacity = '1';
+    cardB2.style.pointerEvents = '';
+    cardB2.style.borderLeftColor = 'var(--gold)';
+  }
+
   document.getElementById('card-step-c').style.display = 'none';
 
   // Afficher l'étape de confirmation uniquement pour HelloAsso
