@@ -4850,7 +4850,8 @@ function renderAdmin() {
           <td style="padding:10px 12px;text-align:center;min-width:110px">
             ${validateBtn}
             <button onclick="exportSingleExcel(${reg.id})" style="background:var(--green);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" title="Exporter">📊</button>
-            <button onclick="deleteRegistration(${reg.id})" style="background:rgba(192,57,43,0.7);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer">🗑</button>
+            <button onclick="ouvrirSupprActivite('${reg.code || reg.id}')" style="background:rgba(230,81,0,0.8);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer une activité">➖</button>
+            <button onclick="deleteRegistration(${reg.id})" style="background:rgba(192,57,43,0.7);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer le dossier">🗑</button>
           </td>
         </tr>`;
       }).join('')}
@@ -5181,6 +5182,138 @@ function showAdminConfigBanner() {
     document.getElementById('apps-script-test-result').textContent =
       '⚠️ ' + q.length + ' inscription(s) en attente de synchronisation.';
   }
+}
+
+// ============================================================
+// SUPPRESSION D'UNE ACTIVITÉ D'UN DOSSIER (admin)
+// ============================================================
+function ouvrirSupprActivite(code) {
+  if (!requireAdmin()) return;
+  const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+  const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
+  if (!reg) { showToast('Dossier introuvable', 'red'); return; }
+
+  // Construire la liste des activités de tous les membres
+  const lignes = [];
+  reg.members.forEach(m => {
+    (m.activities || []).forEach(actId => {
+      const act = getActById(actId);
+      if (!act) return;
+      const isno = (reg.responsable.commune === 'isno');
+      const prix = isno ? act.isno : act.hc;
+      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, actNom: act.name, prix, jour: act.jour, heure: act.heure });
+    });
+  });
+
+  if (lignes.length === 0) { showToast('Aucune activité dans ce dossier', 'orange'); return; }
+
+  // Calculer les totaux pour les 15% de remise
+  const t = reg.totals || {};
+  const familyActCount = t.familyActCount || lignes.length;
+  const aRemise = familyActCount >= 3;
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-suppr-activite';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden">
+      <div style="background:#e65100;padding:18px 24px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="color:white;font-weight:700;font-size:15px">➖ Supprimer une activité</div>
+          <div style="color:rgba(255,255,255,0.7);font-size:12px">Dossier ${code} — ${reg.responsable.prenom} ${reg.responsable.nom}</div>
+        </div>
+        <button onclick="document.getElementById('modal-suppr-activite').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px">✕</button>
+      </div>
+      <div style="padding:20px">
+        <p style="font-size:13px;color:#555;margin-bottom:14px">Sélectionnez l'activité à supprimer. Un avoir sera calculé et noté dans le dossier.</p>
+        <div id="liste-activites-suppr">
+          ${lignes.map((l, i) => {
+            // Calcul avoir : tenir compte de la remise 15% et TT femme -30€
+            const actObj = getActById(l.actId) || {};
+            const estTTFemme = (actObj.isTT && reg.members.find(m => m.id === l.membreId)?.sexe === 'F');
+            let avoir = l.prix;
+            // Si remise 15% active et cette activité est éligible
+            if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
+              avoir = Math.round(avoir * 0.85 * 100) / 100;
+            }
+            // TT femme : -30€ déjà appliqué sur le prix
+            return `<div style="border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s"
+                      onmouseenter="this.style.background='#fff3e0'"
+                      onmouseleave="this.style.background='white'"
+                      onclick="confirmerSupprActivite('${code}',${i})">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-weight:700;color:#1a2e22;font-size:13px">${l.actNom}</div>
+                  <div style="font-size:12px;color:#888">${l.membreNom} · ${l.jour} ${l.heure}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:13px;color:#e65100;font-weight:700">Avoir : ${avoir.toFixed(2)} €</div>
+                  ${aRemise ? '<div style="font-size:10px;color:#888">remise 15% appliquée</div>' : ''}
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // Stocker les données pour confirmerSupprActivite
+  modal._lignes = lignes;
+  modal._reg    = reg;
+  modal._aRemise = aRemise;
+  document.body.appendChild(modal);
+}
+
+async function confirmerSupprActivite(code, ligneIdx) {
+  const modal = document.getElementById('modal-suppr-activite');
+  if (!modal) return;
+  const lignes  = modal._lignes;
+  const reg     = modal._reg;
+  const aRemise = modal._aRemise;
+  const l       = lignes[ligneIdx];
+
+  const actObj  = getActById(l.actId) || {};
+  const membre  = reg.members.find(m => m.id === l.membreId);
+  let avoir = l.prix;
+  if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
+    avoir = Math.round(avoir * 0.85 * 100) / 100;
+  }
+
+  if (!confirm(`Supprimer "${l.actNom}" pour ${l.membreNom} ?\nAvoir crédité : ${avoir.toFixed(2)} €\n\nCette action est irréversible.`)) return;
+  modal.remove();
+
+  // 1. Supprimer l'activité dans localStorage
+  const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+  const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
+  if (regIdx >= 0 && membre) {
+    allRegs[regIdx].members.forEach(m => {
+      if (m.id === membre.id) m.activities = (m.activities || []).filter(a => a !== l.actId);
+    });
+    // Ajouter l'avoir dans le responsable
+    allRegs[regIdx].responsable.avoirMontant = (allRegs[regIdx].responsable.avoirMontant || 0) + avoir;
+    allRegs[regIdx].responsable.avoirDetail  = (allRegs[regIdx].responsable.avoirDetail  || '') + `${l.actNom} (${avoir.toFixed(2)}€) ; `;
+    localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
+  }
+
+  // 2. Supprimer la ligne dans le Sheet via GAS
+  const url = getAppsScriptUrl();
+  if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
+    try {
+      await callAppsScriptFetch(url, {
+        action:     'supprimerActiviteDossier',
+        _token:     FRI_SECRET_TOKEN,
+        code:       code,
+        actId:      l.actId,
+        actNom:     l.actNom,
+        membreNom:  l.membreNom,
+        avoir:      avoir
+      });
+    } catch(e) { console.warn('Suppression activité GAS KO:', e); }
+  }
+
+  showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
+  renderAdmin();
+  renderAdminStats();
 }
 
 async function deleteRegistration(id) {
