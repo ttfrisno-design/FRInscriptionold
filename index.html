@@ -3796,6 +3796,7 @@ function buildRows(reg) {
           remise: reg.totals && reg.totals.familyActCount >= 3 ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
+          avoir_montant: reg.responsable.avoirMontant || 0,
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
           pass_aide: passAide
@@ -3821,6 +3822,7 @@ function buildRows(reg) {
         remise: reg.totals && reg.totals.familyActCount >= 3 ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
         mode_paiement: reg.responsable.modePaiement || 'helloasso',
+        avoir_montant: reg.responsable.avoirMontant || 0,
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
         pass_aide: passAide
