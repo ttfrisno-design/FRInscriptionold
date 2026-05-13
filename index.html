@@ -1599,6 +1599,12 @@ async function loadPlaces(force = false) {
     console.log('loadPlaces HTTP:', resp.status);
     if (!resp.ok) {
       console.warn('loadPlaces: HTTP', resp.status, '— onglet Places inaccessible');
+      // Si 410 (fichier supprimé) ou 404, effacer le cache pour utiliser l'ID par défaut
+      if (resp.status === 410 || resp.status === 404) {
+        localStorage.removeItem('fri_sheet_id');
+        console.warn('loadPlaces: ID Sheet invalide supprimé du cache — rechargement...');
+        if (id !== SHEET_ID_PUBLIC) { setTimeout(() => loadPlaces(true), 500); return; }
+      }
       state.placesLoaded = true; state.placesLoadedAt = now; return;
     }
     const text = await resp.text();
@@ -3968,38 +3974,71 @@ async function lireSheetPublic() {
       // 9=CP 10=Ville 11=Cedex 12=Pays 13=TelFixe 14=TelPort 15=Email 16=Commentaire
       // 17=N°Dossier 18=Date 19=Statut 20=Activite 21=Jour 22=Heure 23=Lieu 24=Animateur
       // 25=Tarif 26=FNSMR 27=Total 28=Paiement 29=QSSante 30=PassAide 31=Sexe 32=IDActivite 33=Responsable
-      // Indices corrigés d'après la structure réelle du Sheet (vérifiée via gviz raw)
-      // Col 0=NumLic 1=Civil 2=NomMembre 3=PrenomMembre 4=DDN 5=Appt 6=Bat 7=Voie 8=LieuDit
+      // Indices basés sur ecrireEnTeteInscriptions (38 colonnes) :
+      // 0=NumLicence 1=Civilite 2=Nom 3=Prenom 4=DDN 5=Appt 6=Bat 7=Voie 8=LieuDit
       // 9=CP 10=Ville 11=Cedex 12=Pays 13=TelFixe 14=TelPort 15=Email 16=Commentaire
-      // 17=N°Dossier 18=Date 19=Statut 20=Activite 21=Jour 22=Heure 23=Lieu 24=Animateur
-      // 25=Tarif 26=FNSMR 27=Total 28=Paiement 29=QSSante 30=PassAide 31=Sexe 32=IDActivite 33=Responsable
-      const resp = cellVal(row, 33);
+      // 17=Tel2 18=Email2
+      // 19=N°Dossier 20=Date 21=Statut 22=Activite 23=Jour 24=Heure 25=Lieu 26=Animateur
+      // 27=Tarif 28=FNSMR 29=Total 30=Paiement 31=Avoir 32=QSSante 33=PassAide
+      // 34=Sexe 35=IDActivite 36=Responsable 37=StatutInscription
+
+      // Détection dynamique selon nb colonnes (compatibilité ancien/nouveau sheet)
+      const isNew = cols.length >= 36; // nouveau format avec Tél.2, Email.2
+      const iCol = {
+        nom:       2,  prenom:   3,  ddn:    4,  voie:    7,
+        cp:        9,  ville:    10, tel:    14, email:   15,
+        commentaire: 16,
+        tel2:      isNew ? 17 : -1,
+        email2:    isNew ? 18 : -1,
+        dossier:   isNew ? 19 : 17,
+        date:      isNew ? 20 : 18,
+        statut:    isNew ? 21 : 19,
+        activite:  isNew ? 22 : 20,
+        jour:      isNew ? 23 : 21,
+        heure:     isNew ? 24 : 22,
+        lieu:      isNew ? 25 : 23,
+        animateur: isNew ? 26 : 24,
+        tarif:     isNew ? 27 : 25,
+        fnsmr:     isNew ? 28 : 26,
+        total:     isNew ? 29 : 27,
+        paiement:  isNew ? 30 : 28,
+        avoir:     isNew ? 31 : -1,
+        qssante:   isNew ? 32 : 29,
+        passaide:  isNew ? 33 : 30,
+        sexe:      isNew ? 34 : 31,
+        actid:     isNew ? 35 : 32,
+        responsable: isNew ? 36 : 33,
+        statutInscription: isNew ? 37 : -1,
+      };
+      const resp = cellVal(row, iCol.responsable);
       return {
-        code:              cellVal(row, 17),   // N° Dossier
-        date:              gvizDateToStr(cellVal(row, 18)),  // Date inscription
-        statut:            cellVal(row, 19),   // Statut paiement
-        nom_membre:        cellVal(row, 2),    // Nom
-        prenom_membre:     cellVal(row, 3),    // Prénom
-        ddn:               gvizDateToStr(cellVal(row, 4)),   // Date naissance
-        ville:             cellVal(row, 10),   // Ville (index 10)
-        tel:               cellVal(row, 14),   // Tél. portable
-        email:             cellVal(row, 15),   // Email
+        code:              cellVal(row, iCol.dossier),
+        date:              gvizDateToStr(cellVal(row, iCol.date)),
+        statut:            cellVal(row, iCol.statut),
+        nom_membre:        cellVal(row, iCol.nom),
+        prenom_membre:     cellVal(row, iCol.prenom),
+        ddn:               gvizDateToStr(cellVal(row, iCol.ddn)),
+        ville:             cellVal(row, iCol.ville),
+        tel:               cellVal(row, iCol.tel),
+        email:             cellVal(row, iCol.email),
         nom_responsable:   resp ? resp.split(' ').slice(1).join(' ') : '',
         prenom_responsable:resp ? resp.split(' ')[0] : '',
-        adresse:           cellVal(row, 7),    // N° et nom de voie (index 7)
-        cp:                cellVal(row, 9),    // Code postal (index 9)
-        activite:          cellVal(row, 20),   // Activité
-        activite_id:       cellVal(row, 32),   // ID Activité
-        jour:              cellVal(row, 21),   // Jour
-        heure:             cellVal(row, 22),   // Heure
-        lieu:              cellVal(row, 23),   // Lieu
-        animateur:         cellVal(row, 24),   // Animateur
-        tarif:             Number(cellVal(row, 25)) || 0,  // Tarif EUR
-        total:             Number(cellVal(row, 27)) || 0,  // Total famille EUR
-        mode_paiement:     cellVal(row, 28),   // Mode paiement
-        qs_sante:          cellVal(row, 29),   // QS Santé
-        pass_aide:         cellVal(row, 30),   // Pass / Aide
-        sexe:              cellVal(row, 31)    // Sexe
+        adresse:           cellVal(row, iCol.voie),
+        cp:                cellVal(row, iCol.cp),
+        activite:          cellVal(row, iCol.activite),
+        activite_id:       cellVal(row, iCol.actid),
+        jour:              cellVal(row, iCol.jour),
+        heure:             cellVal(row, iCol.heure),
+        lieu:              cellVal(row, iCol.lieu),
+        animateur:         cellVal(row, iCol.animateur),
+        tarif:             Number(cellVal(row, iCol.tarif)) || 0,
+        total:             Number(cellVal(row, iCol.total)) || 0,
+        mode_paiement:     cellVal(row, iCol.paiement),
+        avoir:             cellVal(row, iCol.avoir),
+        qs_sante:          cellVal(row, iCol.qssante),
+        pass_aide:         cellVal(row, iCol.passaide),
+        sexe:              cellVal(row, iCol.sexe),
+        statut_inscription:cellVal(row, iCol.statutInscription)
       };
     });
     
