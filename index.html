@@ -805,6 +805,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Bouton valider et procéder au paiement -->
+    <button id="btn-payer-solde" class="btn btn-primary" onclick="validerAidesEtProceder()"
+      style="width:100%;justify-content:center;margin-top:12px;background:var(--green)">
+      ✅ Valider et procéder au règlement du solde
+    </button>
   </div>
 
   <!-- ÉTAPE C : Paiement (HelloAsso ou autre) -->
@@ -1399,9 +1405,45 @@ function recalcSolde() {
   totalEl.innerHTML  = `<span style="color:${solde > 0 ? 'var(--dark)' : 'var(--green)'}">
     ${solde > 0 ? solde.toFixed(2) + ' €' : '✅ Soldé'}</span>`;
 
-  // Mettre à jour le montant dans setupPaymentStep si déjà ouvert
-  const amountEl = document.getElementById('amount-display');
-  if (amountEl) amountEl.textContent = `Solde à régler : ${solde.toFixed(2)} €`;
+  // Mettre à jour le bouton de paiement du solde
+  const btnSoldeEl = document.getElementById('btn-payer-solde');
+  if (btnSoldeEl) {
+    if (solde <= 0) {
+      btnSoldeEl.style.display = 'none';
+    } else {
+      btnSoldeEl.style.display = '';
+      btnSoldeEl.textContent = '✅ Valider et procéder au règlement du solde : ' + solde.toFixed(2) + ' €';
+    }
+  }
+
+  // Sauvegarder le solde dans state pour setupPaymentStep
+  state.solde = solde;
+}
+
+// Validation Aides/Avoirs → activer rubrique 3 avec solde mis à jour
+function validerAidesEtProceder() {
+  captureResponsable();
+  recalcSolde();
+
+  // Mettre à jour le pending avec les nouvelles infos
+  const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+  const codes = Object.keys(pending);
+  if (codes.length > 0) {
+    const code = codes[codes.length - 1];
+    const reg  = pending[code];
+    if (reg) {
+      reg.responsable = { ...reg.responsable, ...state.responsable };
+      reg.solde = state.solde;
+      pending[code] = reg;
+      localStorage.setItem('fri_pending', JSON.stringify(pending));
+      setupPaymentStep(code);
+      // Scroller vers rubrique 3
+      setTimeout(() => {
+        const cardB = document.getElementById('card-step-b');
+        if (cardB) cardB.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }
 }
 
 // Validation format email
@@ -3669,15 +3711,16 @@ function renderPayment() {
   const t = calcTotals();
   const r = state.responsable;
 
-  // Amount display
-  document.getElementById('amount-display').textContent = t.grandTotal.toFixed(2) + ' €';
+  // Rubrique 1 : afficher le TOTAL ACTIVITÉS (avant déductions)
+  document.getElementById('amount-display').innerHTML =
+    'Total activités : <strong>' + t.grandTotal.toFixed(2) + ' €</strong>';
 
   // Members summary
   const membersLine = state.members.map(m => m.prenom + ' ' + m.nom).join(', ');
   const actsCount   = state.members.reduce((a,m) => a + m.activities.length, 0);
   document.getElementById('payment-members-summary').innerHTML =
     '<strong>' + membersLine + '</strong> — ' + actsCount + ' activité' + (actsCount > 1 ? 's' : '')
-    + (t.discount > 0 ? ' (remise 15% : -' + t.discount + '€)' : '')
+    + (t.discount > 0 ? ' (remise 15% : -' + t.discount.toFixed(2) + '€)' : '')
     + ' + adhésion FNSMR ' + (state.members.length * 15) + '€';
 
   // Docs list
