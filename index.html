@@ -593,6 +593,19 @@
                oninput="autosave(); validateEmailLive(this)"
                onblur="validateEmailLive(this)">
       </div>
+      <div class="field">
+        <label>Téléphone 2 <span style="font-size:11px;color:var(--gray);font-weight:400">(facultatif)</span></label>
+        <input type="tel" id="rl-tel2" placeholder="06 XX XX XX XX"
+               oninput="autosave(); if(this.value.trim()) validateTelLive(this)"
+               onblur="if(this.value.trim()) validateTelLive(this)"
+               maxlength="14" inputmode="tel">
+      </div>
+      <div class="field">
+        <label>E-mail 2 <span style="font-size:11px;color:var(--gray);font-weight:400">(facultatif)</span></label>
+        <input type="email" id="rl-email2" placeholder="autre.email@exemple.fr"
+               oninput="autosave(); if(this.value.trim()) validateEmailLive(this)"
+               onblur="if(this.value.trim()) validateEmailLive(this)">
+      </div>
     </div>
   </div>
 
@@ -1325,11 +1338,10 @@ function captureResponsable() {
     cp: document.getElementById('rl-cp').value.trim(),
     ville: document.getElementById('rl-ville').value.trim().toUpperCase(),
     commune: document.getElementById('rl-commune').value,
-    tel1: document.getElementById('rl-tel1').value.trim(),
-    tel2: '',
+    tel1:  document.getElementById('rl-tel1').value.trim(),
+    tel2:  document.getElementById('rl-tel2')  ? document.getElementById('rl-tel2').value.trim()  : '',
     email1: document.getElementById('rl-email1').value.trim(),
-    email2: '',
-    email2: '',
+    email2: document.getElementById('rl-email2') ? document.getElementById('rl-email2').value.trim() : '',
     passJeunes: document.getElementById('pass-jeunes').value,
     atoutNormandie: document.getElementById('atout-normandie').value,
     passSport: document.getElementById('pass-sport').value,
