@@ -2091,10 +2091,133 @@ function toggleSlot(memberId, actId) {
     // Deselect this pair
     m.activities = m.activities.filter(a => a !== primaryId && a !== primaryLink);
   } else {
+    // ── Vérification chevauchement horaire ──
+    const conflict = detecterChevauchement(m, primaryId, primaryLink);
+    if (conflict) {
+      afficherConflitHoraire(primaryAct, conflict);
+      return;
+    }
     // Select this pair (both slots)
     if (!m.activities.includes(primaryId))    m.activities.push(primaryId);
     if (primaryLink && !m.activities.includes(primaryLink)) m.activities.push(primaryLink);
   }
+
+  refreshSemainierSlots(memberId);
+  updateMemberTotal(memberId);
+  updateSelectedBadge(memberId);
+  refreshFfttBlocks();
+}
+
+// ── Détection de chevauchement horaire ──────────────────────
+// Retourne l'activité en conflit ou null si pas de conflit
+function detecterChevauchement(m, newActId, newLinkedId) {
+  // Toutes les activités à tester (l'activité principale + l'éventuelle liée)
+  const idsAVerifier = [newActId, newLinkedId].filter(Boolean);
+
+  for (const candidatId of idsAVerifier) {
+    const candidat = getActById(candidatId);
+    if (!candidat || !candidat.heure || !candidat.jour) continue;
+
+    const [cDeb, cFin] = parseCreneauMinutes(candidat.heure);
+    if (cDeb === null) continue;
+
+    // Comparer avec chaque activité déjà sélectionnée par le membre
+    for (const actId of m.activities) {
+      // Ignorer les paires liées déjà en cours de traitement
+      if (actId === newActId || actId === newLinkedId) continue;
+
+      const existing = getActById(actId);
+      if (!existing || !existing.heure || !existing.jour) continue;
+
+      // Pas de conflit si jours différents
+      if (existing.jour !== candidat.jour) continue;
+
+      const [eDeb, eFin] = parseCreneauMinutes(existing.heure);
+      if (eDeb === null) continue;
+
+      // Chevauchement si les créneaux se superposent (strictement)
+      if (cDeb < eFin && cFin > eDeb) {
+        return existing; // retourne l'activité en conflit
+      }
+    }
+  }
+  return null;
+}
+
+// Parse "19h45/21h00" → [1185, 1260] (minutes depuis minuit)
+// Accepte aussi "19h45/21h" et formats avec "h" seul
+function parseCreneauMinutes(heure) {
+  try {
+    const parts = heure.split('/');
+    if (parts.length < 2) return [null, null];
+    const toMin = h => {
+      const m = h.trim().replace('h', ':').replace('H', ':');
+      const [hh, mm] = m.split(':');
+      return parseInt(hh) * 60 + (parseInt(mm) || 0);
+    };
+    return [toMin(parts[0]), toMin(parts[1])];
+  } catch(e) { return [null, null]; }
+}
+
+// ── Modal d'avertissement chevauchement horaire ──────────────
+function afficherConflitHoraire(nouvelleAct, actEnConflit) {
+  // Supprimer un éventuel modal précédent
+  const existing = document.getElementById('modal-conflit-horaire');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-conflit-horaire';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.15s ease;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;max-width:480px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;">
+      <!-- En-tête rouge -->
+      <div style="background:#c0392b;padding:20px 24px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:6px;">⚠️</div>
+        <div style="color:white;font-weight:800;font-size:17px;line-height:1.3;">
+          Attention !
+        </div>
+        <div style="color:rgba(255,255,255,0.9);font-size:14px;margin-top:4px;">
+          Activité sur la même plage horaire qu'une autre activité sélectionnée
+        </div>
+      </div>
+      <!-- Corps -->
+      <div style="padding:22px 24px;">
+        <p style="font-size:14px;color:#555;margin:0 0 16px;line-height:1.6;text-align:center;">
+          Ces deux activités ont lieu <strong>le même jour au même moment</strong> et ne peuvent pas être sélectionnées ensemble.
+        </p>
+        <!-- Activité à ajouter -->
+        <div style="background:#fdf3f2;border:1.5px solid #e74c3c;border-radius:10px;padding:13px 16px;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;color:#c0392b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Activité souhaitée</div>
+          <div style="font-weight:700;color:#1a2e22;font-size:14px;">${nouvelleAct.name.replace(/\n/g,' — ')}</div>
+          <div style="color:#888;font-size:13px;margin-top:2px;">📅 ${nouvelleAct.jour} &nbsp;⏰ ${nouvelleAct.heure}</div>
+        </div>
+        <!-- Activité déjà sélectionnée -->
+        <div style="background:#f0f7f3;border:1.5px solid #2d6a4f;border-radius:10px;padding:13px 16px;">
+          <div style="font-size:11px;font-weight:700;color:#2d6a4f;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Activité déjà sélectionnée</div>
+          <div style="font-weight:700;color:#1a2e22;font-size:14px;">${actEnConflit.name.replace(/\n/g,' — ')}</div>
+          <div style="color:#888;font-size:13px;margin-top:2px;">📅 ${actEnConflit.jour} &nbsp;⏰ ${actEnConflit.heure}</div>
+        </div>
+      </div>
+      <!-- Bouton -->
+      <div style="padding:0 24px 22px;">
+        <button onclick="document.getElementById('modal-conflit-horaire').remove()"
+          style="width:100%;padding:13px;background:#1a2e22;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+          Compris — je choisis une autre activité
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  // Fermer en cliquant hors du modal
+  modal.addEventListener('click', e => {
+    if (e.target === modal) modal.remove();
+  });
+  // Focus sur le bouton pour accessibilité
+  setTimeout(() => {
+    const btn = modal.querySelector('button');
+    if (btn) btn.focus();
+  }, 50);
+}
 
   refreshSemainierSlots(memberId);
   updateMemberTotal(memberId);
@@ -4260,18 +4383,9 @@ function buildRows(reg) {
         const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
         // Clean the name (remove \n line breaks for sheet)
         const nomClean = act.name.replace(/\n/g, ' — ');
-        const price = isno ? act.isno : act.hc;
-
-        rows.push({
-          date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
-          responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
-          adresse: reg.responsable.adresse, cp: reg.responsable.cp,
-          ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
-          tel1: reg.responsable.tel1, tel2: '',
-          email1: reg.responsable.email1, email2: (m.email || reg.responsable.email2 || ''),
-          membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
-          ddn: m.ddn, sexe: m.sexe,
-          activite: nomClean, jour: joursCombi, heure: heuresCombi,
+        let price = isno ? act.isno : act.hc;
+        // Réduction femmes TT : -30€
+        if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
           lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
           tarif: price, fnsmr: 15,
           remise: reg.totals && reg.totals.familyActCount >= 3 ? 15 : 0,
@@ -4290,7 +4404,9 @@ function buildRows(reg) {
 
       // Non-linked activity — standard row
       const nomClean = act.name.replace(/\n/g, ' — ');
-      const price = isno ? act.isno : act.hc;
+      let price = isno ? act.isno : act.hc;
+      // Réduction femmes TT : -30€
+      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
       rows.push({
         date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
         responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
@@ -5983,14 +6099,16 @@ function clearSignature() {
   if (_sigCtx) _sigCtx.clearRect(0, 0, 450, 180);
 }
 
-function showToast(msg, type) {
+function showToast(msg, type, duree) {
   const t = document.createElement('div');
-  // type peut être 'green', une couleur hex, ou autre
-  const bg = type === 'green' ? '#2d6a4f' : (type && type.startsWith('#') ? type : '#856404');
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + bg + ';color:white;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:90%;text-align:center;';
+  // type peut être 'green', 'red', une couleur hex, ou autre
+  const bg = type === 'green' ? '#2d6a4f'
+           : type === 'red'   ? '#c0392b'
+           : (type && type.startsWith('#') ? type : '#856404');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + bg + ';color:white;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:90%;text-align:center;line-height:1.5;';
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+  setTimeout(() => t.remove(), duree || 4000);
 }
 
 function cancelSignature() {
