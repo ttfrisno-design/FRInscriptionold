@@ -2273,6 +2273,14 @@ function memberHtml(m) {
           2. Remplissez le formulaire de demande de licence en ligne.<br>
           3. Réglez le montant de la licence selon votre catégorie lors de votre passage en permanence.
         </div>
+        <div style="margin-top:12px;padding:10px 14px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;">
+          <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:8px;">🏓 Questionnaire de Santé FFTT obligatoire</div>
+          <div style="font-size:12px;color:#555;margin-bottom:10px;">Vous devez remplir et signer le QS Santé FFTT (N°25-10-1 pour majeurs / N°25-10-2 pour mineurs) et l'apporter lors de votre passage en permanence.</div>
+          <button onclick="genererQSFFTT(${m.id})"
+            style="background:#e65100;color:white;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+            📄 Remplir &amp; télécharger mon QS Santé FFTT
+          </button>
+        </div>
       </div>
     </div>
 
@@ -2335,6 +2343,439 @@ function updateFfttPrice(memberId) {
   const m = state.members.find(m => m.id === memberId);
   if (m) m.ffttPrice = selectedVal;
   renderSummary();
+}
+
+// ============================================================
+// GÉNÉRATION QS SANTÉ FFTT (N°25-10-1 majeur / N°25-10-2 mineur)
+// Affiché quand une licence FFTT est sélectionnée
+// ============================================================
+function genererQSFFTT(memberId) {
+  const m = state.members.find(mb => mb.id === memberId);
+  if (!m) return;
+  const age = getAge(m.ddn);
+  const isMineur = age < 18;
+  const r = state.responsable;
+  const today = new Date().toLocaleDateString('fr-FR');
+
+  // Lire nom/prénom depuis le DOM
+  const elNom    = document.getElementById('m-' + memberId + '-nom');
+  const elPrenom = document.getElementById('m-' + memberId + '-prenom');
+  if (elNom    && elNom.value.trim())    m.nom    = elNom.value.trim().toUpperCase();
+  if (elPrenom && elPrenom.value.trim()) m.prenom = elPrenom.value.trim();
+
+  // Construire le modal de questions QS FFTT
+  const modalId = 'modal-qs-fftt-' + memberId;
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+
+  const questionsMajeur = [
+    "1. Un membre de votre famille est-il décédé subitement d'une cause cardiaque ou inexpliquée ?",
+    "2. Avez-vous ressenti une douleur dans la poitrine, des palpitations, un essoufflement inhabituel ?",
+    "3. Avez-vous eu un épisode de respiration sifflante (asthme) ?",
+    "4. Avez-vous eu une perte de connaissance ?",
+    "5. Si vous avez arrêté le sport pendant 30 jours ou plus pour des raisons de santé, avez-vous repris sans l'accord d'un médecin ?",
+    "6. Avez-vous débuté un traitement médical de longue durée (hors contraception et désensibilisation aux allergies) ?",
+    "7. Ressentez-vous une douleur, un manque de force ou une raideur suite à un problème osseux, articulaire ou musculaire survenu durant les 12 derniers mois ?",
+    "8. Votre pratique sportive est-elle interrompue pour des raisons de santé ?",
+    "9. Pensez-vous avoir besoin d'un avis médical pour poursuivre votre pratique sportive ?",
+  ];
+
+  const questionsMineur = [
+    "1. Es-tu allé(e) à l'hôpital pendant toute une journée ou plusieurs jours ?",
+    "2. As-tu été opéré(e) ?",
+    "3. As-tu beaucoup plus grandi que les autres années ?",
+    "4. As-tu beaucoup maigri ou grossi ?",
+    "5. As-tu eu la tête qui tourne pendant un effort ?",
+    "6. As-tu perdu connaissance ou es-tu tombé sans te souvenir de ce qui s'était passé ?",
+    "7. As-tu reçu un ou plusieurs chocs violents qui t'ont obligé à interrompre une séance de sport ?",
+    "8. As-tu eu beaucoup de mal à respirer pendant un effort par rapport à d'habitude ?",
+    "9. As-tu eu beaucoup de mal à respirer après un effort ?",
+    "10. As-tu eu mal dans la poitrine ou des palpitations (le cœur qui bat très vite) ?",
+    "11. As-tu commencé à prendre un nouveau médicament tous les jours et pour longtemps ?",
+    "12. As-tu arrêté le sport à cause d'un problème de santé pendant un mois ou plus ?",
+    "13. Te sens-tu très fatigué(e) ? (plus de 2 semaines)",
+    "14. As-tu du mal à t'endormir ou te réveilles-tu souvent dans la nuit ?",
+    "15. Sens-tu que tu as moins faim ? que tu manges moins ?",
+    "16. Te sens-tu triste ou inquiet ?",
+    "17. Pleures-tu plus souvent ?",
+    "18. Ressens-tu une douleur ou un manque de force à cause d'une blessure que tu t'es faite cette année ?",
+    "19. Penses-tu quelquefois à arrêter de faire du sport ou à changer de sport ?",
+    "20. Penses-tu avoir besoin de voir ton médecin pour continuer le sport ?",
+    "21. Souhaites-tu signaler quelque chose de plus concernant ta santé ?",
+    "(Parents) 22. Quelqu'un dans votre famille proche a-t-il eu une maladie grave du cœur ou est-il décédé subitement avant l'âge de 50 ans ?",
+    "(Parents) 23. Êtes-vous inquiet pour son poids ? Trouvez-vous qu'il se nourrit trop ou pas assez ?",
+    "(Parents) 24. Avez-vous manqué l'examen de santé prévu à l'âge de votre enfant chez le médecin ?",
+  ];
+
+  const questions = isMineur ? questionsMineur : questionsMajeur;
+  const numRef    = isMineur ? 'N° 25-10-2' : 'N° 25-10-1';
+  const titre     = isMineur ? 'Questionnaire de Santé FFTT pour Mineur' : 'Questionnaire de Santé FFTT pour Majeur';
+
+  const questionsHtml = questions.map((q, i) => `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #eee;font-size:13px;color:#333;">
+      <div style="flex:1;line-height:1.5">${q}</div>
+      <div style="display:flex;gap:12px;flex-shrink:0;align-items:center;">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="radio" name="fftt-qs-${memberId}-${i}" value="oui" style="accent-color:#c0392b;"> <span style="color:#c0392b;font-weight:600">Oui</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="radio" name="fftt-qs-${memberId}-${i}" value="non" checked style="accent-color:#2d6a4f;"> <span style="color:#2d6a4f;font-weight:600">Non</span>
+        </label>
+      </div>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:700px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);max-height:90vh;display:flex;flex-direction:column;">
+      <div style="background:#e65100;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;border-radius:14px 14px 0 0;flex-shrink:0;">
+        <div>
+          <div style="color:white;font-weight:700;font-size:15px;">🏓 ${titre}</div>
+          <div style="color:rgba(255,255,255,0.8);font-size:12px;">${numRef} — ${m.prenom || ''} ${m.nom || ''} (${isMineur ? 'Mineur, ' + age + ' ans' : 'Majeur, ' + age + ' ans'})</div>
+        </div>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px;">✕</button>
+      </div>
+      <div style="padding:20px;overflow-y:auto;flex:1;">
+        <div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;padding:12px 14px;font-size:12px;color:#6D4C41;margin-bottom:16px;line-height:1.6;">
+          <strong>Durant les 12 derniers mois</strong>, répondez par OUI ou NON à chaque question. Toutes les réponses NON = pas de certificat médical requis.
+        </div>
+        ${questionsHtml}
+      </div>
+      <div style="padding:16px 20px;border-top:1px solid #eee;display:flex;gap:10px;flex-shrink:0;">
+        <button onclick="document.getElementById('${modalId}').remove()"
+          style="flex:1;padding:12px;border:1.5px solid #ccc;border-radius:8px;background:white;color:#666;font-size:13px;cursor:pointer;font-weight:600;">
+          Annuler
+        </button>
+        <button onclick="validerEtGenererQSFFTT(${memberId})"
+          style="flex:2;padding:12px;border:none;border-radius:8px;background:#e65100;color:white;font-size:13px;cursor:pointer;font-weight:700;">
+          ✅ Valider et générer le PDF
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function validerEtGenererQSFFTT(memberId) {
+  const m = state.members.find(mb => mb.id === memberId);
+  if (!m) return;
+  const age = getAge(m.ddn);
+  const isMineur = age < 18;
+  const r = state.responsable;
+  const today = new Date().toLocaleDateString('fr-FR');
+
+  // Lire les réponses du modal
+  const modalId = 'modal-qs-fftt-' + memberId;
+  const modal   = document.getElementById(modalId);
+  if (!modal) return;
+
+  const nbQuestions = isMineur ? 24 : 9;
+  const reponses = [];
+  let hasOui = false;
+  for (let i = 0; i < nbQuestions; i++) {
+    const checked = modal.querySelector(`input[name="fftt-qs-${memberId}-${i}"]:checked`);
+    const rep = checked ? checked.value : 'non';
+    reponses.push(rep);
+    if (rep === 'oui') hasOui = true;
+  }
+
+  // Stocker les réponses dans le membre
+  m.ffttQS = reponses;
+  m.ffttQSHasOui = hasOui;
+  modal.remove();
+
+  // Demander signature
+  const sigLabel = isMineur
+    ? `Signature du représentant légal de ${m.prenom} ${m.nom} — QS FFTT`
+    : `Signature de ${m.prenom} ${m.nom} — QS FFTT`;
+
+  ouvrirSignature(sigLabel, function(signatureDataUrl) {
+    _genererPDFQSFFTT(memberId, reponses, hasOui, signatureDataUrl);
+  });
+}
+
+async function _genererPDFQSFFTT(memberId, reponses, hasOui, signatureDataUrl) {
+  try {
+    const m = state.members.find(mb => mb.id === memberId);
+    if (!m) return;
+    const age = getAge(m.ddn);
+    const isMineur = age < 18;
+    const r = state.responsable;
+    const today = new Date().toLocaleDateString('fr-FR');
+    const numRef = isMineur ? 'N° 25-10-2' : 'N° 25-10-1';
+
+    // Charger jsPDF
+    async function getJsPDF() {
+      if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+      if (window.jsPDF) return window.jsPDF;
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = () => { const cls = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF; if (cls) resolve(cls); else reject(new Error('jsPDF non trouvé')); };
+        s.onerror = () => reject(new Error('Impossible de charger jsPDF'));
+        document.head.appendChild(s);
+      });
+    }
+    let jsPDF;
+    try { jsPDF = await getJsPDF(); } catch(e) { alert('Impossible de charger la librairie PDF.\n' + e.message); return; }
+
+    const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W    = 210, M = 15, TW = W - 2 * M;
+    const VERT = [0, 60, 120]; // bleu FFTT
+    const ROUGE= [200, 20, 20];
+    const NOIR = [0, 0, 0];
+    const GRIS = [100, 100, 100];
+    const BLANC= [255, 255, 255];
+
+    // ── En-tête FFTT ──
+    doc.setFillColor(0, 50, 120);
+    doc.rect(0, 0, 210, 22, 'F');
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BLANC);
+    doc.text('FF TENNIS', 8, 10);
+    doc.text('DE TABLE', 8, 17);
+    doc.setFontSize(10);
+    doc.text(numRef, 45, 10);
+    const titreDoc = isMineur ? 'Questionnaire de Santé pour Mineur' : 'Questionnaire de Santé pour Majeur';
+    doc.setFontSize(14);
+    doc.text(titreDoc, W/2, 14, {align: 'center'});
+
+    let y = 28;
+
+    // Infos membre
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...NOIR);
+    if (isMineur) {
+      const sexe = m.sexe === 'F' ? 'une fille' : 'un garçon';
+      doc.text(`${m.prenom} ${m.nom} — ${sexe} — ${age} ans`, M, y);
+    } else {
+      doc.text(`${m.prenom} ${m.nom} — ${age} ans`, M, y);
+    }
+    y += 8;
+
+    // Tableau des questions
+    const questions = isMineur ? [
+      "1. Es-tu allé(e) à l'hôpital pendant toute une journée ou plusieurs jours ?",
+      "2. As-tu été opéré(e) ?",
+      "3. As-tu beaucoup plus grandi que les autres années ?",
+      "4. As-tu beaucoup maigri ou grossi ?",
+      "5. As-tu eu la tête qui tourne pendant un effort ?",
+      "6. As-tu perdu connaissance ou es-tu tombé sans te souvenir de ce qui s'était passé ?",
+      "7. As-tu reçu un ou plusieurs chocs violents qui t'ont obligé à interrompre une séance de sport ?",
+      "8. As-tu eu beaucoup de mal à respirer pendant un effort ?",
+      "9. As-tu eu beaucoup de mal à respirer après un effort ?",
+      "10. As-tu eu mal dans la poitrine ou des palpitations ?",
+      "11. As-tu commencé à prendre un nouveau médicament tous les jours et pour longtemps ?",
+      "12. As-tu arrêté le sport à cause d'un problème de santé pendant un mois ou plus ?",
+      "13. Te sens-tu très fatigué(e) ? (depuis plus de 2 semaines)",
+      "14. As-tu du mal à t'endormir ou te réveilles-tu souvent dans la nuit ?",
+      "15. Sens-tu que tu as moins faim ? que tu manges moins ?",
+      "16. Te sens-tu triste ou inquiet ?",
+      "17. Pleures-tu plus souvent ?",
+      "18. Ressens-tu une douleur ou un manque de force à cause d'une blessure cette année ?",
+      "19. Penses-tu quelquefois à arrêter de faire du sport ou à changer de sport ?",
+      "20. Penses-tu avoir besoin de voir ton médecin pour continuer le sport ?",
+      "21. Souhaites-tu signaler quelque chose de plus concernant ta santé ?",
+      "(Parents) 22. Quelqu'un dans votre famille a-t-il eu une maladie grave du cœur ou est-il décédé avant 50 ans ?",
+      "(Parents) 23. Êtes-vous inquiet pour son poids ? Se nourrit-il trop ou pas assez ?",
+      "(Parents) 24. Avez-vous manqué l'examen de santé prévu à l'âge de votre enfant ?",
+    ] : [
+      "1. Un membre de votre famille est-il décédé subitement d'une cause cardiaque ou inexpliquée ?",
+      "2. Avez-vous ressenti une douleur dans la poitrine, des palpitations, un essoufflement inhabituel ?",
+      "3. Avez-vous eu un épisode de respiration sifflante (asthme) ?",
+      "4. Avez-vous eu une perte de connaissance ?",
+      "5. Si vous avez arrêté le sport pendant 30 jours ou plus, avez-vous repris sans l'accord d'un médecin ?",
+      "6. Avez-vous débuté un traitement médical de longue durée (hors contraception et désensibilisation) ?",
+      "7. Ressentez-vous une douleur, un manque de force ou une raideur suite à un problème musculo-squelettique ?",
+      "8. Votre pratique sportive est-elle interrompue pour des raisons de santé ?",
+      "9. Pensez-vous avoir besoin d'un avis médical pour poursuivre votre pratique sportive ?",
+    ];
+
+    // En-tête tableau
+    const COL_TXT = TW - 30;
+    const COL_W   = 15;
+    const X_OUI   = M + COL_TXT + 2;
+    const X_NON   = M + COL_TXT + COL_W + 2;
+
+    doc.setFillColor(0, 50, 120);
+    doc.rect(M, y, TW, 7, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...BLANC);
+    doc.text('Répondez aux questions suivantes par OUI ou par NON — Durant les 12 derniers mois :', M+2, y+5);
+    doc.text('OUI', X_OUI + 4, y+5);
+    doc.text('NON', X_NON + 4, y+5);
+    y += 7;
+
+    questions.forEach((q, i) => {
+      // Saut de page si nécessaire
+      if (y > 250) { doc.addPage(); y = 20; }
+      const bg = i % 2 === 0 ? [240,248,255] : [255,255,255];
+      const lines = doc.splitTextToSize(q, COL_TXT - 4);
+      const rh = Math.max(9, lines.length * 4.5 + 3);
+      doc.setFillColor(...bg);
+      doc.rect(M, y, TW, rh, 'F');
+      doc.setDrawColor(180, 200, 220);
+      doc.setLineWidth(0.2);
+      doc.rect(M, y, TW, rh, 'S');
+      doc.line(M + COL_TXT, y, M + COL_TXT, y + rh);
+      doc.line(M + COL_TXT + COL_W, y, M + COL_TXT + COL_W, y + rh);
+      doc.setFont('helvetica','normal');
+      doc.setTextColor(...NOIR);
+      doc.setFontSize(8);
+      doc.text(lines, M+2, y+5);
+
+      const rep = reponses[i] || 'non';
+      const cy  = y + rh/2;
+      const bx1 = X_OUI + 4;
+      const bx2 = X_NON + 4;
+
+      // Case OUI
+      if (rep === 'oui') {
+        doc.setFillColor(...ROUGE);
+        doc.rect(bx1-1, cy-2.5, 6, 5, 'F');
+        doc.setTextColor(...BLANC);
+        doc.setFontSize(7);
+        doc.text('X', bx1+1, cy+1.5);
+      } else {
+        doc.setDrawColor(...NOIR);
+        doc.setLineWidth(0.4);
+        doc.rect(bx1-1, cy-2.5, 6, 5, 'S');
+      }
+      // Case NON
+      if (rep === 'non') {
+        doc.setFillColor(0,100,50);
+        doc.rect(bx2-1, cy-2.5, 6, 5, 'F');
+        doc.setTextColor(...BLANC);
+        doc.setFontSize(7);
+        doc.text('X', bx2+1, cy+1.5);
+      } else {
+        doc.setDrawColor(...NOIR);
+        doc.setLineWidth(0.4);
+        doc.rect(bx2-1, cy-2.5, 6, 5, 'S');
+      }
+      y += rh;
+    });
+
+    y += 6;
+    if (y > 240) { doc.addPage(); y = 20; }
+
+    // Résultat
+    if (!hasOui) {
+      doc.setFillColor(220, 255, 220);
+      doc.rect(M, y, TW, 14, 'F');
+      doc.setFontSize(9);
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(0,100,0);
+      doc.text('✅ Réponse NON à toutes les questions — Pas de certificat médical requis.', M+3, y+6);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.text('Simplement attestez en remplissant le coupon ci-dessous.', M+3, y+11);
+    } else {
+      doc.setFillColor(255, 230, 230);
+      doc.rect(M, y, TW, 14, 'F');
+      doc.setFontSize(9);
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(...ROUGE);
+      doc.text('⚠️ Réponse OUI à au moins une question — Certificat médical obligatoire.', M+3, y+6);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100,0,0);
+      doc.text('Consultez un médecin et présentez-lui ce questionnaire renseigné.', M+3, y+11);
+    }
+    y += 20;
+
+    // ── ATTESTATION (coupon) ──
+    doc.setDrawColor(0,0,0);
+    doc.setLineWidth(0.5);
+    // Ligne pointillée
+    for (let x = M; x < W-M; x += 5) {
+      doc.line(x, y, x+2.5, y);
+    }
+    y += 8;
+
+    doc.setFillColor(0, 50, 120);
+    doc.rect(M, y, 28, 10, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...BLANC);
+    doc.text('FF TENNIS', M+1, y+4);
+    doc.text('DE TABLE', M+1, y+8.5);
+    doc.setFontSize(8);
+    doc.setTextColor(...NOIR);
+    doc.text(numRef, M+31, y+4);
+    doc.setFontSize(12);
+    doc.setFont('helvetica','bold');
+    doc.text('ATTESTATION', M+60, y+7);
+    doc.setFontSize(8);
+    doc.setFont('helvetica','italic');
+    doc.text('(Coupon à découper et à joindre avec la demande de licence)', M+60, y+12);
+    y += 18;
+
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.text('Je soussigné : ' + m.prenom + ' ' + m.nom, M, y);
+    y += 7;
+    doc.text('N° de licence : ___________________________', M, y);
+    y += 8;
+
+    const attestText = isMineur
+      ? "déclare avoir répondu NON à toutes les questions du questionnaire de santé."
+      : "déclare avoir pris connaissance des différents cas de figure me permettant d'utiliser un autoquestionnaire et atteste avoir répondu NON à toutes les questions du questionnaire de santé.";
+    const attLines = doc.splitTextToSize(attestText, TW);
+    doc.setFont('helvetica','normal');
+    doc.text(attLines, M, y);
+    y += attLines.length * 5 + 6;
+
+    // Signature
+    doc.text('Date : ' + today, M, y);
+    doc.text('Signature :', M + 90, y);
+    y += 3;
+    if (signatureDataUrl) {
+      try { doc.addImage(signatureDataUrl, 'PNG', M+88, y, 80, 18); } catch(e){}
+    }
+    doc.setDrawColor(0,0,0);
+    doc.line(M+88, y+18, W-M, y+18);
+    doc.setFontSize(7);
+    doc.setFont('helvetica','italic');
+    doc.setTextColor(100,100,100);
+    doc.text('Signature électronique — ' + new Date().toLocaleString('fr-FR'), M+88, y+22);
+
+    // ── Téléchargement ──
+    const prenomF = (m.prenom||'').replace(/\s+/g,'_');
+    const nomF    = (m.nom   ||'').replace(/\s+/g,'_');
+    const fname   = 'QS-FFTT_' + numRef.replace(/\s/g,'') + '_' + prenomF + '-' + nomF + '.pdf';
+
+    const pdfBlob = doc.output('blob');
+    const pdfUrl  = URL.createObjectURL(pdfBlob);
+    const win = window.open(pdfUrl, '_blank');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = pdfUrl; a.download = fname; a.style.display='none';
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ a.remove(); }, 2000);
+      showToast('✅ QS FFTT généré (autorisez les popups pour l\'ouvrir)', 'green');
+    } else {
+      setTimeout(()=>URL.revokeObjectURL(pdfUrl), 30000);
+      showToast('✅ QS FFTT ' + numRef + ' ouvert dans un nouvel onglet', 'green');
+    }
+
+    // Envoi vers Drive
+    try {
+      const pdfArrayBuffer = doc.output('arraybuffer');
+      const pdfUint8 = new Uint8Array(pdfArrayBuffer);
+      let binary = '';
+      for (let i = 0; i < pdfUint8.length; i++) binary += String.fromCharCode(pdfUint8[i]);
+      const pdfBase64 = btoa(binary);
+      envoyerPDFParEmail(fname, pdfBase64, m.prenom+' '+m.nom, (r.prenom||'')+' '+(r.nom||''), r.email1||'', isMineur);
+    } catch(e) { console.warn('Envoi QS FFTT Drive:', e); }
+
+  } catch(err) {
+    console.error('Erreur QS FFTT:', err);
+    alert('Erreur lors de la génération du QS FFTT : ' + err.message);
+  }
 }
 
 // À appeler depuis toggleActivity pour rafraîchir le bloc FFTT
@@ -3839,6 +4280,7 @@ function buildRows(reg) {
           avoir_montant: reg.responsable.avoirMontant || 0,
           pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
           ancv_montant: reg.responsable.ancvMontant || 0,
+          fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
           pass_aide: passAide
@@ -3867,6 +4309,7 @@ function buildRows(reg) {
         avoir_montant: reg.responsable.avoirMontant || 0,
         pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
         ancv_montant: reg.responsable.ancvMontant || 0,
+        fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
         pass_aide: passAide
