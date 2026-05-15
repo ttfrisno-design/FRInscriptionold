@@ -2910,6 +2910,7 @@ function updateMemberTotal(memberId) {
   if (!m) return;
   const isno = (state.responsable.commune || 'isno') === 'isno';
   let total = 0;
+  let ttReduction = 0;
   const counted = new Set();
   m.activities.forEach(actId => {
     const act = getActById(actId);
@@ -2920,12 +2921,16 @@ function updateMemberTotal(memberId) {
       counted.add(pairKey);
     }
     let price = isno ? act.isno : act.hc;
-    // Réduction femmes TT : -30€
-    if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+    // Réduction femmes TT : -30€ (Isneauville ET hors commune)
+    if (isTTActivity(actId) && m.sexe === 'F') { price = Math.max(0, price - 30); ttReduction += 30; }
     total += price;
   });
   const el = document.getElementById(`member-total-${memberId}`);
-  if (el) el.textContent = `Sous-total ${m.prenom || 'ce membre'} : ${total.toFixed(2)} € + adhésion FNSMR 15€`;
+  if (el) {
+    let txt = `Sous-total ${m.prenom || 'ce membre'} : ${total.toFixed(2)} € + adhésion FNSMR 15€`;
+    if (ttReduction > 0) txt += ` (réduction féminine TT : -${ttReduction}€ incluse)`;
+    el.textContent = txt;
+  }
 }
 
 // ============================================================
@@ -3103,7 +3108,7 @@ async function chargerDossierExistant() {
         }
         const isno = (localReg.responsable.commune || 'isno') === 'isno';
         let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€
+      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
         activitesExistantes.push({ actId, tarif: price, nom: act.name.replace(/\n/g,' — ') });
         totalExistant += price;
@@ -3226,7 +3231,7 @@ function calcTotals() {
         counted.add(pairKey);
       }
       let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€ si le membre est de sexe féminin et activité TT
+      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
       totalBeforeDiscount += price;
       if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
@@ -4346,7 +4351,7 @@ function buildRows(reg) {
         // Clean the name (remove \n line breaks for sheet)
         const nomClean = act.name.replace(/\n/g, ' — ');
         let price = isno ? act.isno : act.hc;
-        // Réduction femmes TT : -30€
+        // Réduction femmes TT : -30€ (Isneauville ET hors commune)
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
 
         rows.push({
@@ -4378,7 +4383,7 @@ function buildRows(reg) {
       // Non-linked activity — standard row
       const nomClean = act.name.replace(/\n/g, ' — ');
       let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€
+      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
       rows.push({
         date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
@@ -5808,7 +5813,7 @@ function ouvrirSupprActivite(code) {
       dejavu.add(dedupKey);
       const isno = (reg.responsable.commune === 'isno');
       const prix = isno ? act.isno : act.hc;
-      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom: act.name, prix, jour: act.jour, heure: act.heure });
+      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom: act.name.replace(/\n/g, ' — '), prix, jour: act.jour, heure: act.heure });
     });
   });
 
