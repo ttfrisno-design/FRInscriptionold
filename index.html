@@ -4831,20 +4831,21 @@ function renderAdmin() {
     `${r.responsable.nom} ${r.responsable.prenom} ${r.responsable.email1 || ''}`.toLowerCase().includes(search) ||
     r.members.some(m => `${m.nom} ${m.prenom}`.toLowerCase().includes(search))
   );
-  if (filterPay) filtered = filtered.filter(r => r.responsable.modePaiement === filterPay);
+
+  // Filtrage paiement : "pending" = statut en attente, sinon filtrer par mode de paiement
+  if (filterPay === 'pending') {
+    filtered = filtered.filter(r => r.status === 'pending_manual');
+  } else if (filterPay) {
+    filtered = filtered.filter(r => r.responsable.modePaiement === filterPay);
+  }
 
   if (!filtered.length) {
     c.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px;text-align:center;padding:20px">Aucun résultat pour ces critères.</p>';
     return;
   }
 
-  // Count pending
+  // Count pending (sur tous les dossiers valides, pas seulement les filtrés)
   const nbPending = validRegs.filter(r => r.status === 'pending_manual').length;
-
-  // Filter for "pending" pseudo-filter
-  if (filterPay === 'pending') {
-    filtered = filtered.filter(r => r.status === 'pending_manual');
-  }
 
   const thStyle = 'text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green-light);font-weight:700';
 
@@ -5270,15 +5271,21 @@ function ouvrirSupprActivite(code) {
   const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
   if (!reg) { showToast('Dossier introuvable', 'red'); return; }
 
-  // Construire la liste des activités de tous les membres
+  // Construire la liste des activités de tous les membres — dédupliquer par placesId
   const lignes = [];
+  const dejavu = new Set();
   reg.members.forEach(m => {
     (m.activities || []).forEach(actId => {
       const act = getActById(actId);
       if (!act) return;
+      // Clé unique = membre + placesId (évite les doublons TT comp/sans qui partagent le même onglet)
+      const placesId = siteToPlacesId(actId);
+      const dedupKey = m.id + '_' + placesId;
+      if (dejavu.has(dedupKey)) return;
+      dejavu.add(dedupKey);
       const isno = (reg.responsable.commune === 'isno');
       const prix = isno ? act.isno : act.hc;
-      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, actNom: act.name, prix, jour: act.jour, heure: act.heure });
+      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom: act.name, prix, jour: act.jour, heure: act.heure });
     });
   });
 
@@ -5381,6 +5388,7 @@ async function confirmerSupprActivite(code, ligneIdx) {
         _token:     FRI_SECRET_TOKEN,
         code:       code,
         actId:      l.actId,
+        placesId:   l.placesId || siteToPlacesId(l.actId),
         actNom:     l.actNom,
         membreNom:  l.membreNom,
         avoir:      avoir
