@@ -1695,6 +1695,72 @@ function showPlacesFullToast(actId, p) {
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
+// ── Modal inscription en liste d'attente ────────────────────
+function afficherModalListeAttente(memberId, primaryId, primaryAct, primaryLink) {
+  const existing = document.getElementById('modal-liste-attente');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-liste-attente';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;max-width:480px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;">
+      <div style="background:#0d6e6e;padding:20px 24px;text-align:center;">
+        <div style="font-size:34px;margin-bottom:6px;">⏳</div>
+        <div style="color:white;font-weight:800;font-size:16px;">Créneau complet</div>
+        <div style="color:rgba(255,255,255,0.85);font-size:13px;margin-top:4px;">
+          ${primaryAct.name.replace(/\n/g,' — ')} — ${primaryAct.jour} ${primaryAct.heure}
+        </div>
+      </div>
+      <div style="padding:22px 24px;">
+        <p style="font-size:14px;color:#333;line-height:1.7;margin:0 0 16px;">
+          Ce créneau est actuellement <strong>complet</strong>. Vous pouvez néanmoins vous inscrire sur la <strong>liste d'attente</strong>.
+        </p>
+        <div style="background:#e0f4f4;border:1.5px solid #0d6e6e;border-radius:10px;padding:14px 16px;font-size:13px;color:#0d6e6e;line-height:1.7;">
+          <strong>Ce que ça signifie :</strong><br>
+          ✅ Votre dossier sera enregistré normalement<br>
+          ✅ Vous serez informé dès qu'une place se libère<br>
+          ⚠️ Le règlement de l'adhésion ne sera demandé <strong>que si une place se libère</strong><br>
+          ℹ️ Cette activité ne compte pas pour la remise famille de 15%
+        </div>
+      </div>
+      <div style="padding:0 24px 22px;display:flex;gap:10px;">
+        <button onclick="document.getElementById('modal-liste-attente').remove()"
+          style="flex:1;padding:12px;border:1.5px solid #ccc;border-radius:10px;background:white;color:#666;font-size:13px;cursor:pointer;font-weight:600;">
+          Annuler
+        </button>
+        <button onclick="inscrireListeAttente(${memberId},'${primaryId}','${primaryLink||''}')"
+          style="flex:2;padding:12px;border:none;border-radius:10px;background:#0d6e6e;color:white;font-size:13px;cursor:pointer;font-weight:700;">
+          ⏳ M'inscrire en liste d'attente
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function inscrireListeAttente(memberId, primaryId, primaryLink) {
+  const m = state.members.find(mb => mb.id === memberId);
+  if (!m) return;
+  document.getElementById('modal-liste-attente')?.remove();
+
+  // Initialiser le set de liste d'attente
+  if (!m.waitingList) m.waitingList = new Set();
+  m.waitingList.add(primaryId);
+  if (primaryLink) m.waitingList.add(primaryLink);
+
+  // Ajouter aux activités sélectionnées (comme une inscription normale)
+  if (!m.activities.includes(primaryId))    m.activities.push(primaryId);
+  if (primaryLink && !m.activities.includes(primaryLink)) m.activities.push(primaryLink);
+
+  refreshSemainierSlots(memberId);
+  updateMemberTotal(memberId);
+  updateSelectedBadge(memberId);
+  refreshFfttBlocks();
+
+  showToast(`⏳ Inscrit sur liste d'attente : ${getActById(primaryId)?.name.replace(/\n/g,' — ')}`, '#0d6e6e', 5000);
+}
+
 function renderMembers() {
   const c = document.getElementById('members-container');
   if (state.members.length === 0) {
@@ -2084,7 +2150,8 @@ function toggleSlot(memberId, actId) {
   const placeInfo = state.places[primaryId];
   const isFull    = placeInfo && placeInfo.available <= 0;
   if (isFull && !m.activities.includes(primaryId)) {
-    showPlacesFullToast(primaryId, placeInfo);
+    // Proposer l'inscription en liste d'attente au lieu de bloquer
+    afficherModalListeAttente(memberId, primaryId, primaryAct, primaryLink);
     return;
   }
 
@@ -2911,7 +2978,9 @@ function updateMemberTotal(memberId) {
   const isno = (state.responsable.commune || 'isno') === 'isno';
   let total = 0;
   let ttReduction = 0;
+  let waitingCount = 0;
   const counted = new Set();
+  const waiting = m.waitingList || new Set();
   m.activities.forEach(actId => {
     const act = getActById(actId);
     if (!act) return;
@@ -2920,6 +2989,7 @@ function updateMemberTotal(memberId) {
       if (counted.has(pairKey)) return;
       counted.add(pairKey);
     }
+    if (waiting.has(actId)) { waitingCount++; return; } // liste d'attente : pas compté
     let price = isno ? act.isno : act.hc;
     // Réduction femmes TT : -30€ (Isneauville ET hors commune)
     if (isTTActivity(actId) && m.sexe === 'F') { price = Math.max(0, price - 30); ttReduction += 30; }
@@ -2929,6 +2999,7 @@ function updateMemberTotal(memberId) {
   if (el) {
     let txt = `Sous-total ${m.prenom || 'ce membre'} : ${total.toFixed(2)} € + adhésion FNSMR 15€`;
     if (ttReduction > 0) txt += ` (réduction féminine TT : -${ttReduction}€ incluse)`;
+    if (waitingCount > 0) txt += ` + ${waitingCount} activité(s) en liste d'attente (non facturée(s))`;
     el.textContent = txt;
   }
 }
@@ -3221,27 +3292,32 @@ function calcTotals() {
 
   state.members.forEach(m => {
     const counted = new Set();
+    const waiting = m.waitingList || new Set();
     m.activities.forEach(actId => {
       const act = getActById(actId);
       if (!act) return;
-      // For linked pairs, only count the first one encountered
       if (act.linkedWith) {
         const pairKey = [actId, act.linkedWith].sort().join('|');
         if (counted.has(pairKey)) return;
         counted.add(pairKey);
       }
+      // Activité en liste d'attente : ne pas comptabiliser dans le total à payer
+      if (waiting.has(actId)) return;
       let price = isno ? act.isno : act.hc;
       // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
       totalBeforeDiscount += price;
+      // Liste d'attente : non éligible à la remise 15%
       if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
     });
   });
 
-  // 15% off if >= 3 activities in family (inclut les activités du dossier existant)
-  const familyActCountNew = state.members.reduce((acc,m) => {
+  // 15% off if >= 3 activities in family — activités liste d'attente exclues
+  const familyActCountNew = state.members.reduce((acc, m) => {
     const counted = new Set();
+    const waiting = m.waitingList || new Set();
     m.activities.forEach(actId => {
+      if (waiting.has(actId)) return; // liste d'attente exclue
       const act = getActById(actId);
       if (act && act.linkedWith) {
         const pk = [actId, act.linkedWith].sort().join('|');
@@ -4375,7 +4451,8 @@ function buildRows(reg) {
           fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-          pass_aide: passAide
+          pass_aide: passAide,
+          statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
         });
         return;
       }
@@ -4406,7 +4483,8 @@ function buildRows(reg) {
         fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-        pass_aide: passAide
+        pass_aide: passAide,
+        statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
       });
     });
   });
