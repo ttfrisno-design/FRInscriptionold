@@ -2220,12 +2220,6 @@ function afficherConflitHoraire(nouvelleAct, actEnConflit) {
   }, 50);
 }
 
-  refreshSemainierSlots(memberId);
-  updateMemberTotal(memberId);
-  updateSelectedBadge(memberId);
-  refreshFfttBlocks();
-}
-
 function refreshSemainierSlots(memberId) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return;
@@ -3363,42 +3357,6 @@ function renderSummary() {
 // ============================================================
 // PAYMENT
 // ============================================================
-function renderPayment() {
-  const t = calcTotals();
-  document.getElementById('amount-display').textContent = `Montant total : ${t.grandTotal.toFixed(2)} €`;
-
-  let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
-  state.members.forEach(m => {
-    if (m.qsResult === 'certificat_requis') {
-      docsList += `<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">
-        ⚠️ <strong>${m.prenom} ${m.nom}</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire
-      </li>`;
-    } else if (m.qsResult !== 'attestation_ok') {
-      docsList += `<li style="padding:6px 0;border-bottom:1px solid var(--border);">
-        ❓ <strong>${m.prenom} ${m.nom}</strong> — Questionnaire santé non complété
-      </li>`;
-    }
-    // attestation_ok → déjà signée électroniquement, rien à apporter physiquement
-  });
-  if (state.responsable.passJeunes === 'oui') docsList += '<li style="padding:6px 0">📎 Copie attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
-  if (state.responsable.atoutNormandie === 'oui') docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
-  if (state.responsable.passSport === 'oui') docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
-  // Note FFTT pour les membres ayant demandé une licence
-  state.members.forEach(m => {
-    if (m.ffttWant && m.ffttPrice) {
-      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
-        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
-        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
-        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
-        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
-        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
-        + '</ul>'
-        + '</li>';
-    }
-  });
-  docsList += '</ul>';
-  document.getElementById('docs-list').innerHTML = docsList;
-}
 
 // ============================================================
 // HELLOASSO PAYMENT FLOW — 3 étapes manuelles
@@ -4390,6 +4348,17 @@ function buildRows(reg) {
         let price = isno ? act.isno : act.hc;
         // Réduction femmes TT : -30€
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+
+        rows.push({
+          date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
+          responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
+          adresse: reg.responsable.adresse, cp: reg.responsable.cp,
+          ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
+          tel1: reg.responsable.tel1, tel2: '',
+          email1: reg.responsable.email1, email2: (m.email || reg.responsable.email2 || ''),
+          membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
+          ddn: m.ddn, sexe: m.sexe,
+          activite: nomClean, jour: joursCombi, heure: heuresCombi,
           lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
           tarif: price, fnsmr: 15,
           remise: reg.totals && reg.totals.familyActCount >= 3 ? 15 : 0,
@@ -5768,15 +5737,6 @@ function saveAppsScriptUrl() {
   document.getElementById('apps-script-test-result').textContent = '✅ Configuration enregistrée — cliquez Tester pour vérifier';
 }
 
-function showAdminConfigBanner() {
-  const banner = document.getElementById('apps-script-config-banner');
-  if (!banner) return;
-  banner.style.display = 'block';
-  const savedUrl = localStorage.getItem('fri_apps_script_url') || '';
-  const savedId  = localStorage.getItem('fri_sheet_id') || '';
-  if (savedUrl) document.getElementById('apps-script-url-input').value = savedUrl;
-  if (savedId)  { const el = document.getElementById('sheet-id-input'); if(el) el.value = savedId; }
-}
 
 async function testAppsScript() {
   const url = getAppsScriptUrl();
