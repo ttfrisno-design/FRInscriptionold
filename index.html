@@ -707,9 +707,9 @@
   </div>
 
   <!-- ÉTAPE B : Aides & Pass + Avoirs + Coupon ANCV + Mode de règlement -->
-  <div class="card" id="card-step-b2" style="border-left:4px solid var(--gold);margin-top:12px">
+  <div class="card" id="card-step-b2" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
     <div class="card-title">
-      <span style="background:var(--gold);color:var(--dark);border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
+      <span id="step-b2-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
       Aides, Avoirs &amp; Mode de règlement
     </div>
 
@@ -852,7 +852,7 @@
   </div>
 
   <div class="alert alert-success">
-    ✅ Permanences chaque <strong>mardi de 16h30 à 18h30</strong> — Salle des fêtes, Place A. Cramilly, Isneauville<br>
+    ✅ Permanences chaque <strong>mardi de 16h30 à 18h30</strong> <em>(uniquement en période scolaire)</em> — Salle des fêtes, Place A. Cramilly, Isneauville<br>
     📞 02.35.59.01.01 | 📧 frisneauville@orange.fr | 🌐 www.frisneauville.fr
   </div>
 
@@ -1436,6 +1436,13 @@ function validerAidesEtProceder() {
       reg.solde = state.solde;
       pending[code] = reg;
       localStorage.setItem('fri_pending', JSON.stringify(pending));
+
+      // Marquer l'étape 2 comme validée (vert)
+      const cardB2 = document.getElementById('card-step-b2');
+      if (cardB2) { cardB2.style.borderLeftColor = 'var(--green)'; }
+      const numB2 = document.getElementById('step-b2-num');
+      if (numB2) { numB2.style.background = 'var(--green)'; numB2.style.color = 'white'; numB2.textContent = '✓'; }
+
       setupPaymentStep(code);
       // Scroller vers rubrique 3
       setTimeout(() => {
@@ -2772,7 +2779,7 @@ function renderSummary() {
     <div class="card">
       <div class="card-title">🏥 Résultats questionnaires santé</div>
       ${state.members.map(m => `<p style="font-size:14px;margin-bottom:8px;padding:8px 12px;border-radius:6px;${m.qsResult==='attestation_ok'?'background:var(--green-pale);':m.qsResult==='certificat_requis'?'background:#ffeeed;':'background:#fff9e6;'}">
-        <strong>${m.prenom} ${m.nom} :</strong> ${m.qsResult==='attestation_ok'?'✅ Attestation santé à remettre':m.qsResult==='certificat_requis'?'⚠️ Certificat médical requis':'⏳ Questionnaire non complété'}
+        <strong>${m.prenom} ${m.nom} :</strong> ${m.qsResult==='attestation_ok'?'✅ Questionnaire santé signé électroniquement — rien à apporter':m.qsResult==='certificat_requis'?'⚠️ Certificat médical obligatoire à apporter':'⏳ Questionnaire non complété'}
       </p>`).join('')}
     </div>`;
 }
@@ -2786,12 +2793,16 @@ function renderPayment() {
 
   let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
   state.members.forEach(m => {
-    const qsDoc = m.qsResult === 'attestation_ok' ? '✅ Attestation santé (signée)' :
-                  m.qsResult === 'certificat_requis' ? '⚠️ Certificat médical obligatoire' :
-                  '❓ Questionnaire non rempli';
-    docsList += `<li style="padding:6px 0;border-bottom:1px solid var(--border);">
-      <strong>${m.prenom} ${m.nom}</strong> — ${qsDoc}
-    </li>`;
+    if (m.qsResult === 'certificat_requis') {
+      docsList += `<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">
+        ⚠️ <strong>${m.prenom} ${m.nom}</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire
+      </li>`;
+    } else if (m.qsResult !== 'attestation_ok') {
+      docsList += `<li style="padding:6px 0;border-bottom:1px solid var(--border);">
+        ❓ <strong>${m.prenom} ${m.nom}</strong> — Questionnaire santé non complété
+      </li>`;
+    }
+    // attestation_ok → déjà signée électroniquement, rien à apporter physiquement
   });
   if (state.responsable.passJeunes === 'oui') docsList += '<li style="padding:6px 0">📎 Copie attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
   if (state.responsable.atoutNormandie === 'oui') docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
@@ -2804,7 +2815,7 @@ function renderPayment() {
         + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
         + '<ul style="margin:6px 0 4px 16px;padding:0;">'
         + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
-        + '<li>Régler <strong>' + m.ffttPrice + ' €</strong> lors de votre passage en permanence.</li>'
+        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
         + '</ul>'
         + '</li>';
     }
@@ -2866,13 +2877,25 @@ function saveDossier() {
   document.getElementById('dossier-code').textContent = code;
   document.getElementById('dossier-box').style.display = 'block';
 
-  // Appeler setupPaymentStep pour gérer le paiement selon le mode choisi
-  setupPaymentStep(code);
+  // Activer l'étape 2 (Aides & Pass) et scroller dessus
+  const cardB2 = document.getElementById('card-step-b2');
+  if (cardB2) {
+    cardB2.style.opacity = '1';
+    cardB2.style.pointerEvents = '';
+    cardB2.style.borderLeftColor = 'var(--gold)';
+    const numB2 = document.getElementById('step-b2-num');
+    if (numB2) { numB2.style.background = 'var(--gold)'; numB2.style.color = 'var(--dark)'; }
+  }
 
-  // Scroller vers le bloc de paiement pour que l'utilisateur le voit
+  // Désactiver card-step-b et card-step-c jusqu'à validation des aides
+  const cardB = document.getElementById('card-step-b');
+  if (cardB) { cardB.style.opacity = '0.4'; cardB.style.pointerEvents = 'none'; cardB.style.borderLeftColor = '#ccc'; }
+  const cardC = document.getElementById('card-step-c');
+  if (cardC) { cardC.style.display = 'none'; }
+
+  // Scroller vers l'étape 2
   setTimeout(() => {
-    const cardB = document.getElementById('card-step-b');
-    if (cardB) cardB.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (cardB2) cardB2.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 200);
 }
 
@@ -3610,7 +3633,7 @@ async function finaliserInscription(code) {
         </div>
         <div style="border:1px solid var(--border);border-radius:12px;padding:18px 20px;font-size:14px;color:var(--dark);line-height:1.8;">
           <div style="font-weight:700;color:var(--green);margin-bottom:8px;">📅 Apportez votre règlement lors des permanences</div>
-          <strong>Mardis de 16h30 à 18h30</strong><br>
+          <strong>Mardis de 16h30 à 18h30</strong> <em style="font-size:12px;color:#555">(uniquement en période scolaire)</em><br>
           Salle des fêtes — Place A. Cramilly, 76230 Isneauville<br>
           📧 <a href="mailto:frisneauville@orange.fr" style="color:var(--green);">frisneauville@orange.fr</a>
           &nbsp;·&nbsp;
@@ -3732,11 +3755,14 @@ function renderPayment() {
   // Docs list
   let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
   state.members.forEach(m => {
-    const qsDoc = m.qsResult === 'attestation_ok' ? '✅ Attestation santé (signée)'
-                : m.qsResult === 'certificat_requis' ? '⚠️ Certificat médical obligatoire'
-                : '❓ Questionnaire santé non complété';
-    docsList += '<li style="padding:6px 0;border-bottom:1px solid var(--border);">'
-      + '<strong>' + m.prenom + ' ' + m.nom + '</strong> — ' + qsDoc + '</li>';
+    if (m.qsResult === 'certificat_requis') {
+      docsList += '<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">'
+        + '⚠️ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire</li>';
+    } else if (m.qsResult !== 'attestation_ok') {
+      docsList += '<li style="padding:6px 0;border-bottom:1px solid var(--border);">'
+        + '❓ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Questionnaire santé non complété</li>';
+    }
+    // attestation_ok → déjà signée électroniquement, rien à apporter
   });
   if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
   if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
@@ -3749,7 +3775,7 @@ function renderPayment() {
         + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
         + '<ul style="margin:6px 0 4px 16px;padding:0;">'
         + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
-        + '<li>Régler <strong>' + m.ffttPrice + ' €</strong> lors de votre passage en permanence.</li>'
+        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
         + '</ul>'
         + '</li>';
     }
@@ -3803,6 +3829,8 @@ function buildRows(reg) {
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
           avoir_montant: reg.responsable.avoirMontant || 0,
+          pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+          ancv_montant: reg.responsable.ancvMontant || 0,
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
           pass_aide: passAide
@@ -3829,6 +3857,8 @@ function buildRows(reg) {
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
         mode_paiement: reg.responsable.modePaiement || 'helloasso',
         avoir_montant: reg.responsable.avoirMontant || 0,
+        pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+        ancv_montant: reg.responsable.ancvMontant || 0,
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
         pass_aide: passAide
@@ -4279,7 +4309,7 @@ function showConfirmation(reg, offlineOnly = false, isPaid = false) {
       <div class="card" style="max-width:480px;margin:0 auto 24px;text-align:left">
         <div class="card-title">📎 Documents à apporter</div>
         <ul style="list-style:none;padding:0;font-size:14px;">
-          ${reg.members.map(m=>'<li style="padding:5px 0;border-bottom:1px solid var(--border)"><strong>'+m.prenom+' '+m.nom+'</strong> — '+(m.qsResult==='attestation_ok'?'✅ Attestation santé signée':m.qsResult==='certificat_requis'?'⚠️ Certificat médical obligatoire':'❓ QS non rempli')+'</li>').join('')}
+          ${reg.members.map(m=>'<li style="padding:5px 0;border-bottom:1px solid var(--border)"><strong>'+m.prenom+' '+m.nom+'</strong> — '+(m.qsResult==='attestation_ok'?'✅ QS signé électroniquement — rien à apporter':m.qsResult==='certificat_requis'?'⚠️ Certificat médical obligatoire':'❓ QS non rempli')+'</li>').join('')}
           ${reg.responsable.passJeunes==='oui'?'<li style="padding:5px 0">📎 Attestation Pass\'jeunes 76</li>':''}
           ${reg.responsable.atoutNormandie==='oui'?'<li style="padding:5px 0">📎 QR Code Atout Normandie</li>':''}
           ${reg.responsable.passSport==='oui'?'<li style="padding:5px 0">📎 Justificatif Pass\'sport État</li>':''}
@@ -4289,7 +4319,7 @@ function showConfirmation(reg, offlineOnly = false, isPaid = false) {
             <div>Pour participer aux compétitions FFTT, vous devez :</div>
             <ul style="margin:6px 0 4px 16px;padding:0;">
               <li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>
-              <li>Régler <strong>${m.ffttPrice} €</strong> lors de votre passage en permanence.</li>
+              <li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant est distinct de l'adhésion FRI).</li>
             </ul>
           </li>`).join('')}
         </ul>
@@ -5864,7 +5894,6 @@ async function validerFormulaireCheques(code, total, showTrois) {
     }
   }, 500);
 })();
-
 </script>
 </body>
 </html>
