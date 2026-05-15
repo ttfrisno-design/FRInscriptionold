@@ -1490,26 +1490,27 @@ function validateStep2() {
 // RESPONSABLE
 // ============================================================
 function captureResponsable() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   state.responsable = {
-    nom: document.getElementById('rl-nom').value.trim().toUpperCase(),
-    prenom: document.getElementById('rl-prenom').value.trim(),
-    adresse: document.getElementById('rl-adresse').value.trim(),
-    cp: document.getElementById('rl-cp').value.trim(),
-    ville: document.getElementById('rl-ville').value.trim().toUpperCase(),
-    commune: document.getElementById('rl-commune').value,
-    tel1:  document.getElementById('rl-tel1').value.trim(),
-    tel2:  document.getElementById('rl-tel2')  ? document.getElementById('rl-tel2').value.trim()  : '',
-    email1: document.getElementById('rl-email1').value.trim(),
-    email2: document.getElementById('rl-email2') ? document.getElementById('rl-email2').value.trim() : '',
-    passJeunes:     document.getElementById('pass-jeunes').value,
-    atoutNormandie: document.getElementById('atout-normandie').value,
-    passSport:      document.getElementById('pass-sport').value,
-    ancv:           document.getElementById('ancv-select')?.value || 'non',
-    ancvMontant:    parseFloat(document.getElementById('ancv-montant')?.value) || 0,
-    avoir:          document.getElementById('avoir-select')?.value || 'non',
-    avoirMontant:   parseFloat(document.getElementById('avoir-montant')?.value) || 0,
+    nom:    g('rl-nom').toUpperCase(),
+    prenom: g('rl-prenom'),
+    adresse: g('rl-adresse'),
+    cp:     g('rl-cp'),
+    ville:  g('rl-ville').toUpperCase(),
+    commune: g('rl-commune') || 'isno',
+    tel1:   g('rl-tel1'),
+    tel2:   g('rl-tel2'),
+    email1: g('rl-email1'),
+    email2: g('rl-email2'),
+    passJeunes:     g('pass-jeunes')     || 'non',
+    atoutNormandie: g('atout-normandie') || 'non',
+    passSport:      g('pass-sport')      || 'non',
+    ancv:           g('ancv-select')     || 'non',
+    ancvMontant:    parseFloat(g('ancv-montant'))  || 0,
+    avoir:          g('avoir-select')    || 'non',
+    avoirMontant:   parseFloat(g('avoir-montant')) || 0,
     solde:          state.solde || calcTotals().grandTotal,
-    modePaiement:   document.getElementById('mode-paiement').value
+    modePaiement:   g('mode-paiement')   || 'helloasso'
   };
 }
 
@@ -2924,7 +2925,10 @@ function updateMemberTotal(memberId) {
       if (counted.has(pairKey)) return;
       counted.add(pairKey);
     }
-    total += isno ? act.isno : act.hc;
+    let price = isno ? act.isno : act.hc;
+    // Réduction femmes TT : -30€
+    if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+    total += price;
   });
   const el = document.getElementById(`member-total-${memberId}`);
   if (el) el.textContent = `Sous-total ${m.prenom || 'ce membre'} : ${total.toFixed(2)} € + adhésion FNSMR 15€`;
