@@ -5926,29 +5926,21 @@ function ouvrirAjoutActivite(code) {
         </div>
         <button onclick="document.getElementById('modal-ajout-activite').remove();restoreStateApresAjout()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px;">✕</button>
       </div>
-      <div style="padding:14px 20px;flex-shrink:0;border-bottom:1px solid #eee;">
-        <div style="background:${estRegle ? '#fff3e0' : '#e8f4fd'};border:1px solid ${estRegle ? '#e65100' : '#1565c0'};border-radius:8px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:${estRegle ? '#e65100' : '#1565c0'};">
+      <div style="padding:12px 20px;flex-shrink:0;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px;">
+        <div style="background:${estRegle ? '#fff3e0' : '#e8f4fd'};border:1px solid ${estRegle ? '#e65100' : '#1565c0'};border-radius:8px;padding:8px 14px;font-size:12px;color:${estRegle ? '#e65100' : '#1565c0'};flex:1;">
           ${estRegle
             ? '💳 Dossier <strong>réglé</strong> — une facture pour la nouvelle activité sera envoyée'
             : '📋 Dossier <strong>non réglé</strong> — le montant total sera mis à jour'}
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <div style="flex:0 0 180px;">
-            <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Membre concerné</label>
-            <select id="ajout-membre-select" onchange="rafraichirSemainierAjout('${code}')"
-              style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;">
-              ${membresOptions}
-            </select>
-          </div>
-          <div style="flex:1;">
-            <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Recherche rapide</label>
-            <input type="text" id="ajout-search" placeholder="Yoga, Pilates, Lundi, SM..." oninput="filtrerActivitesAjout('${code}')"
-              style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
-          </div>
+        <div style="flex-shrink:0;">
+          <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:3px;">Membre concerné</label>
+          <select id="ajout-membre-select" onchange="rafraichirSemainierAjout('${code}')"
+            style="padding:7px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;min-width:180px;">
+            ${membresOptions}
+          </select>
         </div>
-        <div id="ajout-activites-liste" style="max-height:120px;overflow-y:auto;border:1px solid #eee;border-radius:8px;margin-top:8px;display:none;"></div>
       </div>
-      <div style="padding:14px 20px;overflow-y:auto;flex:1;" id="ajout-semainier-container">
+      <div style="padding:12px 20px;overflow-y:auto;flex:1;" id="ajout-semainier-container">
         <div style="font-size:12px;color:#888;text-align:center;padding:10px;">Chargement du semainier…</div>
       </div>
     </div>`;
