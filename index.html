@@ -1466,13 +1466,42 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
+// Met à jour un champ d'un membre dans state en temps réel
+function captureMemberField(memberId, field, value) {
+  const m = state.members.find(m => m.id === memberId);
+  if (!m) return;
+  m[field] = value;
+  // Rafraîchir les tarifs si le sexe change (réduction femmes TT)
+  if (field === 'sexe') updateMemberTotal(memberId);
+  autosave();
+}
+
+// Lit tous les champs membres depuis le DOM avant validation
+function captureTousMembres() {
+  state.members.forEach(m => {
+    const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const nom    = g(`m-${m.id}-nom`).toUpperCase();
+    const prenom = g(`m-${m.id}-prenom`);
+    const ddn    = g(`m-${m.id}-ddn`);
+    const sexe   = g(`m-${m.id}-sexe`);
+    const email  = g(`m-${m.id}-email`);
+    if (nom)    m.nom    = nom;
+    if (prenom) m.prenom = prenom;
+    if (ddn)    m.ddn    = ddn;
+    if (sexe)   m.sexe   = sexe;
+    if (email)  m.email  = email;
+  });
+}
+
 function validateStep2() {
+  // Lire tous les champs DOM en premier
+  captureTousMembres();
+
   if (state.members.length === 0) { showToast('Veuillez ajouter au moins un membre.', 'red'); return false; }
   for (let m of state.members) {
     if (!m.nom || !m.prenom || !m.ddn || !m.sexe) {
-      showToast(`Veuillez compléter toutes les informations de ${m.prenom || 'ce membre'}.`, 'red'); return false;
+      showToast(`Veuillez compléter toutes les informations de ${m.prenom || 'ce membre'} (nom, prénom, date de naissance, sexe).`, 'red'); return false;
     }
-    // Validation email membre si renseigné
     if (m.email && !isValidEmail(m.email)) {
       const emailEl = document.getElementById('m-' + m.id + '-email');
       if (emailEl) emailEl.classList.add('error');
@@ -2388,21 +2417,25 @@ function memberHtml(m) {
     <div class="form-grid triple">
       <div class="field">
         <label>Nom <span class="req">*</span></label>
-        <input type="text" id="m-${m.id}-nom" value="${m.nom}" placeholder="DUPONT">
+        <input type="text" id="m-${m.id}-nom" value="${m.nom}" placeholder="DUPONT"
+          oninput="captureMemberField(${m.id},'nom',this.value.trim().toUpperCase())">
       </div>
       <div class="field">
         <label>Prénom <span class="req">*</span></label>
-        <input type="text" id="m-${m.id}-prenom" value="${m.prenom}" placeholder="Léa">
+        <input type="text" id="m-${m.id}-prenom" value="${m.prenom}" placeholder="Léa"
+          oninput="captureMemberField(${m.id},'prenom',this.value.trim())">
       </div>
       <div class="field">
         <label>Date de naissance <span class="req">*</span></label>
-        <input type="date" id="m-${m.id}-ddn" value="${m.ddn}">
+        <input type="date" id="m-${m.id}-ddn" value="${m.ddn}"
+          onchange="captureMemberField(${m.id},'ddn',this.value)">
       </div>
     </div>
     <div class="form-grid membre-sexe-email-grid" style="gap:14px">
       <div class="field">
         <label>Sexe <span class="req">*</span></label>
-        <select id="m-${m.id}-sexe">
+        <select id="m-${m.id}-sexe"
+          onchange="captureMemberField(${m.id},'sexe',this.value);updateMemberTotal(${m.id})">
           <option value="" ${!m.sexe?'selected':''}>—</option>
           <option value="F" ${m.sexe==='F'?'selected':''}>Féminin</option>
           <option value="M" ${m.sexe==='M'?'selected':''}>Masculin</option>
@@ -2410,7 +2443,8 @@ function memberHtml(m) {
       </div>
       <div class="field">
         <label>E-mail membre <span style="font-size:11px;color:var(--gray);font-weight:400">(facultatif)</span></label>
-        <input type="email" id="m-${m.id}-email" value="${m.email||''}" placeholder="prenom.nom@exemple.fr">
+        <input type="email" id="m-${m.id}-email" value="${m.email||''}" placeholder="prenom.nom@exemple.fr"
+          oninput="captureMemberField(${m.id},'email',this.value.trim())">
       </div>
     </div>
 
