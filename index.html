@@ -5536,7 +5536,19 @@ function renderAdmin() {
             <span style="color:rgba(255,255,255,0.4);font-size:11px">${reg.responsable.email1 || '—'}</span><br>
             <span style="color:rgba(255,255,255,0.4);font-size:11px">${reg.responsable.tel1 || ''}</span>
           </td>
-          <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => `${m.prenom} ${m.nom}`).join('<br>')}</td>
+          <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => {
+            const actsActives = (m.activities || []).filter(a => {
+              const act = getActById(a); return act && act.linkedWith !== a;
+            });
+            const actsStr = actsActives.length
+              ? actsActives.map(a => {
+                  const act = getActById(a);
+                  const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
+                  return act ? `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${act.name.replace(/\n/g,' ')}</span>` : '';
+                }).filter(Boolean).join('<br>')
+              : '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
+            return `<div style="margin-bottom:4px;"><strong style="color:white;font-size:12px">${m.prenom} ${m.nom}</strong><br>${actsStr}</div>`;
+          }).join('')}</td>
           <td style="padding:10px 12px;text-align:center;font-weight:700;color:white">${reg.totals ? reg.totals.grandTotal : '—'}€</td>
           <td style="padding:10px 12px;font-size:12px">${modeLab}${statutBadge}</td>
           <td style="padding:10px 12px;text-align:center;font-size:13px">${reg.members.map(m => `${m.qsResult==='attestation_ok'?'✅':m.qsResult==='certificat_requis'?'⚠️':'❓'}`).join(' ')}</td>
@@ -6110,8 +6122,8 @@ async function selectionnerActiviteAjout(code, actId) {
 
   const modal = document.getElementById('modal-ajout-activite');
   if (!modal) return;
-  const reg     = modal._reg;
-  const estRegle = modal._estRegle;
+  const reg          = modal._reg;
+  const estRegle     = modal._estRegle;
   const existingActCount = modal._existingActCount;
 
   const act = getActById(actId);
@@ -6124,38 +6136,66 @@ async function selectionnerActiviteAjout(code, actId) {
   let prix = isno ? act.isno : act.hc;
   if (isTTActivity(actId) && membre?.sexe === 'F') prix = Math.max(0, prix - 30);
 
-  // Calcul remise 15% : tenir compte des activités existantes
   const totalActsApres = existingActCount + 1;
   const aRemiseApres   = totalActsApres >= 3;
   const eligibleRemise = !['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'].includes(actId) && !actId.startsWith('tt-');
   let prixApresRemise  = prix;
-  if (aRemiseApres && eligibleRemise) {
-    prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
-  }
+  if (aRemiseApres && eligibleRemise) prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
 
   const placeInfo = state.places[actId];
   const isFull = placeInfo && placeInfo.available <= 0;
-  const statutPlace = isFull
-    ? '⚠️ Créneau complet — inscription en liste d\'attente'
-    : placeInfo ? `✅ ${placeInfo.available} place(s) disponible(s)` : '❓ Places non vérifiées';
 
-  const remiseInfo = aRemiseApres && eligibleRemise
-    ? `<div style="background:#e8f5e9;border:1px solid #52b788;border-radius:6px;padding:8px 12px;margin:8px 0;font-size:12px;color:#2d6a4f;">
-        🎉 Remise famille 15% applicable (${totalActsApres} activités au total) → prix final : <strong>${prixApresRemise.toFixed(2)} €</strong></div>`
-    : '';
-  const listeAttenteInfo = isFull
-    ? `<div style="background:#e0f7fa;border:1px solid #00838f;border-radius:6px;padding:8px 12px;margin:8px 0;font-size:12px;color:#006064;">
-        ⏳ Inscription sur liste d'attente — pas de règlement immédiat</div>` : '';
+  // ── Modal de confirmation avec bouton Valider ──
+  const existing = document.getElementById('modal-confirm-ajout');
+  if (existing) existing.remove();
 
-  if (!confirm(
-    `Ajouter "${act.name.replace(/\n/g,' ')}" pour ${membre?.prenom} ${membre?.nom} ?\n`
-    + `Prix : ${prixApresRemise.toFixed(2)} €${aRemiseApres && eligibleRemise ? ' (remise 15% incluse)' : ''}\n`
-    + (isFull ? `⚠️ Créneau complet → liste d'attente\n` : ``)
-    + `\nContinuer ?`
-  )) return;
+  const mc = document.createElement('div');
+  mc.id = 'modal-confirm-ajout';
+  mc.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+  mc.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden;">
+      <div style="background:#1565c0;padding:16px 20px;">
+        <div style="color:white;font-weight:700;font-size:14px;">➕ Confirmer l'ajout</div>
+        <div style="color:rgba(255,255,255,0.75);font-size:12px;">Dossier ${code} — ${membre?.prenom} ${membre?.nom}</div>
+      </div>
+      <div style="padding:20px;">
+        <div style="font-weight:700;font-size:14px;color:#1a2e22;margin-bottom:4px;">${act.name.replace(/\n/g,' — ')}</div>
+        <div style="font-size:12px;color:#666;margin-bottom:14px;">📅 ${act.jour} · ⏰ ${act.heure} · 📍 ${act.lieu||'—'} · 🎓 ${(act.animateur||'—').split('/')[0].trim()}</div>
+        ${isFull
+          ? `<div style="background:#e0f7fa;border:1px solid #00838f;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#006064;">
+              ⏳ Créneau complet — inscription en <strong>liste d'attente</strong><br>
+              <span style="font-size:11px;">Pas de règlement immédiat. L'adhérent sera prévenu si une place se libère.</span></div>`
+          : `<div style="background:#e8f5e9;border:1px solid #52b788;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#2d6a4f;">
+              ✅ ${placeInfo ? placeInfo.available + ' place(s) disponible(s)' : 'Créneau disponible'}</div>`}
+        ${aRemiseApres && eligibleRemise
+          ? `<div style="background:#e8f5e9;border:1px solid #52b788;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#2d6a4f;">
+              🎉 Remise famille 15% : ${prix.toFixed(2)} € → <strong>${prixApresRemise.toFixed(2)} €</strong> (${totalActsApres} activités)</div>`
+          : ''}
+        <div style="background:#f0f7f3;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:#666;margin-bottom:2px;">${estRegle ? 'TARIF À RÉGLER IMMÉDIATEMENT' : 'TARIF (montant dossier mis à jour)'}</div>
+          <div style="font-size:24px;font-weight:900;color:#1a2e22;">${prixApresRemise.toFixed(2)} €</div>
+        </div>
+      </div>
+      <div style="padding:0 20px 20px;display:flex;gap:10px;">
+        <button onclick="document.getElementById('modal-confirm-ajout').remove()"
+          style="flex:1;padding:11px;border:1.5px solid #ccc;border-radius:10px;background:white;color:#666;font-size:13px;cursor:pointer;font-weight:600;">
+          Annuler
+        </button>
+        <button id="btn-valider-ajout"
+          style="flex:2;padding:11px;border:none;border-radius:10px;background:#1565c0;color:white;font-size:13px;cursor:pointer;font-weight:700;">
+          ✅ Valider l'ajout
+        </button>
+      </div>
+    </div>`;
 
-  modal.remove();
-  await confirmerAjoutActivite(code, actId, membreIdx, prixApresRemise, isFull, estRegle, existingActCount);
+  document.body.appendChild(mc);
+  mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
+
+  document.getElementById('btn-valider-ajout').addEventListener('click', async () => {
+    mc.remove();
+    modal.remove();
+    await confirmerAjoutActivite(code, actId, membreIdx, prixApresRemise, isFull, estRegle, existingActCount);
+  });
 }
 
 async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListeAttente, estRegle, existingActCount) {
