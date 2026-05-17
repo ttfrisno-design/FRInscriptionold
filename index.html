@@ -5543,6 +5543,7 @@ function renderAdmin() {
           <td style="padding:10px 12px;text-align:center;min-width:110px">
             ${validateBtn}
             <button onclick="exportSingleExcel(${reg.id})" style="background:var(--green);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" title="Exporter">📊</button>
+            <button onclick="ouvrirAjoutActivite('${reg.code || reg.id}')" style="background:rgba(21,101,192,0.85);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Ajouter une activité">➕</button>
             <button onclick="ouvrirSupprActivite('${reg.code || reg.id}')" style="background:rgba(230,81,0,0.8);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer une activité">➖</button>
             <button onclick="deleteRegistration(${reg.id})" style="background:rgba(192,57,43,0.7);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer le dossier">🗑</button>
           </td>
@@ -5875,6 +5876,271 @@ function showAdminConfigBanner() {
 // ============================================================
 // SUPPRESSION D'UNE ACTIVITÉ D'UN DOSSIER (admin)
 // ============================================================
+// ============================================================
+// AJOUT D'UNE ACTIVITÉ À UN DOSSIER EXISTANT (admin)
+// ============================================================
+function ouvrirAjoutActivite(code) {
+  if (!requireAdmin()) return;
+  const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+  const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
+  if (!reg) { showToast('Dossier introuvable', 'red'); return; }
+
+  const estRegle = reg.status && reg.status !== 'pending_manual';
+  const isno     = reg.responsable.commune === 'isno';
+  const t        = reg.totals || {};
+  const existingActCount = t.familyActCount || 0;
+
+  // Activités déjà dans le dossier (pour éviter les doublons et détecter chevauchements)
+  const activitesExistantes = new Set();
+  reg.members.forEach(m => (m.activities || []).forEach(a => activitesExistantes.add(a)));
+
+  // Construire la liste des membres
+  const membresOptions = reg.members.map((m, idx) =>
+    `<option value="${idx}">${m.prenom} ${m.nom}</option>`
+  ).join('');
+
+  const existing = document.getElementById('modal-ajout-activite');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-ajout-activite';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:620px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;">
+      <div style="background:#1565c0;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <div>
+          <div style="color:white;font-weight:700;font-size:15px;">➕ Ajouter une activité</div>
+          <div style="color:rgba(255,255,255,0.75);font-size:12px;">Dossier ${code} — ${reg.responsable.prenom} ${reg.responsable.nom}</div>
+        </div>
+        <button onclick="document.getElementById('modal-ajout-activite').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px;">✕</button>
+      </div>
+      <div style="padding:20px;overflow-y:auto;flex:1;">
+        <div style="background:${estRegle ? '#fff3e0' : '#e8f4fd'};border:1px solid ${estRegle ? '#e65100' : '#1565c0'};border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:${estRegle ? '#e65100' : '#1565c0'};">
+          ${estRegle
+            ? '💳 Dossier <strong>réglé</strong> — une facture pour la nouvelle activité sera envoyée'
+            : '📋 Dossier <strong>non réglé</strong> — le montant total sera mis à jour'}
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:6px;">Membre concerné</label>
+          <select id="ajout-membre-select" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;">
+            ${membresOptions}
+          </select>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:6px;">Rechercher une activité</label>
+          <input type="text" id="ajout-search" placeholder="Yoga, Pilates, Tennis..." oninput="filtrerActivitesAjout('${code}')"
+            style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
+        </div>
+
+        <div id="ajout-activites-liste" style="max-height:320px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">
+          <div style="padding:20px;text-align:center;color:#999;font-size:13px;">Tapez le nom d'une activité pour la rechercher</div>
+        </div>
+      </div>
+    </div>`;
+
+  modal._reg    = reg;
+  modal._code   = code;
+  modal._estRegle = estRegle;
+  modal._existingActCount = existingActCount;
+  modal._activitesExistantes = activitesExistantes;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Focus sur la recherche
+  setTimeout(() => { const el = document.getElementById('ajout-search'); if (el) el.focus(); }, 100);
+}
+
+function filtrerActivitesAjout(code) {
+  const modal = document.getElementById('modal-ajout-activite');
+  if (!modal) return;
+  const reg = modal._reg;
+  const activitesExistantes = modal._activitesExistantes;
+  const query = (document.getElementById('ajout-search')?.value || '').toLowerCase().trim();
+  const liste = document.getElementById('ajout-activites-liste');
+  if (!liste) return;
+
+  if (query.length < 2) {
+    liste.innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">Tapez au moins 2 caractères</div>';
+    return;
+  }
+
+  const isno = reg.responsable.commune === 'isno';
+  const membreIdx = parseInt(document.getElementById('ajout-membre-select')?.value || '0');
+  const membre = reg.members[membreIdx];
+
+  // Collecter toutes les activités du catalogue
+  const resultats = [];
+  const allCats = typeof buildCategoryTabs === 'function' ? buildCategoryTabs() : [];
+  allCats.forEach(cat => {
+    (cat.activities || []).forEach(act => {
+      if (!act || !act.name) return;
+      const nomLower = act.name.toLowerCase().replace(/\n/g, ' ');
+      if (nomLower.indexOf(query) < 0) return;
+      if (activitesExistantes.has(act.id)) return; // déjà inscrit
+      const placeInfo = state.places[act.id];
+      const dispo = placeInfo ? placeInfo.available : '?';
+      resultats.push({ act, dispo, isno });
+    });
+  });
+
+  if (resultats.length === 0) {
+    liste.innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">Aucune activité disponible pour "' + query + '"</div>';
+    return;
+  }
+
+  liste.innerHTML = resultats.slice(0, 20).map(({ act, dispo }) => {
+    let prix = isno ? act.isno : act.hc;
+    if (isTTActivity(act.id) && membre?.sexe === 'F') prix = Math.max(0, prix - 30);
+    const placesBadge = dispo === 0
+      ? '<span style="background:#fdecea;color:#c0392b;border-radius:4px;padding:2px 6px;font-size:10px;">Complet</span>'
+      : dispo !== '?'
+        ? `<span style="background:#e8f5e9;color:#2d6a4f;border-radius:4px;padding:2px 6px;font-size:10px;">${dispo} place${dispo>1?'s':''}</span>`
+        : '';
+    return `<div style="border-bottom:1px solid #f0f0f0;padding:10px 14px;cursor:pointer;transition:background 0.1s;"
+                 onmouseenter="this.style.background='#e8f4fd'" onmouseleave="this.style.background='white'"
+                 onclick="selectionnerActiviteAjout('${code}', '${act.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:#1a2e22;">${act.name.replace(/\n/g,' — ')}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">📅 ${act.jour} ${act.heure} · 📍 ${act.lieu || '—'} · 🎓 ${act.animateur || '—'}</div>
+        </div>
+        <div style="text-align:right;margin-left:12px;">
+          <div style="font-weight:700;color:#1565c0;font-size:13px;">${prix} €</div>
+          ${placesBadge}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function selectionnerActiviteAjout(code, actId) {
+  const modal = document.getElementById('modal-ajout-activite');
+  if (!modal) return;
+  const reg     = modal._reg;
+  const estRegle = modal._estRegle;
+  const existingActCount = modal._existingActCount;
+
+  const act = getActById(actId);
+  if (!act) return;
+
+  const membreIdx = parseInt(document.getElementById('ajout-membre-select')?.value || '0');
+  const membre    = reg.members[membreIdx];
+  const isno      = reg.responsable.commune === 'isno';
+
+  let prix = isno ? act.isno : act.hc;
+  if (isTTActivity(actId) && membre?.sexe === 'F') prix = Math.max(0, prix - 30);
+
+  // Calcul remise 15% : tenir compte des activités existantes
+  const totalActsApres = existingActCount + 1;
+  const aRemiseApres   = totalActsApres >= 3;
+  const eligibleRemise = !['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'].includes(actId) && !actId.startsWith('tt-');
+  let prixApresRemise  = prix;
+  if (aRemiseApres && eligibleRemise) {
+    prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
+  }
+
+  const placeInfo = state.places[actId];
+  const isFull = placeInfo && placeInfo.available <= 0;
+  const statutPlace = isFull
+    ? '⚠️ Créneau complet — inscription en liste d\'attente'
+    : placeInfo ? `✅ ${placeInfo.available} place(s) disponible(s)` : '❓ Places non vérifiées';
+
+  const remiseInfo = aRemiseApres && eligibleRemise
+    ? `<div style="background:#e8f5e9;border:1px solid #52b788;border-radius:6px;padding:8px 12px;margin:8px 0;font-size:12px;color:#2d6a4f;">
+        🎉 Remise famille 15% applicable (${totalActsApres} activités au total) → prix final : <strong>${prixApresRemise.toFixed(2)} €</strong></div>`
+    : '';
+  const listeAttenteInfo = isFull
+    ? `<div style="background:#e0f7fa;border:1px solid #00838f;border-radius:6px;padding:8px 12px;margin:8px 0;font-size:12px;color:#006064;">
+        ⏳ Inscription sur liste d'attente — pas de règlement immédiat</div>` : '';
+
+  if (!confirm(
+    `Ajouter "${act.name.replace(/\n/g,' ')}" pour ${membre?.prenom} ${membre?.nom} ?\n`
+    + `Prix : ${prixApresRemise.toFixed(2)} €${aRemiseApres && eligibleRemise ? ' (remise 15% incluse)' : ''}\n`
+    + (isFull ? `⚠️ Créneau complet → liste d'attente\n` : ``)
+    + `\nContinuer ?`
+  )) return;
+
+  modal.remove();
+  await confirmerAjoutActivite(code, actId, membreIdx, prixApresRemise, isFull, estRegle, existingActCount);
+}
+
+async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListeAttente, estRegle, existingActCount) {
+  const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+  const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
+  if (regIdx < 0) { showToast('Dossier introuvable', 'red'); return; }
+
+  const reg    = allRegs[regIdx];
+  const membre = reg.members[membreIdx];
+  const act    = getActById(actId);
+  if (!act || !membre) return;
+
+  const isno = reg.responsable.commune === 'isno';
+  const linkedId = act.linkedWith || null;
+
+  // 1. Mettre à jour localStorage
+  membre.activities = membre.activities || [];
+  if (!membre.activities.includes(actId)) membre.activities.push(actId);
+  if (linkedId && !membre.activities.includes(linkedId)) membre.activities.push(linkedId);
+
+  // Marquer liste d'attente si créneau complet
+  if (enListeAttente) {
+    if (!membre.waitingList) membre.waitingList = [];
+    if (!membre.waitingList.includes(actId)) membre.waitingList.push(actId);
+  }
+
+  // Mettre à jour les totaux
+  if (!estRegle) {
+    if (!reg.totals) reg.totals = { grandTotal: 0, familyActCount: 0 };
+    if (!enListeAttente) {
+      reg.totals.grandTotal    = (reg.totals.grandTotal    || 0) + prixFinal;
+      reg.totals.familyActCount = (reg.totals.familyActCount || 0) + 1;
+    }
+  }
+
+  localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
+
+  // 2. Envoyer vers GAS
+  const url = getAppsScriptUrl();
+  if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
+    try {
+      const statutInscription = enListeAttente ? 'Liste attente' : '';
+      const nouveauTotal = reg.totals ? reg.totals.grandTotal : 0;
+      await callAppsScriptFetch(url, {
+        action:           'ajouterActiviteDossier',
+        _token:           FRI_SECRET_TOKEN,
+        code:             code,
+        actId:            actId,
+        placesId:         siteToPlacesId(actId),
+        actNom:           act.name.replace(/\n/g, ' — '),
+        actLinkedId:      linkedId || '',
+        actLinkedNom:     linkedId ? (getActById(linkedId)?.name || '').replace(/\n/g, ' — ') : '',
+        membreNom:        membre.nom,
+        membrePrenom:     membre.prenom,
+        membreDdn:        membre.ddn || '',
+        membreSexe:       membre.sexe || '',
+        jour:             act.jour || '',
+        heure:            act.heure || '',
+        lieu:             act.lieu || '',
+        animateur:        act.animateur || '',
+        tarif:            prixFinal,
+        nouveauTotal:     nouveauTotal,
+        estRegle:         estRegle,
+        statutInscription: statutInscription,
+        existingActCount: existingActCount,
+        ffttPrice:        0
+      });
+      console.log('[FRI] ajouterActiviteDossier envoyé à GAS');
+    } catch(e) { console.warn('Ajout activité GAS KO:', e); }
+  }
+
+  showToast(`✅ "${act.name.replace(/\n/g,' ')}" ajoutée au dossier ${code}`, '#1565c0', 5000);
+  renderAdmin();
+  renderAdminStats();
+}
+
+
 function ouvrirSupprActivite(code) {
   if (!requireAdmin()) return;
   const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
