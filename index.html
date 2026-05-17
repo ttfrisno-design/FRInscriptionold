@@ -6192,7 +6192,7 @@ async function selectionnerActiviteAjout(code, actId) {
 }
 
 async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListeAttente, estRegle, existingActCount) {
-  restoreStateApresAjout(); // toujours restaurer avant de modifier localStorage
+  restoreStateApresAjout();
   const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
   const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
   if (regIdx < 0) { showToast('Dossier introuvable', 'red'); return; }
@@ -6200,71 +6200,86 @@ async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListe
   const reg    = allRegs[regIdx];
   const membre = reg.members[membreIdx];
   const act    = getActById(actId);
-  if (!act || !membre) return;
+  if (!act || !membre) { showToast('Activité ou membre introuvable', 'red'); return; }
 
-  const isno = reg.responsable.commune === 'isno';
   const linkedId = act.linkedWith || null;
 
   // 1. Mettre à jour localStorage
   membre.activities = membre.activities || [];
-  if (!membre.activities.includes(actId)) membre.activities.push(actId);
+  if (!membre.activities.includes(actId))    membre.activities.push(actId);
   if (linkedId && !membre.activities.includes(linkedId)) membre.activities.push(linkedId);
 
-  // Marquer liste d'attente si créneau complet
   if (enListeAttente) {
     if (!membre.waitingList) membre.waitingList = [];
     if (!membre.waitingList.includes(actId)) membre.waitingList.push(actId);
   }
 
-  // Mettre à jour les totaux
-  if (!estRegle) {
-    if (!reg.totals) reg.totals = { grandTotal: 0, familyActCount: 0 };
-    if (!enListeAttente) {
-      reg.totals.grandTotal    = (reg.totals.grandTotal    || 0) + prixFinal;
+  // Calcul du nouveau total — fonctionne que le dossier soit réglé ou non
+  // On ajoute le prix de la nouvelle activité au total existant
+  const ancienTotal = reg.totals ? (reg.totals.grandTotal || 0) : 0;
+  let nouveauTotal  = ancienTotal;
+  if (!enListeAttente) {
+    nouveauTotal = Math.round((ancienTotal + prixFinal) * 100) / 100;
+    if (!reg.totals) reg.totals = { grandTotal: nouveauTotal, familyActCount: 1 };
+    else {
+      reg.totals.grandTotal     = nouveauTotal;
       reg.totals.familyActCount = (reg.totals.familyActCount || 0) + 1;
     }
   }
 
   localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
+  console.log('[FRI] confirmerAjoutActivite — code:', code, 'actId:', actId,
+              'membre:', membre.prenom, membre.nom,
+              'estRegle:', estRegle, 'ancienTotal:', ancienTotal, 'nouveauTotal:', nouveauTotal,
+              'enListeAttente:', enListeAttente);
 
   // 2. Envoyer vers GAS
   const url = getAppsScriptUrl();
-  if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
-    try {
-      const statutInscription = enListeAttente ? 'Liste attente' : '';
-      const nouveauTotal = reg.totals ? reg.totals.grandTotal : 0;
-      await callAppsScriptFetch(url, {
-        action:           'ajouterActiviteDossier',
-        _token:           FRI_SECRET_TOKEN,
-        code:             code,
-        actId:            actId,
-        placesId:         siteToPlacesId(actId),
-        actNom:           act.name.replace(/\n/g, ' — '),
-        actLinkedId:      linkedId || '',
-        actLinkedNom:     linkedId ? (getActById(linkedId)?.name || '').replace(/\n/g, ' — ') : '',
-        membreNom:        membre.nom,
-        membrePrenom:     membre.prenom,
-        membreDdn:        membre.ddn || '',
-        membreSexe:       membre.sexe || '',
-        jour:             act.jour || '',
-        heure:            act.heure || '',
-        lieu:             act.lieu || '',
-        animateur:        act.animateur || '',
-        tarif:            prixFinal,
-        nouveauTotal:     nouveauTotal,
-        estRegle:         estRegle,
-        statutInscription: statutInscription,
-        existingActCount: existingActCount,
-        ffttPrice:        0
-      });
-      console.log('[FRI] ajouterActiviteDossier envoyé à GAS');
-    } catch(e) { console.warn('Ajout activité GAS KO:', e); }
+  if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') {
+    showToast('⚠️ URL Apps Script non configurée', 'red'); return;
+  }
+
+  const payload = {
+    action:            'ajouterActiviteDossier',
+    _token:            FRI_SECRET_TOKEN,
+    code:              code,
+    actId:             actId,
+    placesId:          siteToPlacesId(actId),
+    actNom:            act.name.replace(/\n/g, ' — '),
+    actLinkedId:       linkedId || '',
+    actLinkedNom:      linkedId ? (getActById(linkedId)?.name || '').replace(/\n/g, ' — ') : '',
+    membreNom:         membre.nom       || '',
+    membrePrenom:      membre.prenom    || '',
+    membreDdn:         membre.ddn       || '',
+    membreSexe:        membre.sexe      || '',
+    jour:              act.jour         || '',
+    heure:             act.heure        || '',
+    lieu:              act.lieu         || '',
+    animateur:         act.animateur    || '',
+    tarif:             prixFinal,
+    nouveauTotal:      nouveauTotal,
+    estRegle:          estRegle === true || estRegle === 'true',
+    statutInscription: enListeAttente ? 'Liste attente' : '',
+    existingActCount:  existingActCount || 0,
+    ffttPrice:         0
+  };
+
+  console.log('[FRI] Payload GAS:', JSON.stringify(payload).substring(0, 200));
+
+  try {
+    await callAppsScriptFetch(url, payload);
+    console.log('[FRI] ✅ ajouterActiviteDossier envoyé');
+  } catch(e) {
+    console.error('[FRI] ❌ Ajout GAS KO:', e);
+    showToast('⚠️ Erreur envoi vers GAS : ' + e.message, 'red', 6000);
   }
 
   showToast(`✅ "${act.name.replace(/\n/g,' ')}" ajoutée au dossier ${code}`, '#1565c0', 5000);
   renderAdmin();
   renderAdminStats();
 }
+
+
 
 
 function ouvrirSupprActivite(code) {
