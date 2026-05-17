@@ -6020,22 +6020,23 @@ function rafraichirSemainierAjout(code) {
     ${semainierHtml(tmpId)}`;
 
   // Intercepter les clics sur les slots du semainier
-  // Remplacer toggleSlot par selectionnerActiviteAjout pour ce contexte
-  // On surcharge temporairement via un délégué sur le container
   container.addEventListener('click', function(e) {
-    const slotEl = e.target.closest('[data-act-id]');
+    const slotEl = e.target.closest('.sem-slot') || e.target.closest('[data-act]');
     if (!slotEl) return;
-    const actId = slotEl.dataset.actId;
+    const actId = slotEl.dataset.act;
     if (!actId) return;
+    // Bloquer toggleSlot et tout autre handler
+    e.stopImmediatePropagation();
+    e.preventDefault();
     // Vérifier que ce n'est pas déjà inscrit
     if (modal._activitesExistantes && modal._activitesExistantes.has(actId)) {
       showToast('Ce membre est déjà inscrit à cette activité', '#856404', 3000);
       return;
     }
-    // Restaurer l'état avant de procéder (pour que confirmerAjoutActivite trouve les bonnes données)
+    // Restaurer l'état avant de procéder
     restoreStateApresAjout();
     selectionnerActiviteAjout(code, actId);
-  }, { capture: true });
+  }, true); // capture = true → s'exécute avant onclick inline
 }
 
 function filtrerActivitesAjout(code) {
