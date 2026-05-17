@@ -5687,7 +5687,11 @@ function mergerDossiersSheet(dossiers) {
         id:     d.code,
         code:   d.code,
         date:   d.date || '',
-        status: (d.statut && d.statut.toLowerCase().includes('attente')) ? 'pending_manual' : 'paid',
+        status: (d.statut && (d.statut.toLowerCase().includes('attente') || d.statut.toLowerCase().includes('pending')))
+                 ? 'pending_manual'
+                 : (d.statut && d.statut.toLowerCase().includes('pay'))
+                   ? 'paid'
+                   : 'pending_manual',  // par défaut non réglé si statut inconnu
         responsable: {
           nom:          d.nom_responsable   || d.nom_membre || '',
           prenom:       d.prenom_responsable || d.prenom_membre || '',
@@ -5915,7 +5919,12 @@ function ouvrirSupprActivite(code) {
         <button onclick="document.getElementById('modal-suppr-activite').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px">✕</button>
       </div>
       <div style="padding:20px">
-        <p style="font-size:13px;color:#555;margin-bottom:14px">Sélectionnez l'activité à supprimer. Un avoir sera calculé et noté dans le dossier.</p>
+        <p style="font-size:13px;color:#555;margin-bottom:14px">Sélectionnez l'activité à supprimer.</p>
+        <div style="background:${estRegle ? '#fff3e0' : '#e8f4fd'};border:1px solid ${estRegle ? '#e65100' : '#1565c0'};border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:${estRegle ? '#e65100' : '#1565c0'};">
+          ${estRegle
+            ? '💳 Dossier <strong>réglé</strong> — la ligne restera visible en orange + avoir crédité'
+            : '📋 Dossier <strong>non réglé</strong> — suppression complète + montant mis à jour'}
+        </div>
         <div id="liste-activites-suppr">
           ${lignes.map((l, i) => {
             // Calcul avoir : tenir compte de la remise 15% et TT femme -30€
@@ -5985,30 +5994,40 @@ async function confirmerSupprActivite(code, ligneIdx) {
   if (!confirm(msgConfirm)) return;
   modal.remove();
 
+  console.log('[FRI] Suppression activité — code:', code, 'estRegle:', estRegle, 'status:', reg.status, 'actId:', l.actId);
+
   // ── CAS 1 : Non réglé — suppression complète ──
   if (!estRegle) {
     // 1a. Supprimer l'activité dans localStorage et recalculer les totaux
     const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
     const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
     if (regIdx >= 0 && membre) {
+      // Trouver aussi l'actId lié (linkedWith)
+      const actObj2 = getActById(l.actId) || {};
+      const linkedId = actObj2.linkedWith || null;
+
       allRegs[regIdx].members.forEach(m => {
         if (m.id === membre.id) {
-          m.activities = (m.activities || []).filter(a => a !== l.actId);
+          // Supprimer l'actId ET son lié s'il existe
+          m.activities = (m.activities || []).filter(a => a !== l.actId && a !== linkedId);
+          // Supprimer aussi de la waitingList si présent
+          if (m.waitingList) {
+            m.waitingList = Array.from(m.waitingList || []).filter(a => a !== l.actId && a !== linkedId);
+          }
         }
       });
-      // Recalculer le grandTotal sans l'activité supprimée
-      // On met à jour reg.totals avec le nouveau calcul
+      // Recalcul du grandTotal
       const regMaj = allRegs[regIdx];
-      // Recalc simple : enlever le prix de l'activité du grandTotal
       if (regMaj.totals) {
         let prixActe = l.prix;
         if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
           prixActe = Math.round(prixActe * 0.85 * 100) / 100;
         }
-        regMaj.totals.grandTotal    = Math.max(0, (regMaj.totals.grandTotal    || 0) - prixActe);
+        regMaj.totals.grandTotal     = Math.max(0, (regMaj.totals.grandTotal    || 0) - prixActe);
         regMaj.totals.familyActCount = Math.max(0, (regMaj.totals.familyActCount || 1) - 1);
       }
       localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
+      console.log('[FRI] localStorage mis à jour — activité supprimée, nouveau total:', regMaj.totals?.grandTotal);
     }
 
     // 1b. Supprimer dans le Sheet via GAS (action = supprimerActiviteNonRegle)
