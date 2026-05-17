@@ -5964,45 +5964,104 @@ async function confirmerSupprActivite(code, ligneIdx) {
 
   const actObj  = getActById(l.actId) || {};
   const membre  = reg.members.find(m => m.id === l.membreId);
-  let avoir = l.prix;
-  if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
-    avoir = Math.round(avoir * 0.85 * 100) / 100;
+
+  // Détecter si le dossier est réglé
+  const estRegle = reg.status && reg.status !== 'pending_manual';
+
+  // Calcul avoir (seulement si réglé)
+  let avoir = 0;
+  if (estRegle) {
+    avoir = l.prix;
+    if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
+      avoir = Math.round(avoir * 0.85 * 100) / 100;
+    }
   }
 
-  if (!confirm(`Supprimer "${l.actNom}" pour ${l.membreNom} ?\nAvoir crédité : ${avoir.toFixed(2)} €\n\nCette action est irréversible.`)) return;
+  // Message de confirmation adapté au cas
+  const msgConfirm = estRegle
+    ? `Supprimer "${l.actNom}" pour ${l.membreNom} ?\n\nActivité déjà réglée → fond orange dans Inscriptions\nAvoir crédité : ${avoir.toFixed(2)} €\n\nCette action est irréversible.`
+    : `Supprimer "${l.actNom}" pour ${l.membreNom} ?\n\nActivité non réglée → suppression complète des lignes\nLe montant dû sera mis à jour.\n\nCette action est irréversible.`;
+
+  if (!confirm(msgConfirm)) return;
   modal.remove();
 
-  // 1. Supprimer l'activité dans localStorage
-  const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-  const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
-  if (regIdx >= 0 && membre) {
-    allRegs[regIdx].members.forEach(m => {
-      if (m.id === membre.id) m.activities = (m.activities || []).filter(a => a !== l.actId);
-    });
-    // Ajouter l'avoir dans le responsable
-    allRegs[regIdx].responsable.avoirMontant = (allRegs[regIdx].responsable.avoirMontant || 0) + avoir;
-    allRegs[regIdx].responsable.avoirDetail  = (allRegs[regIdx].responsable.avoirDetail  || '') + `${l.actNom} (${avoir.toFixed(2)}€) ; `;
-    localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
-  }
-
-  // 2. Supprimer la ligne dans le Sheet via GAS
-  const url = getAppsScriptUrl();
-  if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
-    try {
-      await callAppsScriptFetch(url, {
-        action:     'supprimerActiviteDossier',
-        _token:     FRI_SECRET_TOKEN,
-        code:       code,
-        actId:      l.actId,
-        placesId:   l.placesId || siteToPlacesId(l.actId),
-        actNom:     l.actNom,
-        membreNom:  l.membreNom,
-        avoir:      avoir
+  // ── CAS 1 : Non réglé — suppression complète ──
+  if (!estRegle) {
+    // 1a. Supprimer l'activité dans localStorage et recalculer les totaux
+    const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+    const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
+    if (regIdx >= 0 && membre) {
+      allRegs[regIdx].members.forEach(m => {
+        if (m.id === membre.id) {
+          m.activities = (m.activities || []).filter(a => a !== l.actId);
+        }
       });
-    } catch(e) { console.warn('Suppression activité GAS KO:', e); }
+      // Recalculer le grandTotal sans l'activité supprimée
+      // On met à jour reg.totals avec le nouveau calcul
+      const regMaj = allRegs[regIdx];
+      // Recalc simple : enlever le prix de l'activité du grandTotal
+      if (regMaj.totals) {
+        let prixActe = l.prix;
+        if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
+          prixActe = Math.round(prixActe * 0.85 * 100) / 100;
+        }
+        regMaj.totals.grandTotal    = Math.max(0, (regMaj.totals.grandTotal    || 0) - prixActe);
+        regMaj.totals.familyActCount = Math.max(0, (regMaj.totals.familyActCount || 1) - 1);
+      }
+      localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
+    }
+
+    // 1b. Supprimer dans le Sheet via GAS (action = supprimerActiviteNonRegle)
+    const url = getAppsScriptUrl();
+    if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
+      try {
+        await callAppsScriptFetch(url, {
+          action:       'supprimerActiviteNonRegle',
+          _token:       FRI_SECRET_TOKEN,
+          code:         code,
+          actId:        l.actId,
+          placesId:     l.placesId || siteToPlacesId(l.actId),
+          actNom:       l.actNom,
+          membreNom:    l.membreNom,
+          nouveauTotal: allRegs.find(r => r.code === code)?.totals?.grandTotal || 0
+        });
+      } catch(e) { console.warn('Suppression non-réglé GAS KO:', e); }
+    }
+
+    showToast(`✅ "${l.actNom}" supprimée — montant mis à jour`, 'green');
+
+  // ── CAS 2 : Réglé — fond orange + avoir ──
+  } else {
+    // 2a. Ajouter l'avoir dans localStorage
+    const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+    const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
+    if (regIdx >= 0) {
+      allRegs[regIdx].responsable.avoirMontant = (allRegs[regIdx].responsable.avoirMontant || 0) + avoir;
+      allRegs[regIdx].responsable.avoirDetail  = (allRegs[regIdx].responsable.avoirDetail  || '') + `${l.actNom} (${avoir.toFixed(2)}€) ; `;
+      // NE PAS supprimer l'activité du localStorage — elle reste visible en orange
+      localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
+    }
+
+    // 2b. Fond orange dans Sheet via GAS (comportement actuel)
+    const url = getAppsScriptUrl();
+    if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
+      try {
+        await callAppsScriptFetch(url, {
+          action:     'supprimerActiviteDossier',
+          _token:     FRI_SECRET_TOKEN,
+          code:       code,
+          actId:      l.actId,
+          placesId:   l.placesId || siteToPlacesId(l.actId),
+          actNom:     l.actNom,
+          membreNom:  l.membreNom,
+          avoir:      avoir
+        });
+      } catch(e) { console.warn('Suppression activité GAS KO:', e); }
+    }
+
+    showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
   }
 
-  showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
   renderAdmin();
   renderAdminStats();
 }
