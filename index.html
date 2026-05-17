@@ -4744,17 +4744,41 @@ async function lireSheetPublic() {
 
 // Envoi vers Apps Script via fetch no-cors
 async function callAppsScriptFetch(url, payload) {
-  // Utiliser JSONP (balise <script>) — seule méthode cross-origin fiable
-  // qui déclenche réellement doGet sur Apps Script depuis un navigateur
+  const action = payload.action || '';
+
+  // addRegistration a un gros payload (rows[]) — utiliser POST no-cors
+  // Les autres actions admin (ajout/suppression) utilisent JSONP
+  if (action === 'addRegistration' || action === 'envoyerAttestationPDF') {
+    payload._token = FRI_SECRET_TOKEN;
+    const payloadStr = JSON.stringify(payload);
+    console.log('[FRI] POST no-cors payload size:', payloadStr.length, 'action:', action);
+    try {
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: payloadStr
+      });
+      console.log('[FRI] POST envoyé (no-cors):', action);
+      return { ok: true };
+    } catch(err) {
+      console.warn('[FRI] POST KO:', err.message);
+      return { ok: false };
+    }
+  }
+
+  // Toutes les autres actions : JSONP (balise <script>) — seule méthode
+  // cross-origin qui déclenche réellement doGet sur Apps Script
+  payload._token = FRI_SECRET_TOKEN;
   return new Promise((resolve) => {
     const cbName = '_friW_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
     const payloadStr = JSON.stringify(payload);
-    console.log('[FRI] JSONP write payload size:', payloadStr.length, 'action:', payload.action);
+    console.log('[FRI] JSONP write payload size:', payloadStr.length, 'action:', action);
 
     const params = new URLSearchParams();
     params.set('payload',  payloadStr);
     params.set('callback', cbName);
-    params.set('action',   payload.action || '');
+    params.set('action',   action);
     params.set('_token',   FRI_SECRET_TOKEN);
     params.set('_t',       Date.now());
     const fullUrl = url + '?' + params.toString();
@@ -4769,18 +4793,15 @@ async function callAppsScriptFetch(url, payload) {
       if (done) return;
       done = true;
       cleanup();
-      console.log('[FRI] JSONP réponse:', payload.action, data);
+      console.log('[FRI] JSONP réponse:', action, data);
       resolve({ ok: true, data });
     };
 
-    // Timeout 15s — Apps Script peut être lent
     const t = setTimeout(() => {
       if (done) return;
       done = true;
       cleanup();
-      console.warn('[FRI] JSONP timeout pour:', payload.action);
-      // Timeout = Apps Script a probablement reçu et exécuté la requête
-      // mais n'a pas retourné de callback JSONP valide
+      console.warn('[FRI] JSONP timeout pour:', action, '— considéré comme OK');
       resolve({ ok: true });
     }, 15000);
 
@@ -4791,8 +4812,7 @@ async function callAppsScriptFetch(url, payload) {
       done = true;
       clearTimeout(t);
       cleanup();
-      console.warn('[FRI] JSONP erreur script pour:', payload.action);
-      // onerror = Apps Script a répondu (302 redirect normal) = OK
+      console.warn('[FRI] JSONP erreur script pour:', action, '— Apps Script a répondu (normal)');
       resolve({ ok: true });
     };
     document.head.appendChild(s);
