@@ -4464,6 +4464,13 @@ function buildRows(reg) {
         // Réduction femmes TT : -30€ (Isneauville ET hors commune)
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
 
+        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
+        const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
+        const NON_REMISABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+        const tarifBrut = price;
+        if (estElig) price = Math.round(price * 0.85 * 100) / 100;
+
         rows.push({
           date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
           responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
@@ -4475,8 +4482,10 @@ function buildRows(reg) {
           ddn: m.ddn, sexe: m.sexe,
           activite: nomClean, jour: joursCombi, heure: heuresCombi,
           lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-          tarif: price, fnsmr: 15,
-          remise: reg.totals && reg.totals.familyActCount >= 3 ? 15 : 0,
+          tarif: price,          // tarif réellement réglé (après -15% si éligible)
+          tarif_brut: tarifBrut, // tarif avant remise (pour affichage facture)
+          fnsmr: 15,
+          remise: estElig ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
           avoir_montant: reg.responsable.avoirMontant || 0,
@@ -4496,6 +4505,12 @@ function buildRows(reg) {
       let price = isno ? act.isno : act.hc;
       // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      // Remise 15% si éligible
+      const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
+      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+      const estElig2 = aRemise15b && !NON_REMISABLE2.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+      const tarifBrut2 = price;
+      if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
         date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
         responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
@@ -4507,8 +4522,10 @@ function buildRows(reg) {
         ddn: m.ddn, sexe: m.sexe,
         activite: nomClean, jour: act.jour, heure: act.heure,
         lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-        tarif: price, fnsmr: 15,
-        remise: reg.totals && reg.totals.familyActCount >= 3 ? 15 : 0,
+        tarif: price,           // tarif réellement réglé (après -15% si éligible)
+        tarif_brut: tarifBrut2, // tarif avant remise
+        fnsmr: 15,
+        remise: estElig2 ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
         mode_paiement: reg.responsable.modePaiement || 'helloasso',
         avoir_montant: reg.responsable.avoirMontant || 0,
