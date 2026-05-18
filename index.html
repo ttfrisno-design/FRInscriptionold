@@ -4581,15 +4581,20 @@ async function callAppsScript(payload) {
 // Format : https://docs.google.com/spreadsheets/d/{ID}/gviz/tq?tqx=out:json&sheet=Inscriptions
 // ─────────────────────────────────────────────────────────────────
 function callAppsScriptJsonp(url, payload) {
-  // Pour getDossiers et ping : lire directement le Sheet via gviz
+  // getDossiers : utiliser l'API GAS directement (plus fiable que gviz)
   if (payload.action === 'getDossiers') {
-    return lireSheetPublic();
+    return callAppsScriptFetch(url, { action: 'getDossiers', _token: FRI_SECRET_TOKEN })
+      .then(r => {
+        if (r && r.data && r.data.dossiers) return r.data;
+        // Fallback gviz si API GAS KO
+        console.warn('[FRI] getDossiers API KO, fallback gviz');
+        return lireSheetPublic();
+      })
+      .catch(() => lireSheetPublic());
   }
   if (payload.action === 'ping') {
-    // Test de connexion via fetch vers Apps Script
     return callAppsScriptFetch(url, payload).then(r => ({ ok: true })).catch(() => ({ ok: false }));
   }
-  // Autres actions de lecture : fallback fetch
   return callAppsScriptFetch(url, payload);
 }
 
@@ -5818,6 +5823,42 @@ function mergerDossiersSheet(dossiers) {
     }
 
     reg._rows.push(d);
+
+    // Reconstruire les activités du membre depuis activite_id (col 36)
+    const actPlacesId = (d.activite_id || '').trim();
+    const actNomSheet = (d.activite    || '').trim();
+    if (actPlacesId || actNomSheet) {
+      // Trouver l'actId frontend correspondant au placesId Sheet
+      let actIdFront = null;
+      // Chercher dans ACTIVITIES via placesId
+      for (const section of Object.values(ACTIVITIES || {})) {
+        for (const cat of Object.values(section.cats || {})) {
+          for (const act of (cat.acts || [])) {
+            if (!act) continue;
+            const pid = (typeof siteToPlacesId === 'function') ? siteToPlacesId(act.id) : act.id;
+            if (pid === actPlacesId || act.id === actPlacesId) {
+              actIdFront = act.id; break;
+            }
+            // Fallback : comparer par nom
+            if (actNomSheet && act.name.replace(/\n/g,' — ').toLowerCase().includes(actNomSheet.toLowerCase().substring(0, 15))) {
+              actIdFront = act.id;
+            }
+          }
+          if (actIdFront) break;
+        }
+        if (actIdFront) break;
+      }
+      // Ajouter l'activité au bon membre
+      const memK = (d.prenom_membre + ' ' + d.nom_membre).trim();
+      const memObj = reg.members.find(m => (m.prenom + ' ' + m.nom).trim() === memK);
+      if (memObj && actIdFront && !memObj.activities.includes(actIdFront)) {
+        memObj.activities.push(actIdFront);
+      } else if (memObj && actPlacesId && !memObj._placesIds) {
+        // Stocker le placesId brut si pas de mapping frontend
+        memObj._placesIds = memObj._placesIds || [];
+        if (!memObj._placesIds.includes(actPlacesId)) memObj._placesIds.push(actPlacesId);
+      }
+    }
   });
 
 
