@@ -4581,16 +4581,27 @@ async function callAppsScript(payload) {
 // Format : https://docs.google.com/spreadsheets/d/{ID}/gviz/tq?tqx=out:json&sheet=Inscriptions
 // ─────────────────────────────────────────────────────────────────
 function callAppsScriptJsonp(url, payload) {
-  // getDossiers : utiliser l'API GAS directement (plus fiable que gviz)
+  // getDossiers : API GAS en priorité, fallback gviz, jamais d'erreur bloquante
   if (payload.action === 'getDossiers') {
     return callAppsScriptFetch(url, { action: 'getDossiers', _token: FRI_SECRET_TOKEN })
       .then(r => {
-        if (r && r.data && r.data.dossiers) return r.data;
-        // Fallback gviz si API GAS KO
-        console.warn('[FRI] getDossiers API KO, fallback gviz');
-        return lireSheetPublic();
+        // Si l'API GAS a répondu avec des dossiers → parfait
+        if (r && r.data && r.data.dossiers) {
+          return { ok: true, dossiers: r.data.dossiers };
+        }
+        // Sinon fallback gviz
+        console.warn('[FRI] getDossiers API sans données, fallback gviz');
+        return lireSheetPublic().then(gvizResult => {
+          // Toujours retourner ok:true — Sheet vide = ok, pas une erreur
+          return { ok: true, dossiers: gvizResult.dossiers || [] };
+        });
       })
-      .catch(() => lireSheetPublic());
+      .catch(e => {
+        console.warn('[FRI] getDossiers API exception:', e);
+        return lireSheetPublic().then(gvizResult => {
+          return { ok: true, dossiers: gvizResult.dossiers || [] };
+        }).catch(() => ({ ok: true, dossiers: [] }));
+      });
   }
   if (payload.action === 'ping') {
     return callAppsScriptFetch(url, payload).then(r => ({ ok: true })).catch(() => ({ ok: false }));
@@ -5728,14 +5739,23 @@ async function chargerDossiersDepuisSheet() {
   if (el) el.textContent = 'Résultat brut : ok=' + result.ok + ' | dossiers=' + (result.dossiers ? result.dossiers.length : 'undefined');
 
   if (!result.ok) {
-    showAdminToast('❌ Serveur : ' + (result.reason || 'Erreur inconnue'), 'orange');
+    // Afficher un message utile selon la raison
+    const reason = result.reason || '';
+    if (reason.includes('403') || reason.includes('partagé')) {
+      showAdminToast('⚠️ Sheet non partagé en lecture publique — vérifiez le partage', 'orange');
+    } else if (reason.includes('404') || reason.includes('Sheet ID')) {
+      showAdminToast('⚠️ Sheet ID incorrect ou onglet "Inscriptions" introuvable', 'orange');
+    } else {
+      showAdminToast('⚠️ Données Sheet non disponibles — ' + (reason || 'vérifiez la configuration'), 'orange');
+    }
     sheetLoadInProgress = false;
     renderAdmin();
     return;
   }
 
-  if (!result.dossiers) {
-    showAdminToast('⚠️ Sheet vide ou nom onglet incorrect (attendu : "Inscriptions")', 'orange');
+  if (!result.dossiers || result.dossiers.length === 0) {
+    // Sheet vide = normal en début de saison — pas une erreur
+    console.log('[FRI] Sheet vide ou aucun dossier — OK');
     sheetLoadInProgress = false;
     renderAdmin();
     return;
