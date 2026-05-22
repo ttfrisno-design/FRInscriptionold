@@ -5508,7 +5508,23 @@ function renderAdminStats() {
       <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px">${s.label}</div>
     </div>`).join('');
 }
-
+function formatDateAdmin(d) {
+  if (!d) return '—';
+  var s = String(d);
+  // Format gviz : Date(2026,3,20) → mois 0-indexé
+  var gviz = s.match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (gviz) {
+    var y = gviz[1], mo = String(parseInt(gviz[2])+1).padStart(2,'0'), day = String(gviz[3]).padStart(2,'0');
+    return day + '/' + mo + '/' + y;
+  }
+  // Objet Date JS sérialisé en string ISO ou timestamp
+  if (s.includes('T') || s.includes('GMT') || /^\d{10,}$/.test(s)) {
+    var dt = new Date(isNaN(s) ? s : parseInt(s));
+    if (!isNaN(dt)) return dt.toLocaleDateString('fr-FR');
+  }
+  // Déjà au format dd/mm/yyyy → retourner tel quel
+  return s;
+}
 function renderAdmin() {
   if (!adminSession) return;
   const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
@@ -5614,7 +5630,7 @@ function renderAdmin() {
           ? docsCheckboxes + `<button onclick="validerPaiement('${reg.code}', '${reg.id}')" style="background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:block;width:100%;margin-bottom:4px;" title="Valider le paiement et envoyer l'email de confirmation">✅ Valider paiement</button>`
           : '';
         return `<tr style="${rowBg}">
-          <td style="padding:10px 12px;white-space:nowrap;font-size:12px">${reg.date}</td>
+          <td style="padding:10px 12px;white-space:nowrap;font-size:12px">${formatDateAdmin(reg.date)}</td>
           <td style="padding:10px 12px;font-family:monospace;font-weight:700;color:var(--green-light);font-size:13px">${reg.code || '—'}</td>
           <td style="padding:10px 12px">
             <strong style="color:white">${reg.responsable.nom} ${reg.responsable.prenom}</strong><br>
