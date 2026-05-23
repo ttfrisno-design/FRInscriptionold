@@ -4206,6 +4206,76 @@ function openHelloAsso() {
   }
 }
 
+
+async function enregistrerPuisAfficherHA(code) {
+  const btn = document.getElementById('btn-enregistrer-ha');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.textContent = '⏳ Enregistrement en cours…'; }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'fri-loading-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;">'
+    + '<div style="font-size:40px;margin-bottom:12px;">⏳</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#1a2e22;margin-bottom:8px;">Enregistrement en cours...</div>'
+    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes,<br>votre dossier est en cours d\'envoi.</div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+
+  const removeOverlay = () => {
+    const ol = document.getElementById('fri-loading-overlay');
+    if (ol) ol.remove();
+  };
+
+  const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+  const reg = pending[code];
+  if (!reg) {
+    removeOverlay();
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = '📋 Enregistrer et passer au paiement HelloAsso'; }
+    alert('Dossier introuvable. Veuillez recommencer.');
+    return;
+  }
+
+  try {
+    // Marquer le dossier comme en attente paiement HA
+    reg.status = 'pending_helloasso';
+    reg.dateDossier = new Date().toLocaleDateString('fr-FR');
+
+    // Sauvegarder localement
+    pending[code] = reg;
+    localStorage.setItem('fri_pending', JSON.stringify(pending));
+    const existing = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+    if (!existing.find(r => r.id === reg.id)) existing.push(reg);
+    localStorage.setItem('fri_registrations', JSON.stringify(existing));
+    state.registrations = existing;
+
+    // Envoyer au GAS AVANT d'afficher le widget
+    await sendToGoogleSheets(reg);
+
+    removeOverlay();
+
+    // Masquer le bouton d'enregistrement, afficher le widget HA
+    const btnZone = document.getElementById('btn-enregistrer-ha');
+    if (btnZone) btnZone.closest('div').style.display = 'none';
+    const widgetZone = document.getElementById('ha-widget-zone');
+    if (widgetZone) {
+      widgetZone.style.display = '';
+      widgetZone.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Préremplir le code et l'email dans la carte de confirmation (étape C)
+    const emailEl = document.getElementById('confirm-email');
+    const codeEl  = document.getElementById('confirm-code');
+    if (emailEl && reg.responsable && reg.responsable.email1) emailEl.value = reg.responsable.email1;
+    if (codeEl && code) codeEl.value = code;
+
+  } catch(err) {
+    removeOverlay();
+    console.error('Erreur enregistrement HA:', err);
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = '📋 Enregistrer et passer au paiement HelloAsso'; }
+    alert('Une erreur est survenue lors de l\'enregistrement. Veuillez réessayer.');
+  }
+}
+
 async function finaliserInscription(code) {
   const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
@@ -6891,17 +6961,28 @@ function setupPaymentStep(code) {
 
   if (mode === 'helloasso') {
     document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
+    // ── Étape 1 : bouton enregistrement uniquement ──
+    // Le widget HelloAsso s'affiche APRÈS l'enregistrement du dossier
     document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
+      + '<div style="border:2px solid var(--green);border-radius:12px;background:var(--green-pale);padding:20px;margin-bottom:16px;">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:10px;">&#x1F4CB; &Eacute;tape 1 — Enregistrez votre dossier</div>'
+      + '<div style="font-size:13px;color:var(--dark);margin-bottom:14px;line-height:1.6;">'
+      + 'Cliquez ci-dessous pour enregistrer votre dossier.<br>'
+      + '<strong>Le formulaire de paiement HelloAsso s\'affichera ensuite automatiquement.</strong>'
+      + '</div>'
+      + '<button class="btn btn-primary" id="btn-enregistrer-ha" onclick="enregistrerPuisAfficherHA(\'' + code + '\')" style="width:100%;justify-content:center;font-size:15px;padding:14px;">'
+      + '&#x1F4BE; Enregistrer et passer au paiement HelloAsso</button>'
+      + '</div>'
+      + '<div id="ha-widget-zone" style="display:none;">'
+      + '<div style="background:var(--green-pale);border:2px solid var(--green);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center;">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;">&#x2705; Dossier enregistr&eacute; !</div>'
+      + '<div style="font-size:13px;color:var(--dark);">Effectuez maintenant votre paiement sur HelloAsso ci-dessous.</div>'
+      + '</div>'
       + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l\'association.</p>'
       + '<iframe id="haWidget" allowtransparency="true" scrolling="auto"'
       + ' src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/paiements/reglement-adhesion-fri/widget"'
       + ' style="width:100%;height:750px;border:none;border-radius:10px;"></iframe>'
-      + '<div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">'
-      + '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">&#x1F4BE; Enregistrez votre dossier avant de payer</div>'
-      + '<div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez ci-dessous pour enregistrer votre dossier, <strong>puis</strong> effectuez votre paiement sur HelloAsso.</div>'
-      + '<button class="btn btn-primary" onclick="finaliserInscription(\'' + code + '\')" style="width:100%;justify-content:center;">&#x1F4BE; Enregistrer mon dossier</button>'
       + '</div>';
-
   } else if (mode === 'cheque' || mode === 'cheque3') {
     var showTrois = total > 260;
     var ch1 = showTrois ? Math.round(total * 0.40) : total;
