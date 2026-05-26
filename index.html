@@ -5217,13 +5217,12 @@ function doAdminLogin() {
     hideAdminLogin();
     document.getElementById('admin-panel').style.display = 'block';
     document.getElementById('admin-logged-as').textContent = '🔓 Connecte : ' + user;
-    showAdminConfigBanner();
-    renderAdmin();
-    renderAdminStats();
-    renderSemainierSalle();
+    try { showAdminConfigBanner(); } catch(e) { console.warn('showAdminConfigBanner:', e); }
+    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); document.getElementById('admin-table-container').innerHTML = '<p style="color:orange;padding:20px">Erreur affichage : '+e.message+'</p>'; }
+    try { renderAdminStats(); } catch(e) { console.warn('renderAdminStats:', e); }
+    try { renderSemainierSalle(); } catch(e) { console.warn('renderSemainierSalle:', e); }
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
-    // Charger les dossiers depuis le Google Sheet (fonctionne sur n'importe quel poste)
-    chargerDossiersDepuisSheet();
+    try { chargerDossiersDepuisSheet(); } catch(e) { console.warn('chargerDossiersDepuisSheet:', e); }
   } else {
     document.getElementById('admin-login-error').style.display = 'block';
     document.getElementById('admin-login-pass').value = '';
@@ -5480,13 +5479,13 @@ function renderAdminStats() {
     r.members.forEach(m => {
       const counted = new Set();
       (m.activities || []).forEach(actId => {
-        const act = getActById(actId);
-        if (act && act.linkedWith) {
-          const pk = [actId, act.linkedWith].sort().join('|');
-          if (!counted.has(pk)) { counted.add(pk); a++; }
-        } else {
-          a++;
-        }
+        try {
+          const act = getActById(actId);
+          if (act && act.linkedWith) {
+            const pk = [actId, act.linkedWith].sort().join('|');
+            if (!counted.has(pk)) { counted.add(pk); a++; }
+          } else { a++; }
+        } catch(e) { a++; }
       });
     });
     return a;
@@ -5643,13 +5642,16 @@ function renderAdmin() {
           </td>
           <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => {
             const actsActives = (m.activities || []).filter(a => {
-              const act = getActById(a); return act && act.linkedWith !== a;
+              try { const act = getActById(a); return !act || act.linkedWith !== a; } catch(e) { return true; }
             });
             const actsStr = actsActives.length
               ? actsActives.map(a => {
-                  const act = getActById(a);
-                  const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
-                  return act ? `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${act.name.replace(/\n/g,' ')}</span>` : '';
+                  try {
+                    const act = getActById(a);
+                    const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
+                    const label = act ? act.name.replace(/\n/g,' ') : a;
+                    return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${label}</span>`;
+                  } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
                 }).filter(Boolean).join('<br>')
               : '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
             return `<div style="margin-bottom:4px;"><strong style="color:white;font-size:12px">${m.prenom} ${m.nom}</strong><br>${actsStr}</div>`;
