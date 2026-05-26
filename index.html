@@ -4127,7 +4127,11 @@ function envoyerPDFViaForm(filename, dataUri, membre, responsable, email, type) 
   }, 8000);
 
   window[cbName] = function(data) {
-    if (!done) { done = true; clearTimeout(t); delete window[cbName]; if(s.parentNode) s.parentNode.removeChild(s); }
+    if (!done) {
+      done = true; clearTimeout(t); delete window[cbName];
+      if(s.parentNode) s.parentNode.removeChild(s);
+      resolve(data || { ok: true }); // retourner les données GAS (nouveauTotal etc.)
+    }
   };
 
   const s = document.createElement('script');
@@ -5213,12 +5217,13 @@ function doAdminLogin() {
     hideAdminLogin();
     document.getElementById('admin-panel').style.display = 'block';
     document.getElementById('admin-logged-as').textContent = '🔓 Connecte : ' + user;
-    try { showAdminConfigBanner(); } catch(e) { console.warn('showAdminConfigBanner:', e); }
-    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); document.getElementById('admin-table-container').innerHTML = '<p style="color:orange;padding:20px">Erreur affichage : '+e.message+'</p>'; }
-    try { renderAdminStats(); } catch(e) { console.warn('renderAdminStats:', e); }
-    try { renderSemainierSalle(); } catch(e) { console.warn('renderSemainierSalle:', e); }
+    showAdminConfigBanner();
+    renderAdmin();
+    renderAdminStats();
+    renderSemainierSalle();
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
-    try { chargerDossiersDepuisSheet(); } catch(e) { console.warn('chargerDossiersDepuisSheet:', e); }
+    // Charger les dossiers depuis le Google Sheet (fonctionne sur n'importe quel poste)
+    chargerDossiersDepuisSheet();
   } else {
     document.getElementById('admin-login-error').style.display = 'block';
     document.getElementById('admin-login-pass').value = '';
@@ -5475,15 +5480,13 @@ function renderAdminStats() {
     r.members.forEach(m => {
       const counted = new Set();
       (m.activities || []).forEach(actId => {
-        try {
-          const act = getActById(actId);
-          if (act && act.linkedWith) {
-            const pk = [actId, act.linkedWith].sort().join('|');
-            if (!counted.has(pk)) { counted.add(pk); a++; }
-          } else {
-            a++;
-          }
-        } catch(e) { a++; }
+        const act = getActById(actId);
+        if (act && act.linkedWith) {
+          const pk = [actId, act.linkedWith].sort().join('|');
+          if (!counted.has(pk)) { counted.add(pk); a++; }
+        } else {
+          a++;
+        }
       });
     });
     return a;
@@ -5640,16 +5643,13 @@ function renderAdmin() {
           </td>
           <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => {
             const actsActives = (m.activities || []).filter(a => {
-              try { const act = getActById(a); return !act || act.linkedWith !== a; } catch(e) { return true; }
+              const act = getActById(a); return act && act.linkedWith !== a;
             });
             const actsStr = actsActives.length
               ? actsActives.map(a => {
-                  try {
-                    const act = getActById(a);
-                    const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
-                    const label = act ? act.name.replace(/\n/g,' ') : a; // fallback sur l'id si activité inconnue
-                    return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${label}</span>`;
-                  } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
+                  const act = getActById(a);
+                  const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
+                  return act ? `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${act.name.replace(/\n/g,' ')}</span>` : '';
                 }).filter(Boolean).join('<br>')
               : '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
             return `<div style="margin-bottom:4px;"><strong style="color:white;font-size:12px">${m.prenom} ${m.nom}</strong><br>${actsStr}</div>`;
@@ -6417,8 +6417,20 @@ async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListe
   console.log('[FRI] Payload GAS:', JSON.stringify(payload).substring(0, 200));
 
   try {
-    await callAppsScriptFetch(url, payload);
-    console.log('[FRI] ✅ ajouterActiviteDossier envoyé');
+    const gasResult = await callAppsScriptFetch(url, payload);
+    console.log('[FRI] ✅ ajouterActiviteDossier envoyé', gasResult);
+    // ── Mettre à jour grandTotal depuis le vrai total retourné par le GAS ──
+    // Le GAS recalcule remise 15% + FNSMR + FFTT → total exact
+    if (gasResult && gasResult.nouveauTotal && gasResult.nouveauTotal > 0) {
+      const allRegsUpd = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+      const regUpd = allRegsUpd.find(r => r.code === code || String(r.id) === String(code));
+      if (regUpd) {
+        if (!regUpd.totals) regUpd.totals = {};
+        regUpd.totals.grandTotal = gasResult.nouveauTotal;
+        localStorage.setItem('fri_registrations', JSON.stringify(allRegsUpd));
+        console.log('[FRI] grandTotal mis à jour depuis GAS :', gasResult.nouveauTotal);
+      }
+    }
   } catch(e) {
     console.error('[FRI] ❌ Ajout GAS KO:', e);
     showToast('⚠️ Erreur envoi vers GAS : ' + e.message, 'red', 6000);
@@ -6595,7 +6607,7 @@ async function confirmerSupprActivite(code, ligneIdx) {
     const url = getAppsScriptUrl();
     if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
       try {
-        await callAppsScriptFetch(url, {
+        const gasResultSuppr = await callAppsScriptFetch(url, {
           action:       'supprimerActiviteNonRegle',
           _token:       FRI_SECRET_TOKEN,
           code:         code,
@@ -6605,6 +6617,17 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:    l.membreNom,
           nouveauTotal: allRegs.find(r => r.code === code)?.totals?.grandTotal || 0
         });
+        // ── Mettre à jour grandTotal depuis le vrai total retourné par le GAS ──
+        if (gasResultSuppr && gasResultSuppr.nouveauTotal && gasResultSuppr.nouveauTotal > 0) {
+          const allRegsUpd2 = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+          const regUpd2 = allRegsUpd2.find(r => r.code === code || String(r.id) === String(code));
+          if (regUpd2) {
+            if (!regUpd2.totals) regUpd2.totals = {};
+            regUpd2.totals.grandTotal = gasResultSuppr.nouveauTotal;
+            localStorage.setItem('fri_registrations', JSON.stringify(allRegsUpd2));
+            console.log('[FRI] grandTotal suppression mis à jour depuis GAS :', gasResultSuppr.nouveauTotal);
+          }
+        }
       } catch(e) { console.warn('Suppression non-réglé GAS KO:', e); }
     }
 
