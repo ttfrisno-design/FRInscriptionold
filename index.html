@@ -5218,7 +5218,7 @@ function doAdminLogin() {
     document.getElementById('admin-panel').style.display = 'block';
     document.getElementById('admin-logged-as').textContent = '🔓 Connecte : ' + user;
     try { showAdminConfigBanner(); } catch(e) { console.warn('showAdminConfigBanner:', e); }
-    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); document.getElementById('admin-table-container').innerHTML = '<p style="color:orange;padding:20px">Erreur affichage : '+e.message+'</p>'; }
+    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); document.getElementById('admin-table-container').innerHTML = '<p style="color:orange;padding:20px">Erreur : '+e.message+'</p>'; }
     try { renderAdminStats(); } catch(e) { console.warn('renderAdminStats:', e); }
     try { renderSemainierSalle(); } catch(e) { console.warn('renderSemainierSalle:', e); }
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
@@ -5479,13 +5479,13 @@ function renderAdminStats() {
     r.members.forEach(m => {
       const counted = new Set();
       (m.activities || []).forEach(actId => {
-        try {
-          const act = getActById(actId);
-          if (act && act.linkedWith) {
-            const pk = [actId, act.linkedWith].sort().join('|');
-            if (!counted.has(pk)) { counted.add(pk); a++; }
-          } else { a++; }
-        } catch(e) { a++; }
+        const act = getActById(actId);
+        if (act && act.linkedWith) {
+          const pk = [actId, act.linkedWith].sort().join('|');
+          if (!counted.has(pk)) { counted.add(pk); a++; }
+        } else {
+          a++;
+        }
       });
     });
     return a;
@@ -6591,18 +6591,13 @@ async function confirmerSupprActivite(code, ligneIdx) {
           }
         }
       });
-      // Recalcul du grandTotal
+      // Ne pas recalculer localement — le GAS retournera le vrai total (Sheet fait foi)
       const regMaj = allRegs[regIdx];
       if (regMaj.totals) {
-        let prixActe = l.prix;
-        if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
-          prixActe = Math.round(prixActe * 0.85 * 100) / 100;
-        }
-        regMaj.totals.grandTotal     = Math.max(0, (regMaj.totals.grandTotal    || 0) - prixActe);
         regMaj.totals.familyActCount = Math.max(0, (regMaj.totals.familyActCount || 1) - 1);
       }
       localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
-      console.log('[FRI] localStorage mis à jour — activité supprimée, nouveau total:', regMaj.totals?.grandTotal);
+      console.log('[FRI] localStorage mis à jour — activité supprimée (total sera mis à jour par GAS)');
     }
 
     // 1b. Supprimer dans le Sheet via GAS (action = supprimerActiviteNonRegle)
@@ -6651,7 +6646,7 @@ async function confirmerSupprActivite(code, ligneIdx) {
     const url = getAppsScriptUrl();
     if (url && url !== 'VOTRE_URL_APPS_SCRIPT_ICI') {
       try {
-        await callAppsScriptFetch(url, {
+        const gasResultRegle = await callAppsScriptFetch(url, {
           action:     'supprimerActiviteDossier',
           _token:     FRI_SECRET_TOKEN,
           code:       code,
@@ -6661,6 +6656,17 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:  l.membreNom,
           avoir:      avoir
         });
+        // Mettre à jour grandTotal depuis le vrai total GAS (Sheet fait foi)
+        if (gasResultRegle && gasResultRegle.nouveauTotal && gasResultRegle.nouveauTotal > 0) {
+          const allRegsR = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+          const regR = allRegsR.find(r => r.code === code || String(r.id) === String(code));
+          if (regR) {
+            if (!regR.totals) regR.totals = {};
+            regR.totals.grandTotal = gasResultRegle.nouveauTotal;
+            localStorage.setItem('fri_registrations', JSON.stringify(allRegsR));
+            console.log('[FRI] grandTotal réglé mis à jour depuis GAS :', gasResultRegle.nouveauTotal);
+          }
+        }
       } catch(e) { console.warn('Suppression activité GAS KO:', e); }
     }
 
