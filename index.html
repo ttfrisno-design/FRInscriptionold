@@ -5217,12 +5217,13 @@ function doAdminLogin() {
     hideAdminLogin();
     document.getElementById('admin-panel').style.display = 'block';
     document.getElementById('admin-logged-as').textContent = '🔓 Connecte : ' + user;
-    try { showAdminConfigBanner(); } catch(e) { console.warn('showAdminConfigBanner:', e); }
-    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); document.getElementById('admin-table-container').innerHTML = '<p style="color:orange;padding:20px">Erreur : '+e.message+'</p>'; }
-    try { renderAdminStats(); } catch(e) { console.warn('renderAdminStats:', e); }
-    try { renderSemainierSalle(); } catch(e) { console.warn('renderSemainierSalle:', e); }
+    showAdminConfigBanner();
+    renderAdmin();
+    renderAdminStats();
+    renderSemainierSalle();
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
-    try { chargerDossiersDepuisSheet(); } catch(e) { console.warn('chargerDossiersDepuisSheet:', e); }
+    // Charger les dossiers depuis le Google Sheet (fonctionne sur n'importe quel poste)
+    chargerDossiersDepuisSheet();
   } else {
     document.getElementById('admin-login-error').style.display = 'block';
     document.getElementById('admin-login-pass').value = '';
@@ -5642,16 +5643,13 @@ function renderAdmin() {
           </td>
           <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => {
             const actsActives = (m.activities || []).filter(a => {
-              try { const act = getActById(a); return !act || act.linkedWith !== a; } catch(e) { return true; }
+              const act = getActById(a); return act && act.linkedWith !== a;
             });
             const actsStr = actsActives.length
               ? actsActives.map(a => {
-                  try {
-                    const act = getActById(a);
-                    const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
-                    const label = act ? act.name.replace(/\n/g,' ') : a;
-                    return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${label}</span>`;
-                  } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
+                  const act = getActById(a);
+                  const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
+                  return act ? `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${act.name.replace(/\n/g,' ')}</span>` : '';
                 }).filter(Boolean).join('<br>')
               : '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
             return `<div style="margin-bottom:4px;"><strong style="color:white;font-size:12px">${m.prenom} ${m.nom}</strong><br>${actsStr}</div>`;
@@ -6591,13 +6589,18 @@ async function confirmerSupprActivite(code, ligneIdx) {
           }
         }
       });
-      // Ne pas recalculer localement — le GAS retournera le vrai total (Sheet fait foi)
+      // Recalcul du grandTotal
       const regMaj = allRegs[regIdx];
       if (regMaj.totals) {
+        let prixActe = l.prix;
+        if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
+          prixActe = Math.round(prixActe * 0.85 * 100) / 100;
+        }
+        regMaj.totals.grandTotal     = Math.max(0, (regMaj.totals.grandTotal    || 0) - prixActe);
         regMaj.totals.familyActCount = Math.max(0, (regMaj.totals.familyActCount || 1) - 1);
       }
       localStorage.setItem('fri_registrations', JSON.stringify(allRegs));
-      console.log('[FRI] localStorage mis à jour — activité supprimée (total sera mis à jour par GAS)');
+      console.log('[FRI] localStorage mis à jour — activité supprimée, nouveau total:', regMaj.totals?.grandTotal);
     }
 
     // 1b. Supprimer dans le Sheet via GAS (action = supprimerActiviteNonRegle)
@@ -6614,7 +6617,7 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:    l.membreNom,
           nouveauTotal: allRegs.find(r => r.code === code)?.totals?.grandTotal || 0
         });
-        // ── Mettre à jour grandTotal depuis le vrai total retourné par le GAS ──
+        // Mettre à jour grandTotal depuis le vrai total GAS (Sheet fait foi)
         if (gasResultSuppr && gasResultSuppr.nouveauTotal && gasResultSuppr.nouveauTotal > 0) {
           const allRegsUpd2 = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
           const regUpd2 = allRegsUpd2.find(r => r.code === code || String(r.id) === String(code));
@@ -6622,9 +6625,11 @@ async function confirmerSupprActivite(code, ligneIdx) {
             if (!regUpd2.totals) regUpd2.totals = {};
             regUpd2.totals.grandTotal = gasResultSuppr.nouveauTotal;
             localStorage.setItem('fri_registrations', JSON.stringify(allRegsUpd2));
-            console.log('[FRI] grandTotal suppression mis à jour depuis GAS :', gasResultSuppr.nouveauTotal);
           }
         }
+        // Rafraîchir l'admin APRÈS mise à jour localStorage
+        try { renderAdmin(); } catch(e) {}
+        try { renderAdminStats(); } catch(e) {}
       } catch(e) { console.warn('Suppression non-réglé GAS KO:', e); }
     }
 
@@ -6664,13 +6669,16 @@ async function confirmerSupprActivite(code, ligneIdx) {
             if (!regR.totals) regR.totals = {};
             regR.totals.grandTotal = gasResultRegle.nouveauTotal;
             localStorage.setItem('fri_registrations', JSON.stringify(allRegsR));
-            console.log('[FRI] grandTotal réglé mis à jour depuis GAS :', gasResultRegle.nouveauTotal);
           }
         }
+        // Rafraîchir l'admin APRÈS mise à jour localStorage
+        try { renderAdmin(); } catch(e) {}
+        try { renderAdminStats(); } catch(e) {}
       } catch(e) { console.warn('Suppression activité GAS KO:', e); }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
+    return; // renderAdmin déjà appelé dans le try GAS
   }
 
   renderAdmin();
