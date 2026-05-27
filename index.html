@@ -5889,7 +5889,7 @@ function mergerDossiersSheet(dossiers) {
     // Reconstruire les activités du membre depuis activite_id (col 36)
     // Ne pas ajouter les activités supprimées
     const statutLigne = (d.statut_inscription || '').toLowerCase();
-    if (statutLigne.includes('supprim')) continue; // skip lignes supprimées
+    if (statutLigne.includes('supprim')) return; // skip lignes supprimées (return = continue dans forEach)
     const actPlacesId = (d.activite_id || '').trim();
     const actNomSheet = (d.activite    || '').trim();
     if (actPlacesId || actNomSheet) {
