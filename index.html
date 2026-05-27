@@ -4210,54 +4210,6 @@ function openHelloAsso() {
   }
 }
 
-
-async function enregistrerPuisAfficherHA(code) {
-  const btn = document.getElementById('btn-enregistrer-ha');
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.textContent = '⏳ Enregistrement en cours…'; }
-  const overlay = document.createElement('div');
-  overlay.id = 'fri-loading-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;">'
-    + '<div style="font-size:40px;margin-bottom:12px;">⏳</div>'
-    + '<div style="font-size:16px;font-weight:700;color:#1a2e22;margin-bottom:8px;">Enregistrement en cours...</div>'
-    + '<div style="font-size:13px;color:#666;">Veuillez patienter quelques secondes.</div>'
-    + '</div>';
-  document.body.appendChild(overlay);
-  const removeOverlay = () => { const ol = document.getElementById('fri-loading-overlay'); if (ol) ol.remove(); };
-  const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
-  const reg = pending[code];
-  if (!reg) {
-    removeOverlay();
-    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = '📋 Enregistrer et passer au paiement HelloAsso'; }
-    alert('Dossier introuvable. Veuillez recommencer.');
-    return;
-  }
-  try {
-    reg.status = 'pending_helloasso';
-    reg.dateDossier = new Date().toLocaleDateString('fr-FR');
-    pending[code] = reg;
-    localStorage.setItem('fri_pending', JSON.stringify(pending));
-    const existing = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-    if (!existing.find(r => r.id === reg.id)) existing.push(reg);
-    localStorage.setItem('fri_registrations', JSON.stringify(existing));
-    state.registrations = existing;
-    await sendToGoogleSheets(reg);
-    removeOverlay();
-    const btnZone = document.getElementById('btn-enregistrer-ha');
-    if (btnZone) btnZone.closest('div').style.display = 'none';
-    const widgetZone = document.getElementById('ha-widget-zone');
-    if (widgetZone) { widgetZone.style.display = ''; widgetZone.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    const emailEl = document.getElementById('confirm-email');
-    const codeEl  = document.getElementById('confirm-code');
-    if (emailEl && reg.responsable && reg.responsable.email1) emailEl.value = reg.responsable.email1;
-    if (codeEl && code) codeEl.value = code;
-  } catch(err) {
-    removeOverlay();
-    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = '📋 Enregistrer et passer au paiement HelloAsso'; }
-    alert('Une erreur est survenue. Veuillez réessayer.');
-  }
-}
-
 async function finaliserInscription(code) {
   const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
@@ -4405,21 +4357,22 @@ async function confirmPayment() {
   goStep(6);
   showConfirmation(reg, false, true);
 
-  // Dossier déjà dans le Sheet — appeler uniquement validerPaiement
-  try {
-    const url = getAppsScriptUrl();
-    await callAppsScriptValidate(url, code);
-    const syncEl = document.getElementById('sync-status');
-    if (syncEl) {
-      syncEl.innerHTML = '<div class="alert alert-success" style="max-width:480px;margin:16px auto;text-align:left">' +
-        '☁️ Paiement validé — un email de confirmation vous a été envoyé.</div>';
-    }
-  } catch(e) {
-    console.warn('validerPaiement KO:', e);
+  // Background: send to Google Sheets + emails (with visual feedback)
+  const saved = await sendToGoogleSheets(reg);
+  if (!saved) {
+    // Update confirmation screen to show sync warning
     const syncEl = document.getElementById('sync-status');
     if (syncEl) {
       syncEl.innerHTML = '<div class="alert alert-warn" style="max-width:480px;margin:16px auto;text-align:left">' +
-        '⚠️ Confirmation en attente — contactez <a href="mailto:frisneauville@orange.fr">frisneauville@orange.fr</a>.</div>';
+        '⚠️ La synchronisation avec Google Drive n\'a pas pu être établie. ' +
+        'Votre inscription est bien enregistrée localement. ' +
+        'Contactez <a href="mailto:frisneauville@orange.fr">frisneauville@orange.fr</a> si vous ne recevez pas d\'email de confirmation.</div>';
+    }
+  } else {
+    const syncEl = document.getElementById('sync-status');
+    if (syncEl) {
+      syncEl.innerHTML = '<div class="alert alert-success" style="max-width:480px;margin:16px auto;text-align:left">' +
+        '☁️ Dossier synchronise avec Google Drive — un email de confirmation vous a ete envoye.</div>';
     }
   }
 }
@@ -5714,7 +5667,11 @@ function renderAdmin() {
                 ? actsActives.map(a => {
                     try {
                       const act = getActById(a);
-                      const label = act ? act.name.replace(/\n/g,' ') : a;
+                      let label = act ? act.name.replace(/\n/g,' ') : a;
+                    if (!act && typeof reg !== 'undefined' && reg._rows) {
+                      const row = reg._rows.find(r => (r.activite_id||'').trim() === a);
+                      if (row && row.activite) label = row.activite.replace(/\n/g,' — ');
+                    }
                       return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">· ${label}</span>`;
                     } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
                   }).filter(Boolean).join('<br>')
@@ -5906,9 +5863,10 @@ function mergerDossiersSheet(dossiers) {
 
     const reg = byCode[d.code];
 
-    // Toujours prendre le total du Sheet (col AF fait foi)
+    // Toujours prendre le total du Sheet — col AF fait foi (pas de calcul local)
     if (Number(d.total) > 0) {
       reg.totals.grandTotal = Number(d.total);
+      reg._sheetTotal = Number(d.total);
     }
 
     // Ajouter le membre si pas déjà présent
@@ -5963,8 +5921,11 @@ function mergerDossiersSheet(dossiers) {
       // Ajouter l'activité au bon membre
       const memK = (d.prenom_membre + ' ' + d.nom_membre).trim();
       const memObj = reg.members.find(m => (m.prenom + ' ' + m.nom).trim() === memK);
-      if (memObj && actIdFront && !memObj.activities.includes(actIdFront)) {
-        memObj.activities.push(actIdFront);
+      // Si actIdFront non trouvé, utiliser le placesId comme fallback
+      // renderAdmin affichera le placesId (ex: PILV14) si l'ID frontend est inconnu
+      const actIdToUse = actIdFront || actPlacesId || actNomSheet;
+      if (memObj && actIdToUse && !memObj.activities.includes(actIdToUse)) {
+        memObj.activities.push(actIdToUse);
       } else if (memObj && actPlacesId && !memObj._placesIds) {
         // Stocker le placesId brut si pas de mapping frontend
         memObj._placesIds = memObj._placesIds || [];
