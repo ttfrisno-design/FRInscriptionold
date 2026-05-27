@@ -4706,33 +4706,40 @@ async function lireSheetPublic() {
       // 27=Tarif 28=FNSMR 29=Total 30=Paiement 31=Avoir 32=QSSante 33=PassAide
       // 34=Sexe 35=IDActivite 36=Responsable 37=StatutInscription
 
-      // Détection dynamique selon nb colonnes (compatibilité ancien/nouveau sheet)
-      const isNew = cols.length >= 36; // nouveau format avec Tél.2, Email.2
+      // Détection dynamique selon nb colonnes
+      // v8.8 = 41 colonnes (AB=tarif_brut, AC=eligible, AD=tarif_net, AE=fnsmr, AF=total_famille)
+      // ancien = 39 colonnes
+      const isV88  = cols.length >= 41; // nouvelle structure v8.8
+      const isNew  = cols.length >= 36; // format intermédiaire avec Tél.2, Email.2
       const iCol = {
         nom:       2,  prenom:   3,  ddn:    4,  voie:    7,
         cp:        9,  ville:    10, tel:    14, email:   15,
         commentaire: 16,
-        tel2:      isNew ? 17 : -1,
-        email2:    isNew ? 18 : -1,
-        dossier:   isNew ? 19 : 17,
-        date:      isNew ? 20 : 18,
-        statut:    isNew ? 21 : 19,
-        activite:  isNew ? 22 : 20,
-        jour:      isNew ? 23 : 21,
-        heure:     isNew ? 24 : 22,
-        lieu:      isNew ? 25 : 23,
-        animateur: isNew ? 26 : 24,
-        tarif:     isNew ? 27 : 25,
-        fnsmr:     isNew ? 28 : 26,
-        total:     isNew ? 29 : 27,
-        paiement:  isNew ? 30 : 28,
-        avoir:     isNew ? 31 : -1,
-        qssante:   isNew ? 32 : 29,
-        passaide:  isNew ? 33 : 30,
-        sexe:      isNew ? 34 : 31,
-        actid:     isNew ? 35 : 32,
-        responsable: isNew ? 36 : 33,
-        statutInscription: isNew ? 37 : -1,
+        tel2:      (isNew||isV88) ? 17 : -1,
+        email2:    (isNew||isV88) ? 18 : -1,
+        dossier:   (isNew||isV88) ? 19 : 17,
+        date:      (isNew||isV88) ? 20 : 18,
+        statut:    (isNew||isV88) ? 21 : 19,
+        activite:  (isNew||isV88) ? 22 : 20,
+        jour:      (isNew||isV88) ? 23 : 21,
+        heure:     (isNew||isV88) ? 24 : 22,
+        lieu:      (isNew||isV88) ? 25 : 23,
+        animateur: (isNew||isV88) ? 26 : 24,
+        // v8.8 : AB(27)=tarif_brut, AC(28)=eligible, AD(29)=tarif_net, AE(30)=fnsmr, AF(31)=total_famille
+        tarif_brut:isV88 ? 27 : (isNew ? 27 : 25),   // col 28 AB (v8.8) ou col 28 (ancien)
+        eligible:  isV88 ? 28 : -1,                   // col 29 AC (v8.8 seulement)
+        tarif:     isV88 ? 29 : (isNew ? 27 : 25),    // col 30 AD tarif net (v8.8) ou tarif (ancien)
+        fnsmr:     isV88 ? 30 : (isNew ? 28 : 26),    // col 31 AE
+        total:     isV88 ? 31 : (isNew ? 29 : 27),    // col 32 AF ← TOTAL FAMILLE
+        paiement:  isV88 ? 32 : (isNew ? 30 : 28),    // col 33 AG
+        avoir:     isV88 ? 33 : (isNew ? 31 : -1),    // col 34 AH
+        qssante:   isV88 ? 34 : (isNew ? 32 : 29),    // col 35 AI
+        passaide:  isV88 ? 35 : (isNew ? 33 : 30),    // col 36 AJ
+        sexe:      isV88 ? 36 : (isNew ? 34 : 31),    // col 37 AK
+        actid:     isV88 ? 37 : (isNew ? 35 : 32),    // col 38 AL
+        responsable:isV88 ? 38 : (isNew ? 36 : 33),   // col 39 AM
+        statutInscription: isV88 ? 39 : (isNew ? 37 : -1), // col 40 AN
+        fftt:      isV88 ? 40 : -1,                   // col 41 AO (v8.8 seulement)
       };
       const resp = cellVal(row, iCol.responsable);
       return {
@@ -4755,14 +4762,16 @@ async function lireSheetPublic() {
         heure:             cellVal(row, iCol.heure),
         lieu:              cellVal(row, iCol.lieu),
         animateur:         cellVal(row, iCol.animateur),
+        tarif_brut:        Number(cellVal(row, iCol.tarif_brut)) || 0,
         tarif:             Number(cellVal(row, iCol.tarif)) || 0,
         total:             Number(cellVal(row, iCol.total)) || 0,
         mode_paiement:     cellVal(row, iCol.paiement),
-        avoir:             cellVal(row, iCol.avoir),
+        avoir:             iCol.avoir >= 0 ? cellVal(row, iCol.avoir) : '',
         qs_sante:          cellVal(row, iCol.qssante),
         pass_aide:         cellVal(row, iCol.passaide),
         sexe:              cellVal(row, iCol.sexe),
-        statut_inscription:cellVal(row, iCol.statutInscription)
+        statut_inscription:cellVal(row, iCol.statutInscription),
+        fftt_price:        iCol.fftt >= 0 ? (Number(cellVal(row, iCol.fftt)) || 0) : 0
       };
     });
     
@@ -5217,12 +5226,13 @@ function doAdminLogin() {
     hideAdminLogin();
     document.getElementById('admin-panel').style.display = 'block';
     document.getElementById('admin-logged-as').textContent = '🔓 Connecte : ' + user;
-    try { showAdminConfigBanner(); } catch(e) {}
-    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
-    try { renderAdminStats(); } catch(e) {}
-    try { renderSemainierSalle(); } catch(e) {}
+    showAdminConfigBanner();
+    renderAdmin();
+    renderAdminStats();
+    renderSemainierSalle();
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
-    try { chargerDossiersDepuisSheet(); } catch(e) {}
+    // Charger les dossiers depuis le Google Sheet (fonctionne sur n'importe quel poste)
+    chargerDossiersDepuisSheet();
   } else {
     document.getElementById('admin-login-error').style.display = 'block';
     document.getElementById('admin-login-pass').value = '';
@@ -5642,16 +5652,13 @@ function renderAdmin() {
           </td>
           <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => {
             const actsActives = (m.activities || []).filter(a => {
-              try { const act = getActById(a); return !act || act.linkedWith !== a; } catch(e) { return true; }
+              const act = getActById(a); return act && act.linkedWith !== a;
             });
             const actsStr = actsActives.length
               ? actsActives.map(a => {
-                  try {
-                    const act = getActById(a);
-                    const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
-                    const label = act ? act.name.replace(/\n/g,' ') : a;
-                    return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${label}</span>`;
-                  } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
+                  const act = getActById(a);
+                  const isWaiting = m.waitingList && (Array.isArray(m.waitingList) ? m.waitingList.includes(a) : m.waitingList.has(a));
+                  return act ? `<span style="font-size:10px;color:rgba(255,255,255,0.6);">${isWaiting ? '⏳' : '·'} ${act.name.replace(/\n/g,' ')}</span>` : '';
                 }).filter(Boolean).join('<br>')
               : '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
             return `<div style="margin-bottom:4px;"><strong style="color:white;font-size:12px">${m.prenom} ${m.nom}</strong><br>${actsStr}</div>`;
@@ -5839,8 +5846,8 @@ function mergerDossiersSheet(dossiers) {
 
     const reg = byCode[d.code];
 
-    // Toujours prendre le total du Sheet (col AF fait foi)
-    if (Number(d.total) > 0) {
+    // Mettre à jour le total si plus grand (dernière ligne)
+    if (Number(d.total) > reg.totals.grandTotal) {
       reg.totals.grandTotal = Number(d.total);
     }
 
@@ -6439,10 +6446,8 @@ async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListe
   }
 
   showToast(`✅ "${act.name.replace(/\n/g,' ')}" ajoutée au dossier ${code}`, '#1565c0', 5000);
-  // Recharger depuis le Sheet pour avoir le vrai total AF
-  try { await chargerDossiersDepuisSheet(); } catch(e) {}
-  try { renderAdmin(); } catch(e) {}
-  try { renderAdminStats(); } catch(e) {}
+  renderAdmin();
+  renderAdminStats();
 }
 
 
@@ -6621,14 +6626,18 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:    l.membreNom,
           nouveauTotal: allRegs.find(r => r.code === code)?.totals?.grandTotal || 0
         });
-        // Recharger depuis le Sheet — le total AF fait foi
-        await chargerDossiersDepuisSheet();
-        try { renderAdmin(); } catch(e) {}
-        try { renderAdminStats(); } catch(e) {}
-      } catch(e) {
-        console.warn('Suppression non-réglé GAS KO:', e);
-        try { renderAdmin(); } catch(e2) {}
-      }
+        // ── Mettre à jour grandTotal depuis le vrai total retourné par le GAS ──
+        if (gasResultSuppr && gasResultSuppr.nouveauTotal && gasResultSuppr.nouveauTotal > 0) {
+          const allRegsUpd2 = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+          const regUpd2 = allRegsUpd2.find(r => r.code === code || String(r.id) === String(code));
+          if (regUpd2) {
+            if (!regUpd2.totals) regUpd2.totals = {};
+            regUpd2.totals.grandTotal = gasResultSuppr.nouveauTotal;
+            localStorage.setItem('fri_registrations', JSON.stringify(allRegsUpd2));
+            console.log('[FRI] grandTotal suppression mis à jour depuis GAS :', gasResultSuppr.nouveauTotal);
+          }
+        }
+      } catch(e) { console.warn('Suppression non-réglé GAS KO:', e); }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — montant mis à jour`, 'green');
@@ -6659,23 +6668,14 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:  l.membreNom,
           avoir:      avoir
         });
-        // Recharger depuis le Sheet — le total AF fait foi
-        await chargerDossiersDepuisSheet();
-        try { renderAdmin(); } catch(e) {}
-        try { renderAdminStats(); } catch(e) {}
-      } catch(e) {
-        console.warn('Suppression activité GAS KO:', e);
-        try { renderAdmin(); } catch(e2) {}
-      }
+      } catch(e) { console.warn('Suppression activité GAS KO:', e); }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
-    return;
   }
 
-  // Fallback si GAS non appelé
-  try { renderAdmin(); } catch(e) {}
-  try { renderAdminStats(); } catch(e) {}
+  renderAdmin();
+  renderAdminStats();
 }
 
 async function deleteRegistration(id) {
