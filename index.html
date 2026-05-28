@@ -1105,8 +1105,8 @@ const ACTIVITIES = {
         acts: [
           { id:"tt-comp-entrain",    name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Lundi",    heure:"19h45/21h00", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain-me", fftt:70, note:"2 séances : Lu 19h45-21h + Me 19h45-21h" },
           { id:"tt-comp-entrain-me", name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Mercredi", heure:"19h45/21h00", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain",    fftt:70, note:"2 séances : Lu 19h45-21h + Me 19h45-21h" },
-          { id:"tt-comp-sans",       name:"Tennis de table\nlibre", lieu:"CM", jour:"Mardi",    heure:"19h30/21h30", isno:120, hc:120, animateur:"C. MAURICE", linkedWith:"tt-comp-sans-me", fftt:70, note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
-          { id:"tt-comp-sans-me",    name:"Tennis de table\nlibre", lieu:"CM", jour:"Mercredi", heure:"21h15/22h45", isno:120, hc:120, animateur:"C. MAURICE", linkedWith:"tt-comp-sans",    fftt:70, note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
+          { id:"tt-comp-sans",       name:"Tennis de table\nlibre", lieu:"CM", jour:"Mardi",    heure:"19h30/21h30", isno:120, hc:120, animateur:"C. MAURICE", linkedWith:"tt-comp-sans-me", note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
+          { id:"tt-comp-sans-me",    name:"Tennis de table\nlibre", lieu:"CM", jour:"Mercredi", heure:"21h15/22h45", isno:120, hc:120, animateur:"C. MAURICE", linkedWith:"tt-comp-sans",    note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
           { id:"ping-bienetre", name:"Ping bien-être / Pong santé ✨", lieu:"CM", jour:"Jeudi", heure:"15h30/17h00", isno:130, hc:130, animateur:"Y. LAROCHELLE / C. MAURICE" },
         ]
       },
@@ -1150,9 +1150,9 @@ const ACTIVITIES = {
           { id:"couture-je2", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"13h00/15h30", isno:340, hc:380, animateur:"A. STEFANI" },
           { id:"couture-je3", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"18h00/20h30", isno:340, hc:380, animateur:"A. STEFANI" },
           { id:"country-init-a", name:"Country Initiation ✨", lieu:"MB", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Non éligible remise 15%" },
-          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait ≥2 séances: 190€ Isno / 220€ HC" },
-          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait ≥2 séances: 190€ Isno / 220€ HC" },
-          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait ≥2 séances: 190€ Isno / 220€ HC" },
+          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
+          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
+          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
           { id:"danse-moderne-av1", name:"Danse Moderne Avancés 1 (≥18 ans, né 2007)", lieu:"CM", jour:"Jeudi", heure:"18h45/20h15", isno:165, hc:195, animateur:"F. CHARROIS" },
           { id:"danse-moderne-av2", name:"Danse Moderne Avancés 2", lieu:"CM", jour:"Jeudi", heure:"20h15/21h45", isno:165, hc:195, animateur:"F. CHARROIS" },
           { id:"danse-classique-inter-a", name:"Danse Classique Inter Ados/Adultes ✨", lieu:"GSF", jour:"Lundi", heure:"18h45/20h00", isno:205, hc:235, animateur:"M. RABAEY" },
@@ -3195,7 +3195,7 @@ async function chargerDossierExistant() {
   }
 
   // Construire la liste des activités existantes
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
   activitesExistantes = [];
   let totalExistant = 0;
   let countEligibles = 0;
@@ -3217,7 +3217,7 @@ async function chargerDossierExistant() {
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
         activitesExistantes.push({ actId, tarif: price, nom: act.name.replace(/\n/g,' — ') });
         totalExistant += price;
-        if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) countEligibles++;
+        if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) countEligibles++;
       });
     });
   } else {
@@ -3320,7 +3320,7 @@ function calcTotals() {
   let totalActivities = 0;
   let totalFNSMR = state.members.length * 15;
 
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
   const allMemberActivities = state.members.flatMap(m => m.activities);
   totalActivities = new Set(allMemberActivities).size;
 
@@ -3338,19 +3338,11 @@ function calcTotals() {
       // Activité en liste d'attente : ne pas comptabiliser dans le total à payer
       if (waiting.has(actId)) return;
       let price = isno ? act.isno : act.hc;
+      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-
-      // ── Forfait country ≥2 créneaux ──
-      const cF = calcCountryForfait(m, isno);
-      const COUNTRY_F = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      if (cF.forfait && COUNTRY_F.includes(actId)) {
-        price = (cF.ids[0] === actId) ? cF.prix : 0;
-      }
-
       totalBeforeDiscount += price;
-      // Country forfait actif = non remisable ; 1 seul créneau country = remisable
-      const isCountryForfaitActive = cF.forfait && COUNTRY_F.includes(actId);
-      if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) discountableTotal += price;
+      // Liste d'attente : non éligible à la remise 15%
+      if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
     });
   });
 
@@ -3366,7 +3358,7 @@ function calcTotals() {
         if (counted.has(pk)) return;
         counted.add(pk);
       }
-      if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) acc++;
+      if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) acc++;
     });
     return acc;
   }, 0);
@@ -3407,6 +3399,7 @@ function renderSummary() {
         const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
         const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
         const nomClean = act.name.replace(/\n/g, ' — ');
+      const isWaitingLA2 = m.waitingList && (m.waitingList instanceof Set ? m.waitingList.has(actId) : (m.waitingList||[]).includes(actId));
         const price = isno ? act.isno : act.hc;
         return `<tr>
           <td>${m.prenom} ${m.nom}</td>
@@ -3418,22 +3411,14 @@ function renderSummary() {
         </tr>`;
       }
       const nomClean = act.name.replace(/\n/g, ' — ');
-      let price = isno ? act.isno : act.hc;
-      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      const cFrs2 = calcCountryForfait(m, isno);
-      const CFIDS2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      let prixLabel2 = price + '€';
-      if (cFrs2.forfait && CFIDS2.includes(actId)) {
-        price = (cFrs2.ids[0] === actId) ? cFrs2.prix : 0;
-        prixLabel2 = (cFrs2.ids[0] === actId) ? `<strong>${price}€</strong> <small style="color:#1b5e20">(forfait)</small>` : '<span style="color:#999">inclus</span>';
-      }
+      const price = isno ? act.isno : act.hc;
       return `<tr>
         <td>${m.prenom} ${m.nom}</td>
         <td>${nomClean}</td>
         <td>${act.jour}</td>
         <td>${act.heure}</td>
         <td>${act.lieu || '—'}</td>
-        <td style="text-align:right;font-weight:600">${prixLabel2}</td>
+        <td style="text-align:right;font-weight:600">${price}€</td>
       </tr>`;
     }).join('');
     return actsRows;
@@ -4453,19 +4438,6 @@ function renderPayment() {
   document.getElementById('docs-list').innerHTML = docsList;
 }
 
-
-// ── Helper : calculer le forfait country pour un membre ──
-// countryIds : liste des IDs country (hors Initiation) sélectionnés
-// Retourne { forfait: true, prix: 190|220, ids: [...] } ou { forfait: false }
-function calcCountryForfait(membre, isno) {
-  const COUNTRY_FORFAIT_IDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-  const countrySelected = (membre.activities || []).filter(id => COUNTRY_FORFAIT_IDS.includes(id));
-  if (countrySelected.length >= 2) {
-    return { forfait: true, prix: isno ? 190 : 220, ids: countrySelected };
-  }
-  return { forfait: false };
-}
-
 function buildRows(reg) {
   const isno = reg.responsable.commune === 'isno';
   const rows = [];
@@ -4494,20 +4466,14 @@ function buildRows(reg) {
         // Clean the name (remove \n line breaks for sheet)
         const nomClean = act.name.replace(/\n/g, ' — ');
         let price = isno ? act.isno : act.hc;
+        // Réduction femmes TT : -30€ (Isneauville ET hors commune)
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
 
-        // ── Forfait country ≥2 créneaux (hors Initiation) ──
-        const cForfait = calcCountryForfait(m, isno);
-        const COUNTRY_F = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-        if (cForfait.forfait && COUNTRY_F.includes(actId)) {
-          price = (cForfait.ids[0] === actId) ? cForfait.prix : 0;
-        }
-
+        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
-        const isCountryForfait = cForfait.forfait && COUNTRY_F.includes(actId);
-        const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
-        const estElig = aRemise15 && !isCountryForfait && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
-        const tarifBrut = isno ? act.isno : act.hc;
+        const NON_REMISABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+        const tarifBrut = price;
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
 
         rows.push({
@@ -4521,10 +4487,12 @@ function buildRows(reg) {
           ddn: m.ddn, sexe: m.sexe,
           activite: nomClean, jour: joursCombi, heure: heuresCombi,
           lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-          tarif: price,          // tarif réellement réglé (après -15% si éligible)
-          tarif_brut: tarifBrut, // tarif avant remise (pour affichage facture)
+          // isWaitingLA : activité en liste d'attente → tarif = 0
+          tarif: (typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2) ? 0 : price,
+          tarif_brut: (typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2) ? 0 : (typeof tarifBrut!=='undefined'?tarifBrut:typeof tarifBrut2!=='undefined'?tarifBrut2:price),
+          statut_inscription: (typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2) ? 'En attente' : '',
           fnsmr: 15,
-          remise: estElig ? 15 : 0,
+          remise: (!((typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2))&&(estElig||estElig2)) ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
           avoir_montant: reg.responsable.avoirMontant || 0,
@@ -4542,20 +4510,13 @@ function buildRows(reg) {
       // Non-linked activity — standard row
       const nomClean = act.name.replace(/\n/g, ' — ');
       let price = isno ? act.isno : act.hc;
+      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-
-      // ── Forfait country ≥2 créneaux ──
-      const cForfait2 = calcCountryForfait(m, isno);
-      const COUNTRY_F2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      if (cForfait2.forfait && COUNTRY_F2.includes(actId)) {
-        price = (cForfait2.ids[0] === actId) ? cForfait2.prix : 0;
-      }
-
+      // Remise 15% si éligible
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
-      const isCountryForfait2 = cForfait2.forfait && COUNTRY_F2.includes(actId);
-      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
-      const estElig2 = aRemise15b && !isCountryForfait2 && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
-      const tarifBrut2 = isno ? act.isno : act.hc;
+      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+      const estElig2 = aRemise15b && !NON_REMISABLE2.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+      const tarifBrut2 = price;
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
         date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
@@ -6357,7 +6318,7 @@ async function selectionnerActiviteAjout(code, actId) {
 
   const totalActsApres = existingActCount + 1;
   const aRemiseApres   = totalActsApres >= 3;
-  const eligibleRemise = !['marche-nordic','country-init-a','country-init-j'].includes(actId) && (!actId.startsWith('tt-') || isno);
+  const eligibleRemise = !['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'].includes(actId) && !actId.startsWith('tt-');
   let prixApresRemise  = prix;
   if (aRemiseApres && eligibleRemise) prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
 
