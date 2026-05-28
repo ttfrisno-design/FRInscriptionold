@@ -3404,7 +3404,10 @@ function renderSummary() {
         const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
         const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
         const nomClean = act.name.replace(/\n/g, ' — ');
-      const isWaitingLA2 = m.waitingList && (m.waitingList instanceof Set ? m.waitingList.has(actId) : (m.waitingList||[]).includes(actId));
+      // Liste d'attente : tarif = 0
+      const _wl2 = m.waitingList;
+      const _isWaiting2 = _wl2 ? (_wl2 instanceof Set ? _wl2.has(actId) : (_wl2||[]).includes(actId)) : false;
+      if (_isWaiting2) price = 0;
         const price = isno ? act.isno : act.hc;
         return `<tr>
           <td>${m.prenom} ${m.nom}</td>
@@ -4490,8 +4493,11 @@ function buildRows(reg) {
         // Clean the name (remove \n line breaks for sheet)
         const nomClean = act.name.replace(/\n/g, ' — ');
         let price = isno ? act.isno : act.hc;
-        // Réduction femmes TT : -30€ (Isneauville ET hors commune)
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+        // Liste d'attente : tarif = 0
+        const _wl = m.waitingList;
+        const _isWaiting = _wl ? (_wl instanceof Set ? _wl.has(actId) : (_wl||[]).includes(actId)) : false;
+        if (_isWaiting) price = 0;
 
         // Appliquer remise 15% si éligible — tarif = montant réellement réglé
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
@@ -4511,12 +4517,11 @@ function buildRows(reg) {
           ddn: m.ddn, sexe: m.sexe,
           activite: nomClean, jour: joursCombi, heure: heuresCombi,
           lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-          // isWaitingLA : activité en liste d'attente → tarif = 0
-          tarif: (typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2) ? 0 : price,
-          tarif_brut: (typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2) ? 0 : (typeof tarifBrut!=='undefined'?tarifBrut:typeof tarifBrut2!=='undefined'?tarifBrut2:price),
-          statut_inscription: (typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2) ? 'En attente' : '',
+          tarif:      price,
+          tarif_brut: tarifBrut,
+          statut_inscription: _isWaiting ? 'En attente' : '',
           fnsmr: 15,
-          remise: (!((typeof isWaitingLA!=='undefined'&&isWaitingLA)||(typeof isWaitingLA2!=='undefined'&&isWaitingLA2))&&(estElig||estElig2)) ? 15 : 0,
+          remise: (!_isWaiting && estElig) ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
           avoir_montant: reg.responsable.avoirMontant || 0,
@@ -4554,9 +4559,10 @@ function buildRows(reg) {
         activite: nomClean, jour: act.jour, heure: act.heure,
         lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
         tarif: price,           // tarif réellement réglé (après -15% si éligible)
-        tarif_brut: tarifBrut2, // tarif avant remise
+        tarif_brut: tarifBrut2,
+        statut_inscription: _isWaiting2 ? 'En attente' : '',
         fnsmr: 15,
-        remise: estElig2 ? 15 : 0,
+        remise: (!_isWaiting2 && estElig2) ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
         mode_paiement: reg.responsable.modePaiement || 'helloasso',
         avoir_montant: reg.responsable.avoirMontant || 0,
