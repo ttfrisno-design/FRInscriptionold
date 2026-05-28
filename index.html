@@ -3217,7 +3217,7 @@ async function chargerDossierExistant() {
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
         activitesExistantes.push({ actId, tarif: price, nom: act.name.replace(/\n/g,' — ') });
         totalExistant += price;
-        if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) countEligibles++;
+        if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) countEligibles++;
       });
     });
   } else {
@@ -3350,7 +3350,7 @@ function calcTotals() {
       totalBeforeDiscount += price;
       // Country forfait actif = non remisable ; 1 seul créneau country = remisable
       const isCountryForfaitActive = cF.forfait && COUNTRY_F.includes(actId);
-      if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
+      if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) discountableTotal += price;
     });
   });
 
@@ -3366,7 +3366,7 @@ function calcTotals() {
         if (counted.has(pk)) return;
         counted.add(pk);
       }
-      if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) acc++;
+      if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) acc++;
     });
     return acc;
   }, 0);
@@ -4506,7 +4506,7 @@ function buildRows(reg) {
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
         const isCountryForfait = cForfait.forfait && COUNTRY_F.includes(actId);
         const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
-        const estElig = aRemise15 && !isCountryForfait && !NON_REMISABLE.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+        const estElig = aRemise15 && !isCountryForfait && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
         const tarifBrut = isno ? act.isno : act.hc;
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
 
@@ -4554,7 +4554,7 @@ function buildRows(reg) {
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
       const isCountryForfait2 = cForfait2.forfait && COUNTRY_F2.includes(actId);
       const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
-      const estElig2 = aRemise15b && !isCountryForfait2 && !NON_REMISABLE2.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+      const estElig2 = aRemise15b && !isCountryForfait2 && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
       const tarifBrut2 = isno ? act.isno : act.hc;
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
@@ -6357,7 +6357,7 @@ async function selectionnerActiviteAjout(code, actId) {
 
   const totalActsApres = existingActCount + 1;
   const aRemiseApres   = totalActsApres >= 3;
-  const eligibleRemise = !['marche-nordic','country-init-a','country-init-j'].includes(actId) && !actId.startsWith('tt-');
+  const eligibleRemise = !['marche-nordic','country-init-a','country-init-j'].includes(actId) && (!actId.startsWith('tt-') || isno);
   let prixApresRemise  = prix;
   if (aRemiseApres && eligibleRemise) prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
 
