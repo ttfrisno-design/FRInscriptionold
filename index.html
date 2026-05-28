@@ -1150,9 +1150,9 @@ const ACTIVITIES = {
           { id:"couture-je2", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"13h00/15h30", isno:340, hc:380, animateur:"A. STEFANI" },
           { id:"couture-je3", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"18h00/20h30", isno:340, hc:380, animateur:"A. STEFANI" },
           { id:"country-init-a", name:"Country Initiation ✨", lieu:"MB", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Non éligible remise 15%" },
-          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
+          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait ≥2 séances: 190€ Isno / 220€ HC" },
+          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait ≥2 séances: 190€ Isno / 220€ HC" },
+          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait ≥2 séances: 190€ Isno / 220€ HC" },
           { id:"danse-moderne-av1", name:"Danse Moderne Avancés 1 (≥18 ans, né 2007)", lieu:"CM", jour:"Jeudi", heure:"18h45/20h15", isno:165, hc:195, animateur:"F. CHARROIS" },
           { id:"danse-moderne-av2", name:"Danse Moderne Avancés 2", lieu:"CM", jour:"Jeudi", heure:"20h15/21h45", isno:165, hc:195, animateur:"F. CHARROIS" },
           { id:"danse-classique-inter-a", name:"Danse Classique Inter Ados/Adultes ✨", lieu:"GSF", jour:"Lundi", heure:"18h45/20h00", isno:205, hc:235, animateur:"M. RABAEY" },
@@ -3195,7 +3195,7 @@ async function chargerDossierExistant() {
   }
 
   // Construire la liste des activités existantes
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
   activitesExistantes = [];
   let totalExistant = 0;
   let countEligibles = 0;
@@ -3320,7 +3320,7 @@ function calcTotals() {
   let totalActivities = 0;
   let totalFNSMR = state.members.length * 15;
 
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
   const allMemberActivities = state.members.flatMap(m => m.activities);
   totalActivities = new Set(allMemberActivities).size;
 
@@ -3338,11 +3338,19 @@ function calcTotals() {
       // Activité en liste d'attente : ne pas comptabiliser dans le total à payer
       if (waiting.has(actId)) return;
       let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+
+      // ── Forfait country ≥2 créneaux ──
+      const cF = calcCountryForfait(m, isno);
+      const COUNTRY_F = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cF.forfait && COUNTRY_F.includes(actId)) {
+        price = (cF.ids[0] === actId) ? cF.prix : 0;
+      }
+
       totalBeforeDiscount += price;
-      // Liste d'attente : non éligible à la remise 15%
-      if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
+      // Country forfait actif = non remisable ; 1 seul créneau country = remisable
+      const isCountryForfaitActive = cF.forfait && COUNTRY_F.includes(actId);
+      if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
     });
   });
 
@@ -3410,14 +3418,22 @@ function renderSummary() {
         </tr>`;
       }
       const nomClean = act.name.replace(/\n/g, ' — ');
-      const price = isno ? act.isno : act.hc;
+      let price = isno ? act.isno : act.hc;
+      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      const cFrs2 = calcCountryForfait(m, isno);
+      const CFIDS2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      let prixLabel2 = price + '€';
+      if (cFrs2.forfait && CFIDS2.includes(actId)) {
+        price = (cFrs2.ids[0] === actId) ? cFrs2.prix : 0;
+        prixLabel2 = (cFrs2.ids[0] === actId) ? `<strong>${price}€</strong> <small style="color:#1b5e20">(forfait)</small>` : '<span style="color:#999">inclus</span>';
+      }
       return `<tr>
         <td>${m.prenom} ${m.nom}</td>
         <td>${nomClean}</td>
         <td>${act.jour}</td>
         <td>${act.heure}</td>
         <td>${act.lieu || '—'}</td>
-        <td style="text-align:right;font-weight:600">${price}€</td>
+        <td style="text-align:right;font-weight:600">${prixLabel2}</td>
       </tr>`;
     }).join('');
     return actsRows;
@@ -4437,6 +4453,19 @@ function renderPayment() {
   document.getElementById('docs-list').innerHTML = docsList;
 }
 
+
+// ── Helper : calculer le forfait country pour un membre ──
+// countryIds : liste des IDs country (hors Initiation) sélectionnés
+// Retourne { forfait: true, prix: 190|220, ids: [...] } ou { forfait: false }
+function calcCountryForfait(membre, isno) {
+  const COUNTRY_FORFAIT_IDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+  const countrySelected = (membre.activities || []).filter(id => COUNTRY_FORFAIT_IDS.includes(id));
+  if (countrySelected.length >= 2) {
+    return { forfait: true, prix: isno ? 190 : 220, ids: countrySelected };
+  }
+  return { forfait: false };
+}
+
 function buildRows(reg) {
   const isno = reg.responsable.commune === 'isno';
   const rows = [];
@@ -4465,14 +4494,20 @@ function buildRows(reg) {
         // Clean the name (remove \n line breaks for sheet)
         const nomClean = act.name.replace(/\n/g, ' — ');
         let price = isno ? act.isno : act.hc;
-        // Réduction femmes TT : -30€ (Isneauville ET hors commune)
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
 
-        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
+        // ── Forfait country ≥2 créneaux (hors Initiation) ──
+        const cForfait = calcCountryForfait(m, isno);
+        const COUNTRY_F = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+        if (cForfait.forfait && COUNTRY_F.includes(actId)) {
+          price = (cForfait.ids[0] === actId) ? cForfait.prix : 0;
+        }
+
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
-        const NON_REMISABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
-        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
-        const tarifBrut = price;
+        const isCountryForfait = cForfait.forfait && COUNTRY_F.includes(actId);
+        const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
+        const estElig = aRemise15 && !isCountryForfait && !NON_REMISABLE.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+        const tarifBrut = isno ? act.isno : act.hc;
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
 
         rows.push({
@@ -4507,13 +4542,20 @@ function buildRows(reg) {
       // Non-linked activity — standard row
       const nomClean = act.name.replace(/\n/g, ' — ');
       let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      // Remise 15% si éligible
+
+      // ── Forfait country ≥2 créneaux ──
+      const cForfait2 = calcCountryForfait(m, isno);
+      const COUNTRY_F2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cForfait2.forfait && COUNTRY_F2.includes(actId)) {
+        price = (cForfait2.ids[0] === actId) ? cForfait2.prix : 0;
+      }
+
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
-      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
-      const estElig2 = aRemise15b && !NON_REMISABLE2.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
-      const tarifBrut2 = price;
+      const isCountryForfait2 = cForfait2.forfait && COUNTRY_F2.includes(actId);
+      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
+      const estElig2 = aRemise15b && !isCountryForfait2 && !NON_REMISABLE2.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
+      const tarifBrut2 = isno ? act.isno : act.hc;
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
         date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
@@ -5874,11 +5916,17 @@ function mergerDossiersSheet(dossiers) {
         qsResult:  d.qs_sante === 'Certificat requis' ? 'certificat_requis'
                  : d.qs_sante === 'Attestation OK'    ? 'attestation_ok' : null
       });
+      // Conserver les données Sheet dans _rows pour accès aux champs pass_aide et qs_sante
+      if (!reg._rows) reg._rows = [];
+      reg._rows.push({
+        qs_sante:   d.qs_sante   || '',
+        pass_aide:  d.pass_aide  || '',
+        activite:   d.activite   || '',
+        activite_id:d.activite_id|| ''
+      });
     }
 
-    // Stocker la ligne complète (toujours, même si membre déjà connu)
-    if (!reg._rows) reg._rows = [];
-    reg._rows.push(d); // d contient activite_id, activite, statut_inscription, tarif, etc.
+    reg._rows.push(d);
 
     // Reconstruire les activités du membre depuis activite_id (col 36)
     // Ne pas ajouter les activités supprimées
@@ -6309,7 +6357,7 @@ async function selectionnerActiviteAjout(code, actId) {
 
   const totalActsApres = existingActCount + 1;
   const aRemiseApres   = totalActsApres >= 3;
-  const eligibleRemise = !['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'].includes(actId) && !actId.startsWith('tt-');
+  const eligibleRemise = !['marche-nordic','country-init-a','country-init-j'].includes(actId) && !actId.startsWith('tt-');
   let prixApresRemise  = prix;
   if (aRemiseApres && eligibleRemise) prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
 
@@ -6478,52 +6526,23 @@ function ouvrirSupprActivite(code) {
   const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
   if (!reg) { showToast('Dossier introuvable', 'red'); return; }
 
-  // Construire la liste des activités depuis reg._rows (données Sheet) ou m.activities
+  // Construire la liste des activités de tous les membres — dédupliquer par placesId
   const lignes = [];
   const dejavu = new Set();
-
-  // Priorité : reg._rows contient les données brutes du Sheet (placesId + nom lisible)
-  if (reg._rows && reg._rows.length > 0) {
-    reg._rows.forEach(d => {
-      const placesId = (d.activite_id || '').trim();
-      const actNom   = (d.activite    || '').replace(/\n/g, ' — ').trim();
-      const statut   = (d.statut_inscription || d.statut || '').toLowerCase();
-      if (!placesId && !actNom) return;
-      if (statut.includes('supprim')) return;
-      const dedupKey = (d.prenom_membre || '') + '_' + (d.nom_membre || '') + '_' + placesId;
+  reg.members.forEach(m => {
+    (m.activities || []).forEach(actId => {
+      const act = getActById(actId);
+      if (!act) return;
+      // Clé unique = membre + placesId (évite les doublons TT comp/sans qui partagent le même onglet)
+      const placesId = siteToPlacesId(actId);
+      const dedupKey = m.id + '_' + placesId;
       if (dejavu.has(dedupKey)) return;
       dejavu.add(dedupKey);
-      // Chercher le membre correspondant
-      const memKey = ((d.prenom_membre || '') + ' ' + (d.nom_membre || '')).trim();
-      const memObj = reg.members.find(m => (m.prenom + ' ' + m.nom).trim() === memKey);
-      const membreId = memObj ? memObj.id : memKey;
-      // Chercher le prix depuis le catalogue si possible, sinon depuis le Sheet
-      const actFront = (typeof siteToPlacesId === 'function')
-        ? Object.values(ACTIVITIES || {}).flatMap(s => Object.values(s.cats || {}).flatMap(c => c.acts || []))
-            .find(a => a && siteToPlacesId(a.id) === placesId)
-        : null;
-      const isno = reg.responsable && reg.responsable.commune === 'isno';
-      const prix = actFront ? (isno ? actFront.isno : actFront.hc) : (Number(d.tarif_brut) || Number(d.tarif) || 0);
-      const jour  = d.jour  || (actFront ? actFront.jour  : '');
-      const heure = d.heure || (actFront ? actFront.heure : '');
-      lignes.push({ membreId, membreNom: memKey, actId: placesId, placesId, actNom, prix, jour, heure });
+      const isno = (reg.responsable.commune === 'isno');
+      const prix = isno ? act.isno : act.hc;
+      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom: act.name.replace(/\n/g, ' — '), prix, jour: act.jour, heure: act.heure });
     });
-  } else {
-    // Fallback : m.activities (peut contenir placesId ou actId frontend)
-    reg.members.forEach(m => {
-      (m.activities || []).forEach(actId => {
-        const act = getActById(actId);
-        const placesId = act ? siteToPlacesId(actId) : actId;
-        const actNom = act ? act.name.replace(/\n/g, ' — ') : actId;
-        const dedupKey = m.id + '_' + placesId;
-        if (dejavu.has(dedupKey)) return;
-        dejavu.add(dedupKey);
-        const isno = reg.responsable && reg.responsable.commune === 'isno';
-        const prix = act ? (isno ? act.isno : act.hc) : 0;
-        lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom, prix, jour: act ? act.jour : '', heure: act ? act.heure : '' });
-      });
-    });
-  }
+  });
 
   if (lignes.length === 0) { showToast('Aucune activité dans ce dossier', 'orange'); return; }
 
