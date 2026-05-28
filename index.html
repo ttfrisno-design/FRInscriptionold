@@ -4210,44 +4210,6 @@ function openHelloAsso() {
   }
 }
 
-
-async function enregistrerPuisAfficherHA(code) {
-  const btn = document.getElementById('btn-enregistrer-ha');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement…'; }
-  const overlay = document.createElement('div');
-  overlay.id = 'fri-loading-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px 40px;text-align:center"><div style="font-size:40px">⏳</div><div style="font-size:16px;font-weight:700;margin-top:12px">Enregistrement en cours...</div></div>';
-  document.body.appendChild(overlay);
-  const removeOverlay = () => { const o = document.getElementById('fri-loading-overlay'); if(o) o.remove(); };
-  try {
-    const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
-    const reg = pending[code];
-    if (!reg) { removeOverlay(); alert('Dossier introuvable.'); return; }
-    reg.status = 'pending_helloasso';
-    pending[code] = reg;
-    localStorage.setItem('fri_pending', JSON.stringify(pending));
-    const existing = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-    if (!existing.find(r => r.id === reg.id)) existing.push(reg);
-    localStorage.setItem('fri_registrations', JSON.stringify(existing));
-    if (state) state.registrations = existing;
-    await sendToGoogleSheets(reg);
-    removeOverlay();
-    const btnZone = document.getElementById('btn-enregistrer-ha');
-    if (btnZone) btnZone.closest('div').style.display = 'none';
-    const wz = document.getElementById('ha-widget-zone');
-    if (wz) { wz.style.display = ''; wz.scrollIntoView({ behavior: 'smooth' }); }
-    const emailEl = document.getElementById('confirm-email');
-    const codeEl  = document.getElementById('confirm-code');
-    if (emailEl && reg.responsable?.email1) emailEl.value = reg.responsable.email1;
-    if (codeEl) codeEl.value = code;
-  } catch(e) {
-    removeOverlay();
-    if (btn) { btn.disabled = false; btn.textContent = '📋 Enregistrer et passer au paiement HelloAsso'; }
-    alert('Erreur : ' + e.message);
-  }
-}
-
 async function finaliserInscription(code) {
   const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
@@ -4395,15 +4357,23 @@ async function confirmPayment() {
   goStep(6);
   showConfirmation(reg, false, true);
 
-  // Dossier déjà dans le Sheet — appeler uniquement validerPaiement
-  try {
-    const url = getAppsScriptUrl();
-    await callAppsScriptValidate(url, code);
+  // Background: send to Google Sheets + emails (with visual feedback)
+  const saved = await sendToGoogleSheets(reg);
+  if (!saved) {
+    // Update confirmation screen to show sync warning
     const syncEl = document.getElementById('sync-status');
-    if (syncEl) syncEl.innerHTML = '<div class="alert alert-success" style="max-width:480px;margin:16px auto">☁️ Paiement validé — email de confirmation envoyé.</div>';
-  } catch(e) {
+    if (syncEl) {
+      syncEl.innerHTML = '<div class="alert alert-warn" style="max-width:480px;margin:16px auto;text-align:left">' +
+        '⚠️ La synchronisation avec Google Drive n\'a pas pu être établie. ' +
+        'Votre inscription est bien enregistrée localement. ' +
+        'Contactez <a href="mailto:frisneauville@orange.fr">frisneauville@orange.fr</a> si vous ne recevez pas d\'email de confirmation.</div>';
+    }
+  } else {
     const syncEl = document.getElementById('sync-status');
-    if (syncEl) syncEl.innerHTML = '<div class="alert alert-warn" style="max-width:480px;margin:16px auto">⚠️ Contactez frisneauville@orange.fr si vous ne recevez pas d\'email.</div>';
+    if (syncEl) {
+      syncEl.innerHTML = '<div class="alert alert-success" style="max-width:480px;margin:16px auto;text-align:left">' +
+        '☁️ Dossier synchronise avec Google Drive — un email de confirmation vous a ete envoye.</div>';
+    }
   }
 }
 
@@ -5697,12 +5667,7 @@ function renderAdmin() {
                 ? actsActives.map(a => {
                     try {
                       const act = getActById(a);
-                      // Chercher le nom lisible dans _rows (placesId Sheet)
-                    let label = act ? act.name.replace(/\n/g,' ') : a;
-                    if (reg._rows) {
-                      const row = reg._rows.find(r => (r.activite_id||'').trim() === a);
-                      if (row && row.activite) label = row.activite.replace(/\n/g,' — ');
-                    }
+                      const label = act ? act.name.replace(/\n/g,' ') : a;
                       return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">· ${label}</span>`;
                     } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
                   }).filter(Boolean).join('<br>')
@@ -5894,10 +5859,9 @@ function mergerDossiersSheet(dossiers) {
 
     const reg = byCode[d.code];
 
-    // Toujours prendre le total du Sheet — col AF fait foi
-    if (Number(d.total) > 0) {
+    // Mettre à jour le total si plus grand (dernière ligne)
+    if (Number(d.total) > reg.totals.grandTotal) {
       reg.totals.grandTotal = Number(d.total);
-      reg._sheetTotal = Number(d.total);
     }
 
     // Ajouter le membre si pas déjà présent
@@ -5910,17 +5874,11 @@ function mergerDossiersSheet(dossiers) {
         qsResult:  d.qs_sante === 'Certificat requis' ? 'certificat_requis'
                  : d.qs_sante === 'Attestation OK'    ? 'attestation_ok' : null
       });
-      // Conserver les données Sheet dans _rows pour accès aux champs pass_aide et qs_sante
-      if (!reg._rows) reg._rows = [];
-      reg._rows.push({
-        qs_sante:   d.qs_sante   || '',
-        pass_aide:  d.pass_aide  || '',
-        activite:   d.activite   || '',
-        activite_id:d.activite_id|| ''
-      });
     }
 
-    reg._rows.push(d);
+    // Stocker la ligne complète (toujours, même si membre déjà connu)
+    if (!reg._rows) reg._rows = [];
+    reg._rows.push(d); // d contient activite_id, activite, statut_inscription, tarif, etc.
 
     // Reconstruire les activités du membre depuis activite_id (col 36)
     // Ne pas ajouter les activités supprimées
@@ -5929,15 +5887,35 @@ function mergerDossiersSheet(dossiers) {
     const actPlacesId = (d.activite_id || '').trim();
     const actNomSheet = (d.activite    || '').trim();
     if (actPlacesId || actNomSheet) {
-      // Utiliser directement le placesId comme identifiant d'activité
-      // L'admin affiche le nom depuis _rows → pas besoin de mapper vers les IDs frontend
-      const actKey = actPlacesId || actNomSheet;
+      // Trouver l'actId frontend correspondant au placesId Sheet
+      let actIdFront = null;
+      // Chercher dans ACTIVITIES via placesId
+      for (const section of Object.values(ACTIVITIES || {})) {
+        for (const cat of Object.values(section.cats || {})) {
+          for (const act of (cat.acts || [])) {
+            if (!act) continue;
+            const pid = (typeof siteToPlacesId === 'function') ? siteToPlacesId(act.id) : act.id;
+            if (pid === actPlacesId || act.id === actPlacesId) {
+              actIdFront = act.id; break;
+            }
+            // Fallback : comparer par nom
+            if (actNomSheet && act.name.replace(/\n/g,' — ').toLowerCase().includes(actNomSheet.toLowerCase().substring(0, 15))) {
+              actIdFront = act.id;
+            }
+          }
+          if (actIdFront) break;
+        }
+        if (actIdFront) break;
+      }
+      // Ajouter l'activité au bon membre
       const memK = (d.prenom_membre + ' ' + d.nom_membre).trim();
       const memObj = reg.members.find(m => (m.prenom + ' ' + m.nom).trim() === memK);
-      console.log('[FRI] mergerDossiers actKey:', actKey, 'memK:', memK, 'memObj:', !!memObj, 'statut_inscription:', d.statut_inscription);
-      if (memObj && actKey && !memObj.activities.includes(actKey)) {
-        memObj.activities.push(actKey);
-        console.log('[FRI] ✅ activité ajoutée:', actKey, 'pour', memK);
+      if (memObj && actIdFront && !memObj.activities.includes(actIdFront)) {
+        memObj.activities.push(actIdFront);
+      } else if (memObj && actPlacesId && !memObj._placesIds) {
+        // Stocker le placesId brut si pas de mapping frontend
+        memObj._placesIds = memObj._placesIds || [];
+        if (!memObj._placesIds.includes(actPlacesId)) memObj._placesIds.push(actPlacesId);
       }
     }
   });
@@ -6500,23 +6478,52 @@ function ouvrirSupprActivite(code) {
   const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
   if (!reg) { showToast('Dossier introuvable', 'red'); return; }
 
-  // Construire la liste des activités de tous les membres — dédupliquer par placesId
+  // Construire la liste des activités depuis reg._rows (données Sheet) ou m.activities
   const lignes = [];
   const dejavu = new Set();
-  reg.members.forEach(m => {
-    (m.activities || []).forEach(actId => {
-      const act = getActById(actId);
-      if (!act) return;
-      // Clé unique = membre + placesId (évite les doublons TT comp/sans qui partagent le même onglet)
-      const placesId = siteToPlacesId(actId);
-      const dedupKey = m.id + '_' + placesId;
+
+  // Priorité : reg._rows contient les données brutes du Sheet (placesId + nom lisible)
+  if (reg._rows && reg._rows.length > 0) {
+    reg._rows.forEach(d => {
+      const placesId = (d.activite_id || '').trim();
+      const actNom   = (d.activite    || '').replace(/\n/g, ' — ').trim();
+      const statut   = (d.statut_inscription || d.statut || '').toLowerCase();
+      if (!placesId && !actNom) return;
+      if (statut.includes('supprim')) return;
+      const dedupKey = (d.prenom_membre || '') + '_' + (d.nom_membre || '') + '_' + placesId;
       if (dejavu.has(dedupKey)) return;
       dejavu.add(dedupKey);
-      const isno = (reg.responsable.commune === 'isno');
-      const prix = isno ? act.isno : act.hc;
-      lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom: act.name.replace(/\n/g, ' — '), prix, jour: act.jour, heure: act.heure });
+      // Chercher le membre correspondant
+      const memKey = ((d.prenom_membre || '') + ' ' + (d.nom_membre || '')).trim();
+      const memObj = reg.members.find(m => (m.prenom + ' ' + m.nom).trim() === memKey);
+      const membreId = memObj ? memObj.id : memKey;
+      // Chercher le prix depuis le catalogue si possible, sinon depuis le Sheet
+      const actFront = (typeof siteToPlacesId === 'function')
+        ? Object.values(ACTIVITIES || {}).flatMap(s => Object.values(s.cats || {}).flatMap(c => c.acts || []))
+            .find(a => a && siteToPlacesId(a.id) === placesId)
+        : null;
+      const isno = reg.responsable && reg.responsable.commune === 'isno';
+      const prix = actFront ? (isno ? actFront.isno : actFront.hc) : (Number(d.tarif_brut) || Number(d.tarif) || 0);
+      const jour  = d.jour  || (actFront ? actFront.jour  : '');
+      const heure = d.heure || (actFront ? actFront.heure : '');
+      lignes.push({ membreId, membreNom: memKey, actId: placesId, placesId, actNom, prix, jour, heure });
     });
-  });
+  } else {
+    // Fallback : m.activities (peut contenir placesId ou actId frontend)
+    reg.members.forEach(m => {
+      (m.activities || []).forEach(actId => {
+        const act = getActById(actId);
+        const placesId = act ? siteToPlacesId(actId) : actId;
+        const actNom = act ? act.name.replace(/\n/g, ' — ') : actId;
+        const dedupKey = m.id + '_' + placesId;
+        if (dejavu.has(dedupKey)) return;
+        dejavu.add(dedupKey);
+        const isno = reg.responsable && reg.responsable.commune === 'isno';
+        const prix = act ? (isno ? act.isno : act.hc) : 0;
+        lignes.push({ membreId: m.id, membreNom: m.prenom + ' ' + m.nom, actId, placesId, actNom, prix, jour: act ? act.jour : '', heure: act ? act.heure : '' });
+      });
+    });
+  }
 
   if (lignes.length === 0) { showToast('Aucune activité dans ce dossier', 'orange'); return; }
 
