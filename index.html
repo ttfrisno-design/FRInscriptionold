@@ -3327,6 +3327,15 @@ function siteToPlacesId(actId) {
 // ============================================================
 // CALC TOTALS
 // ============================================================
+
+// ── Forfait country ≥2 créneaux (hors Initiation) ──
+function calcCountryForfait(membre, isno) {
+  const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+  const sel = (membre.activities || []).filter(id => CFIDS.includes(id));
+  if (sel.length >= 2) return { forfait: true, prix: isno ? 190 : 220, ids: sel };
+  return { forfait: false, ids: [] };
+}
+
 function calcTotals() {
   const isno = state.responsable.commune === 'isno';
   let totalBeforeDiscount = 0;
@@ -3396,6 +3405,133 @@ function calcTotals() {
 // ============================================================
 // SUMMARY
 // ============================================================
+function buildRows(reg) {
+  const isno = reg.responsable.commune === 'isno';
+  const rows = [];
+  const passAide = [
+    reg.responsable.passJeunes === 'oui' ? "Pass jeunes 76" : '',
+    reg.responsable.atoutNormandie === 'oui' ? 'Atout Normandie' : '',
+    reg.responsable.passSport === 'oui' ? "Pass sport Etat" : ''
+  ].filter(Boolean).join(', ');
+
+  reg.members.forEach(m => {
+    const counted = new Set();
+    m.activities.forEach(actId => {
+      const act = getActById(actId);
+      if (!act) return;
+
+      // For linked pairs, emit only ONE row with combined schedule info
+      if (act.linkedWith) {
+        const pairKey = [actId, act.linkedWith].sort().join('|');
+        if (counted.has(pairKey)) return; // skip 2nd slot
+        counted.add(pairKey);
+
+        const linked = getActById(act.linkedWith);
+        // Combine jour and heure from both slots
+        const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
+        const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
+        // Clean the name (remove \n line breaks for sheet)
+        const nomClean = act.name.replace(/\n/g, ' — ');
+        let price = isno ? act.isno : act.hc;
+        if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+        const _wl = m.waitingList;
+        const _isWaiting = (_wl||[]).includes(actId);
+        if (_isWaiting) price = 0;
+        const cFl = calcCountryForfait(m, isno);
+        const CFIDSl = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+        if (cFl.forfait && CFIDSl.includes(actId)) price = (cFl.ids[0] === actId) ? cFl.prix : 0;
+
+        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
+        const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
+        const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
+        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+        const tarifBrut = price;
+        if (estElig) price = Math.round(price * 0.85 * 100) / 100;
+
+        rows.push({
+          date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
+          responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
+          adresse: reg.responsable.adresse, cp: reg.responsable.cp,
+          ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
+          tel1: reg.responsable.tel1, tel2: '',
+          email1: reg.responsable.email1, email2: (m.email || reg.responsable.email2 || ''),
+          membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
+          ddn: m.ddn, sexe: m.sexe,
+          activite: nomClean, jour: joursCombi, heure: heuresCombi,
+          lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
+          tarif: price,
+          tarif_brut: tarifBrut,
+          statut_inscription: _isWaiting ? 'Liste attente' : '',
+          fnsmr: 15,
+          remise: (!_isWaiting && estElig) ? 15 : 0,
+          total_famille: reg.totals ? reg.totals.grandTotal : 0,
+          mode_paiement: reg.responsable.modePaiement || 'helloasso',
+          avoir_montant: reg.responsable.avoirMontant || 0,
+          pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+          ancv_montant: reg.responsable.ancvMontant || 0,
+          fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
+          qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
+                  : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
+          pass_aide: passAide,
+          statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
+        });
+        return;
+      }
+
+      // Non-linked activity — standard row
+      const nomClean = act.name.replace(/\n/g, ' — ');
+      let price = isno ? act.isno : act.hc;
+      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      const _wl2 = m.waitingList;
+      const _isWaiting2 = (_wl2||[]).includes(actId);
+      if (_isWaiting2) price = 0;
+      const cFl2 = calcCountryForfait(m, isno);
+      const CFIDSl2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cFl2.forfait && CFIDSl2.includes(actId)) price = (cFl2.ids[0] === actId) ? cFl2.prix : 0;
+      const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
+      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
+      const estElig2 = !_isWaiting2 && aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+      const tarifBrut2 = isno ? act.isno : act.hc;
+      if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
+      rows.push({
+        date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
+        responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
+        adresse: reg.responsable.adresse, cp: reg.responsable.cp,
+        ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
+        tel1: reg.responsable.tel1, tel2: '',
+        email1: reg.responsable.email1, email2: '',
+        membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
+        ddn: m.ddn, sexe: m.sexe,
+        activite: nomClean, jour: act.jour, heure: act.heure,
+        lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
+        tarif: price,
+        tarif_brut: tarifBrut2,
+        statut_inscription: _isWaiting2 ? 'Liste attente' : '',
+        fnsmr: 15,
+        remise: (!_isWaiting2 && estElig2) ? 15 : 0,
+        total_famille: reg.totals ? reg.totals.grandTotal : 0,
+        mode_paiement: reg.responsable.modePaiement || 'helloasso',
+        avoir_montant: reg.responsable.avoirMontant || 0,
+        pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+        ancv_montant: reg.responsable.ancvMontant || 0,
+        fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
+        qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
+                : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
+        pass_aide: passAide,
+        statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
+      });
+    });
+  });
+  return rows;
+}
+
+// ============================================================
+// ENVOI VERS APPS SCRIPT — fetch avec CORS activé côté Apps Script
+// Apps Script renvoie Access-Control-Allow-Origin: * dans ses headers
+// ce qui permet un fetch standard depuis n'importe quel domaine.
+// ============================================================
+
+
 function renderSummary() {
   const isno = state.responsable.commune === 'isno';
   const t = calcTotals();
@@ -3427,7 +3563,15 @@ function renderSummary() {
         </tr>`;
       }
       const nomClean = act.name.replace(/\n/g, ' — ');
-      const price = isno ? act.isno : act.hc;
+      let price = isno ? act.isno : act.hc;
+      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      const cFrs = calcCountryForfait(m, isno);
+      const CFIDSrs = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      let prixLabel = price + '€';
+      if (cFrs.forfait && CFIDSrs.includes(actId)) {
+        price = (cFrs.ids[0] === actId) ? cFrs.prix : 0;
+        prixLabel = (cFrs.ids[0] === actId) ? price + '€ <small style="color:#1b5e20">(forfait)</small>' : '<span style="color:#999">inclus</span>';
+      }
       return `<tr>
         <td>${m.prenom} ${m.nom}</td>
         <td>${nomClean}</td>
@@ -6659,17 +6803,13 @@ async function confirmerSupprActivite(code, ligneIdx) {
           nouveauTotal: allRegs.find(r => r.code === code)?.totals?.grandTotal || 0
         });
         // ── Mettre à jour grandTotal depuis le vrai total retourné par le GAS ──
-        if (gasResultSuppr && gasResultSuppr.nouveauTotal && gasResultSuppr.nouveauTotal > 0) {
-          const allRegsUpd2 = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-          const regUpd2 = allRegsUpd2.find(r => r.code === code || String(r.id) === String(code));
-          if (regUpd2) {
-            if (!regUpd2.totals) regUpd2.totals = {};
-            regUpd2.totals.grandTotal = gasResultSuppr.nouveauTotal;
-            localStorage.setItem('fri_registrations', JSON.stringify(allRegsUpd2));
-            console.log('[FRI] grandTotal suppression mis à jour depuis GAS :', gasResultSuppr.nouveauTotal);
-          }
-        }
-      } catch(e) { console.warn('Suppression non-réglé GAS KO:', e); }
+        await chargerDossiersDepuisSheet();
+        try { renderAdmin(); } catch(e) {}
+        try { renderAdminStats(); } catch(e) {}
+      } catch(e) {
+        console.warn('Suppression non-réglé GAS KO:', e);
+        try { renderAdmin(); } catch(e2) {}
+      }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — montant mis à jour`, 'green');
