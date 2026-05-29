@@ -416,8 +416,9 @@
   }
   .sem-slot:hover { filter:brightness(0.94); transform:scale(1.01); }
   .sem-slot.selected { border-color:var(--dark) !important; box-shadow:0 0 0 2px var(--dark); }
-  .sem-slot.slot-full { opacity:0.5; cursor:not-allowed; }
-  .sem-slot.slot-full:hover { filter:none; transform:none; }
+  .sem-slot.slot-full { opacity:0.85; cursor:pointer; border:2px dashed #e65100 !important; }
+  .sem-slot.slot-full:hover { filter:brightness(0.96); transform:scale(1.01); }
+  .sem-slot.slot-full::after { content:'⏳ Liste d\'attente'; display:block; font-size:9px; font-weight:700; color:#e65100; margin-top:2px; }
   .sem-slot-name { font-weight:700; font-size:11px; line-height:1.3; margin-bottom:2px; }
   .sem-slot-time { font-size:10px; opacity:0.8; }
   .sem-slot-info { font-size:10px; opacity:0.7; margin-top:2px; }
@@ -437,12 +438,12 @@
   .places-few   { background: #ffe5d0; color: #c0560a; }
   .places-full  { background: #f8d7da; color: #842029; }
   .act-card.full {
-    opacity: 0.55; cursor: not-allowed;
-    border-color: #f5c6cb !important;
-    background: #fff5f5 !important;
+    opacity: 0.9; cursor: pointer;
+    border: 2px dashed #e65100 !important;
+    background: #fff8f5 !important;
   }
-  .act-card.full:hover { border-color: #f5c6cb !important; background: #fff5f5 !important; }
-  .act-card.full::after { display: none !important; }
+  .act-card.full:hover { border-color: #e65100 !important; background: #fff3ee !important; filter:brightness(0.97); }
+  .act-card.full .places-badge::before { content: '⏳ '; }
   .places-loading { color: var(--gray); font-size: 11px; }
 
   /* SEMAINIER SALLE ADMIN */
@@ -1637,7 +1638,7 @@ function getActById(id) {
 function placeBadgeHtml(actId) {
   const p = state.places[actId];
   if (!p) return '<span class="places-badge places-ok" style="opacity:0.4">⏳ chargement</span>';
-  if (p.available <= 0)  return '<span class="places-badge places-full">🔴 Complet</span>';
+  if (p.available <= 0)  return '<span class="places-badge places-waiting">⏳ Complet — liste d\'attente</span>';
   if (p.available <= 3)  return `<span class="places-badge places-few">🟠 ${p.available} place${p.available > 1 ? 's' : ''}</span>`;
   if (p.available <= 7)  return `<span class="places-badge places-warn">🟡 ${p.available} places</span>`;
   return `<span class="places-badge places-ok">🟢 ${p.available} places</span>`;
@@ -1745,7 +1746,7 @@ function showPlacesFullToast(actId, p) {
     toast.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#842029;color:white;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:opacity 0.4s';
     document.body.appendChild(toast);
   }
-  toast.textContent = `🔴 "${name}" est complet (0 place disponible)`;
+  toast.textContent = `⏳ "${name}" est complet — cliquez pour rejoindre la liste d'attente`;
   toast.style.opacity = '1';
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
@@ -2047,7 +2048,7 @@ function slotHtml(act, memberId, color, isno) {
 
   if (isFull) {
     slotBg = '#f8d7da'; slotBorder = '#f5c6cb';
-    placesLabel = '<div class="sem-slot-places" style="color:#842029">🔴 Complet</div>';
+    placesLabel = '<div class="sem-slot-places" style="color:#e65100;font-weight:700;">⏳ Liste d\'attente</div>';
   } else if (placeInfo && placeInfo.available <= 3) {
     slotBg = '#ffe5d0'; slotBorder = '#ffb380';
     placesLabel = `<div class="sem-slot-places" style="color:#c0560a">🟠 ${placeInfo.available} place${placeInfo.available>1?'s':''}</div>`;
