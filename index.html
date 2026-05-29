@@ -4212,6 +4212,73 @@ function openHelloAsso() {
   }
 }
 
+
+async function lancerCheckoutHA(code, total) {
+  const btn = document.getElementById('btn-ha-checkout');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Préparation du paiement...'; }
+
+  try {
+    const url = getAppsScriptUrl();
+    const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+    const reg = pending[code] || {};
+    const resp = reg.responsable || {};
+
+    const currentUrl = window.location.href.split('#')[0];
+
+    const result = await callAppsScriptFetch(url, {
+      action:      'createCheckoutIntent',
+      _token:      FRI_SECRET_TOKEN,
+      totalAmount: total,
+      itemName:    'Adhésion FRI 2026-2027 — ' + code,
+      prenom:      resp.prenom || '',
+      nom:         resp.nom    || '',
+      email:       resp.email1 || resp.email || '',
+      codeDossier: code,
+      returnUrl:   currentUrl + '#paiement-valide?code=' + code,
+      backUrl:     currentUrl,
+      errorUrl:    currentUrl + '#paiement-erreur?code=' + code
+    });
+
+    if (result && result.redirectUrl) {
+      // Enregistrer le dossier dans le Sheet AVANT de partir sur HA
+      await finaliserInscription(code);
+      // Puis rediriger vers HA
+      window.location.href = result.redirectUrl;
+    } else {
+      throw new Error(result.message || 'Réponse inattendue');
+    }
+  } catch(e) {
+    console.error('lancerCheckoutHA KO:', e);
+    if (btn) { btn.disabled = false; btn.textContent = '💳 Réessayer le paiement HelloAsso'; }
+    // Fallback : lien direct HA
+    const zone = document.getElementById('ha-checkout-zone');
+    if (zone) {
+      zone.innerHTML = '<div style="background:#fff3e0;border:1px solid #e65100;border-radius:8px;padding:12px;font-size:13px;color:#e65100;margin-bottom:12px;">'
+        + '⚠️ La connexion HelloAsso n\'a pas pu être établie. Utilisez le lien direct ci-dessous.</div>'
+        + '<a href="' + HELLOASSO_URL + '" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;text-decoration:none;display:flex;">'
+        + '💳 Payer sur HelloAsso (lien direct)</a>';
+    }
+  }
+}
+
+// Gérer le retour depuis HelloAsso
+async function handleReturnFromHelloAsso() {
+  const hash = window.location.hash;
+  if (!hash.includes('paiement-valide')) return;
+  const codeMatch = hash.match(/code=(FRI-[A-Z0-9]{4})/);
+  if (!codeMatch) return;
+  const code = codeMatch[1];
+  console.log('[FRI] Retour HA — validation dossier:', code);
+  // Valider le paiement via GAS
+  try {
+    const url = getAppsScriptUrl();
+    await callAppsScriptValidate(url, code);
+    showToast('✅ Paiement HelloAsso validé !', '#2d6a4f', 5000);
+  } catch(e) {
+    console.warn('Validation retour HA KO:', e);
+  }
+}
+
 async function finaliserInscription(code) {
   const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
@@ -6989,10 +7056,7 @@ function setupPaymentStep(code) {
   if (mode === 'helloasso') {
     document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
     document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
-      + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l\'association.</p>'
-      + '<iframe id="haWidget" allowtransparency="true" scrolling="auto"'
-      + ' src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville-2/widget"'
-      + ' style="width:100%;height:750px;border:none;border-radius:10px;"></iframe>'
+      + '<div style="background:#e8f5e9;border:2px solid #2d6a4f;border-radius:10px;padding:16px;margin-bottom:16px;">'      + '<div style="font-size:15px;font-weight:700;color:#1b5e20;margin-bottom:8px;">💳 Récapitulatif de votre paiement</div>'      + '<table style="width:100%;font-size:14px;">'      + '<tr><td style="padding:4px 0;color:#555">Montant à régler :</td><td style="text-align:right;font-weight:700;font-size:18px;color:#2d6a4f">' + total.toFixed(2) + ' €</td></tr>'      + '<tr><td style="padding:4px 0;color:#555">Votre code dossier :</td><td style="text-align:right;font-weight:700;color:#1565c0">' + code + '</td></tr>'      + '</table></div>'      + '<div id="ha-checkout-zone">'      + '<button id="btn-ha-checkout" class="btn btn-primary" style="width:100%;font-size:16px;padding:16px;justify-content:center;" '      + 'onclick="lancerCheckoutHA(\'' + code + '\',' + total.toFixed(2) + ')">'      + '💳 Payer ' + total.toFixed(2) + ' € via HelloAsso</button>'      + '<p style="font-size:12px;color:var(--gray);text-align:center;margin-top:8px;">Paiement sécurisé — sans commission pour l\'association</p>'      + '</div>'
       + '<div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">'
       + '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">&#x1F4BE; Enregistrez votre dossier avant de payer</div>'
       + '<div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez ci-dessous pour enregistrer votre dossier, <strong>puis</strong> effectuez votre paiement sur HelloAsso.</div>'
