@@ -4242,9 +4242,11 @@ async function lancerCheckoutHA(code, total) {
     // callAppsScriptFetch retourne { ok, data } — extraire data
     const data = (result && result.data) ? result.data : result;
     if (data && data.redirectUrl) {
-      // Enregistrer le dossier dans le Sheet AVANT de partir sur HA
-      await finaliserInscription(code);
-      // Puis rediriger vers HA
+      // Sauvegarder les infos en localStorage pour traitement au retour de HA
+      const pendingHA = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
+      pendingHA[code] = { total, timestamp: Date.now() };
+      localStorage.setItem('fri_pending_ha', JSON.stringify(pendingHA));
+      // Rediriger vers HA — l'inscription sera validée AU RETOUR après paiement confirmé
       window.location.href = data.redirectUrl;
     } else {
       const errMsg = (data && data.message) ? data.message : 'Réponse inattendue du serveur';
@@ -4275,14 +4277,59 @@ async function handleReturnFromHelloAsso() {
   const codeMatch = hash.match(/code=(FRI-[A-Z0-9]{4})/);
   if (!codeMatch) return;
   const code = codeMatch[1];
-  console.log('[FRI] Retour HA — validation dossier:', code);
-  // Valider le paiement via GAS
+  console.log('[FRI] Retour HA — enregistrement + validation dossier:', code);
+
+  // Afficher un écran de traitement
+  document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f7f3;font-family:Arial,sans-serif;">'
+    + '<div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">'
+    + '<div style="font-size:48px;margin-bottom:16px;">⏳</div>'
+    + '<h2 style="color:#2d6a4f;margin-bottom:8px;">Validation en cours...</h2>'
+    + '<p style="color:#666;font-size:14px;">Enregistrement de votre inscription et confirmation de paiement.</p>'
+    + '</div></div>';
+
   try {
     const url = getAppsScriptUrl();
+
+    // Étape 1 : enregistrer le dossier dans le Sheet (sendToGoogleSheets)
+    const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+    const reg = pending[code];
+    if (reg) {
+      reg.status = 'paid';
+      await sendToGoogleSheets(reg);
+      console.log('[FRI] Dossier enregistré dans le Sheet');
+    }
+
+    // Étape 2 : valider le paiement HA
     await callAppsScriptValidate(url, code);
-    showToast('✅ Paiement HelloAsso validé !', '#2d6a4f', 5000);
+    console.log('[FRI] Paiement validé');
+
+    // Nettoyer
+    const pendingHA = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
+    delete pendingHA[code];
+    localStorage.setItem('fri_pending_ha', JSON.stringify(pendingHA));
+
+    // Afficher confirmation
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f7f3;font-family:Arial,sans-serif;">'
+      + '<div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">'
+      + '<div style="font-size:56px;margin-bottom:16px;">✅</div>'
+      + '<h2 style="color:#2d6a4f;margin-bottom:12px;">Paiement et inscription confirmés !</h2>'
+      + '<p style="color:#444;font-size:14px;margin-bottom:8px;">Votre dossier <strong style="color:#1565c0">' + code + '</strong> est enregistré.</p>'
+      + '<p style="color:#666;font-size:13px;margin-bottom:24px;">Un email de confirmation avec votre facture vous a été envoyé.</p>'
+      + '<a href="' + window.location.pathname + '" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:12px 24px;border-radius:10px;background:#2d6a4f;color:white;font-weight:700;">'
+      + '🏠 Retour à l'accueil</a>'
+      + '</div></div>';
+
   } catch(e) {
-    console.warn('Validation retour HA KO:', e);
+    console.error('Retour HA KO:', e);
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff8f0;font-family:Arial,sans-serif;">'
+      + '<div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">'
+      + '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>'
+      + '<h2 style="color:#e65100;margin-bottom:12px;">Paiement reçu — confirmation en attente</h2>'
+      + '<p style="color:#555;font-size:14px;margin-bottom:8px;">Votre paiement HelloAsso a bien été effectué mais la confirmation automatique n'a pas pu se terminer.</p>'
+      + '<p style="color:#555;font-size:14px;margin-bottom:16px;">Contactez-nous avec votre code dossier <strong>' + code + '</strong> :</p>'
+      + '<a href="mailto:frisneauville@orange.fr" style="color:#2d6a4f;font-weight:700;">frisneauville@orange.fr</a><br><br>'
+      + '<a href="' + window.location.pathname + '" style="font-size:13px;color:#999;">Retour à l'accueil</a>'
+      + '</div></div>';
   }
 }
 
