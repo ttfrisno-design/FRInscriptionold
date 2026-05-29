@@ -4333,6 +4333,54 @@ async function handleReturnFromHelloAsso() {
   }
 }
 
+function renderPayment() {
+  const t = calcTotals();
+  const r = state.responsable;
+
+  // Rubrique 1 : afficher le TOTAL ACTIVITÉS (avant déductions)
+  document.getElementById('amount-display').innerHTML =
+    'Total activités : <strong>' + t.grandTotal.toFixed(2) + ' €</strong>';
+
+  // Members summary
+  const membersLine = state.members.map(m => m.prenom + ' ' + m.nom).join(', ');
+  const actsCount   = state.members.reduce((a,m) => a + m.activities.length, 0);
+  document.getElementById('payment-members-summary').innerHTML =
+    '<strong>' + membersLine + '</strong> — ' + actsCount + ' activité' + (actsCount > 1 ? 's' : '')
+    + (t.discount > 0 ? ' (remise 15% : -' + t.discount.toFixed(2) + '€)' : '')
+    + ' + adhésion FNSMR ' + (state.members.length * 15) + '€';
+
+  // Docs list
+  let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
+  state.members.forEach(m => {
+    if (m.qsResult === 'certificat_requis') {
+      docsList += '<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">'
+        + '⚠️ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire</li>';
+    } else if (m.qsResult !== 'attestation_ok') {
+      docsList += '<li style="padding:6px 0;border-bottom:1px solid var(--border);">'
+        + '❓ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Questionnaire santé non complété</li>';
+    }
+    // attestation_ok → déjà signée électroniquement, rien à apporter
+  });
+  if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
+  if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
+  if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
+  // Note FFTT pour les membres ayant demandé une licence
+  state.members.forEach(m => {
+    if (m.ffttWant && m.ffttPrice) {
+      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
+        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
+        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
+        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
+        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
+        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
+        + '</ul>'
+        + '</li>';
+    }
+  });
+  docsList += '</ul>';
+  document.getElementById('docs-list').innerHTML = docsList;
+}
+
 async function finaliserInscription(code) {
   const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
@@ -4508,211 +4556,6 @@ function showConfirmError(msg) {
 }
 
 // Legacy — kept for URL param compatibility (unused now)
-async function handleReturnFromHelloAsso() {
-  return false;
-}
-
-function renderPayment() {
-  const t = calcTotals();
-  const r = state.responsable;
-
-  // Rubrique 1 : afficher le TOTAL ACTIVITÉS (avant déductions)
-  document.getElementById('amount-display').innerHTML =
-    'Total activités : <strong>' + t.grandTotal.toFixed(2) + ' €</strong>';
-
-  // Members summary
-  const membersLine = state.members.map(m => m.prenom + ' ' + m.nom).join(', ');
-  const actsCount   = state.members.reduce((a,m) => a + m.activities.length, 0);
-  document.getElementById('payment-members-summary').innerHTML =
-    '<strong>' + membersLine + '</strong> — ' + actsCount + ' activité' + (actsCount > 1 ? 's' : '')
-    + (t.discount > 0 ? ' (remise 15% : -' + t.discount.toFixed(2) + '€)' : '')
-    + ' + adhésion FNSMR ' + (state.members.length * 15) + '€';
-
-  // Docs list
-  let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
-  state.members.forEach(m => {
-    if (m.qsResult === 'certificat_requis') {
-      docsList += '<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">'
-        + '⚠️ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire</li>';
-    } else if (m.qsResult !== 'attestation_ok') {
-      docsList += '<li style="padding:6px 0;border-bottom:1px solid var(--border);">'
-        + '❓ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Questionnaire santé non complété</li>';
-    }
-    // attestation_ok → déjà signée électroniquement, rien à apporter
-  });
-  if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
-  if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
-  if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
-  // Note FFTT pour les membres ayant demandé une licence
-  state.members.forEach(m => {
-    if (m.ffttWant && m.ffttPrice) {
-      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
-        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
-        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
-        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
-        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
-        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
-        + '</ul>'
-        + '</li>';
-    }
-  });
-  docsList += '</ul>';
-  document.getElementById('docs-list').innerHTML = docsList;
-}
-
-
-function calcCountryForfait(membre, isno) {
-  const COUNTRY_FORFAIT_IDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-  const countrySelected = (membre.activities || []).filter(id => COUNTRY_FORFAIT_IDS.includes(id));
-  if (countrySelected.length >= 2) {
-    return { forfait: true, prix: isno ? 190 : 220, ids: countrySelected };
-  }
-  return { forfait: false, ids: [] };
-}
-
-function buildRows(reg) {
-  const isno = reg.responsable.commune === 'isno';
-  const rows = [];
-  const passAide = [
-    reg.responsable.passJeunes === 'oui' ? "Pass jeunes 76" : '',
-    reg.responsable.atoutNormandie === 'oui' ? 'Atout Normandie' : '',
-    reg.responsable.passSport === 'oui' ? "Pass sport Etat" : ''
-  ].filter(Boolean).join(', ');
-
-  reg.members.forEach(m => {
-    const counted = new Set();
-    m.activities.forEach(actId => {
-      const act = getActById(actId);
-      if (!act) return;
-
-      // For linked pairs, emit only ONE row with combined schedule info
-      if (act.linkedWith) {
-        const pairKey = [actId, act.linkedWith].sort().join('|');
-        if (counted.has(pairKey)) return; // skip 2nd slot
-        counted.add(pairKey);
-
-        const linked = getActById(act.linkedWith);
-        // Combine jour and heure from both slots
-        const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
-        const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
-        // Clean the name (remove \n line breaks for sheet)
-        const nomClean = act.name.replace(/\n/g, ' — ');
-        let price = isno ? act.isno : act.hc;
-        if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-        const _wl = m.waitingList;
-        const _isWaiting = (_wl||[]).includes(actId);
-        if (_isWaiting) price = 0;
-        const cFl = calcCountryForfait(m, isno);
-        const CFIDSl = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-        if (cFl.forfait && CFIDSl.includes(actId)) {
-          price = (cFl.ids[0] === actId) ? cFl.prix : 0;
-        }
-
-        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
-        const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
-        const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
-        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
-        const tarifBrut = price;
-        if (estElig) price = Math.round(price * 0.85 * 100) / 100;
-
-        rows.push({
-          date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
-          responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
-          adresse: reg.responsable.adresse, cp: reg.responsable.cp,
-          ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
-          tel1: reg.responsable.tel1, tel2: '',
-          email1: reg.responsable.email1, email2: (m.email || reg.responsable.email2 || ''),
-          membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
-          ddn: m.ddn, sexe: m.sexe,
-          activite: nomClean, jour: joursCombi, heure: heuresCombi,
-          lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-          tarif: price,
-          tarif_brut: tarifBrut,
-          statut_inscription: _isWaiting ? 'Liste attente' : '',
-          fnsmr: 15,
-          remise: (!_isWaiting && estElig) ? 15 : 0,
-          total_famille: reg.totals ? reg.totals.grandTotal : 0,
-          mode_paiement: reg.responsable.modePaiement || 'helloasso',
-          avoir_montant: reg.responsable.avoirMontant || 0,
-          pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
-          ancv_montant: reg.responsable.ancvMontant || 0,
-          fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
-          qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
-                  : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-          pass_aide: passAide,
-          statut_inscription: (m.waitingList && m.waitingList.includes && m.waitingList.includes(actId)) ? 'Liste attente' : ''
-        });
-        return;
-      }
-
-      // Non-linked activity — standard row
-      const nomClean = act.name.replace(/\n/g, ' — ');
-      let price = isno ? act.isno : act.hc;
-      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      const _wl2 = m.waitingList;
-      const _isWaiting2 = (_wl2||[]).includes(actId);
-      if (_isWaiting2) price = 0;
-      const cFl2 = calcCountryForfait(m, isno);
-      const CFIDSl2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      if (cFl2.forfait && CFIDSl2.includes(actId)) {
-        price = (cFl2.ids[0] === actId) ? cFl2.prix : 0;
-      }
-      const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
-      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
-      const estElig2 = !_isWaiting2 && aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
-      const tarifBrut2 = isno ? act.isno : act.hc;
-      if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
-      rows.push({
-        date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
-        responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
-        adresse: reg.responsable.adresse, cp: reg.responsable.cp,
-        ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
-        tel1: reg.responsable.tel1, tel2: '',
-        email1: reg.responsable.email1, email2: '',
-        membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
-        ddn: m.ddn, sexe: m.sexe,
-        activite: nomClean, jour: act.jour, heure: act.heure,
-        lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-        tarif: price,
-        tarif_brut: tarifBrut2,
-        statut_inscription: _isWaiting2 ? 'Liste attente' : '',
-        fnsmr: 15,
-        remise: (!_isWaiting2 && estElig2) ? 15 : 0,
-        total_famille: reg.totals ? reg.totals.grandTotal : 0,
-        mode_paiement: reg.responsable.modePaiement || 'helloasso',
-        avoir_montant: reg.responsable.avoirMontant || 0,
-        pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
-        ancv_montant: reg.responsable.ancvMontant || 0,
-        fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
-        qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
-                : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-        pass_aide: passAide,
-        statut_inscription: (m.waitingList && m.waitingList.includes && m.waitingList.includes(actId)) ? 'Liste attente' : ''
-      });
-    });
-  });
-  return rows;
-}
-
-// ============================================================
-// ENVOI VERS APPS SCRIPT — fetch avec CORS activé côté Apps Script
-// Apps Script renvoie Access-Control-Allow-Origin: * dans ses headers
-// ce qui permet un fetch standard depuis n'importe quel domaine.
-// ============================================================
-
-function getAppsScriptUrl() {
-  return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
-}
-
-// ──────────────────────────────────────────────────────────────
-// callAppsScript — double stratégie selon le besoin :
-//   • Actions écriture (addRegistration, validerPaiement) :
-//     fetch GET fire-and-forget — on n'a pas besoin de la réponse
-//   • Actions lecture (getDossiers, ping) :
-//     JSONP — seule méthode fiable pour récupérer des données
-//     depuis Apps Script cross-origin
-// ──────────────────────────────────────────────────────────────
-const READ_ACTIONS = ['getDossiers', 'ping', 'getPlaces'];
 
 async function callAppsScript(payload) {
   const url = getAppsScriptUrl();
