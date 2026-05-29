@@ -418,7 +418,6 @@
   .sem-slot.selected { border-color:var(--dark) !important; box-shadow:0 0 0 2px var(--dark); }
   .sem-slot.slot-full { opacity:0.85; cursor:pointer; border:2px dashed #e65100 !important; }
   .sem-slot.slot-full:hover { filter:brightness(0.96); transform:scale(1.01); }
-  .sem-slot.slot-full::after { content:'⏳ Liste d\'attente'; display:block; font-size:9px; font-weight:700; color:#e65100; margin-top:2px; }
   .sem-slot-name { font-weight:700; font-size:11px; line-height:1.3; margin-bottom:2px; }
   .sem-slot-time { font-size:10px; opacity:0.8; }
   .sem-slot-info { font-size:10px; opacity:0.7; margin-top:2px; }
@@ -2048,7 +2047,7 @@ function slotHtml(act, memberId, color, isno) {
 
   if (isFull) {
     slotBg = '#f8d7da'; slotBorder = '#f5c6cb';
-    placesLabel = '<div class="sem-slot-places" style="color:#e65100;font-weight:700;">⏳ Liste d\'attente</div>';
+    placesLabel = '<div class="sem-slot-places" style="color:#e65100;font-weight:700;">⏳ Complet — liste d\'attente</div>';
   } else if (placeInfo && placeInfo.available <= 3) {
     slotBg = '#ffe5d0'; slotBorder = '#ffb380';
     placesLabel = `<div class="sem-slot-places" style="color:#c0560a">🟠 ${placeInfo.available} place${placeInfo.available>1?'s':''}</div>`;
