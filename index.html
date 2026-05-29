@@ -4721,6 +4721,8 @@ function showConfirmError(msg) {
 
 // Legacy — kept for URL param compatibility (unused now)
 
+const READ_ACTIONS = ['getDossiers', 'ping', 'getPlaces', 'getPlacesRestantes'];
+
 async function callAppsScript(payload) {
   const url = getAppsScriptUrl();
   if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') {
@@ -5053,9 +5055,16 @@ async function sendToGoogleSheets(reg) {
     return false;
   }
   try {
-    const rows = buildRows(reg);
+    let rows = [];
+    try {
+      rows = buildRows(reg);
+    } catch(eBR) {
+      console.error('[FRI] buildRows EXCEPTION:', eBR);
+      return false;
+    }
+    console.log('[FRI] buildRows — lignes:', rows.length, 'membres:', reg.members ? reg.members.map(m => m.prenom + '(' + (m.activities||[]).length + ' acts)') : 'AUCUN');
     if (rows.length === 0) {
-      console.error('buildRows a retourné 0 lignes — inscription non envoyée');
+      console.error('[FRI] buildRows retourne 0 lignes — reg.members:', JSON.stringify((reg.members||[]).map(m => ({prenom:m.prenom, acts:m.activities}))));
       return false;
     }
     // Vérifier la taille du payload
