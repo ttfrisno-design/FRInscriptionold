@@ -1249,7 +1249,16 @@ function goStep(n) {
   window.scrollTo({top:0, behavior:'smooth'});
   if (n === 1) setTimeout(detectCommune, 300); // détecter autofill navigateur
   if (n === 3) renderHealth();
-  if (n === 4) renderSummary();
+  if (n === 4) {
+    try {
+      renderSummary();
+    } catch(e) {
+      console.error('[FRI] renderSummary ERREUR:', e);
+      document.getElementById('summary-container').innerHTML =
+        '<div style="color:red;padding:16px;background:#fff0f0;border-radius:8px;font-size:13px;">'
+        + '⚠️ Erreur chargement récapitulatif : ' + e.message + '</div>';
+    }
+  }
   if (n === 5) { renderPayment(); recalcSolde(); }
 }
 
@@ -3391,6 +3400,7 @@ function renderSummary() {
   const isno = state.responsable.commune === 'isno';
   const t = calcTotals();
   const r = state.responsable;
+  console.log('[FRI] renderSummary — membres:', state.members.length, state.members.map(m => ({id:m.id, nom:m.nom, prenom:m.prenom, acts:m.activities})));
 
   let membersHtml = state.members.map(m => {
     const counted = new Set();
