@@ -1479,12 +1479,17 @@ function captureMemberField(memberId, field, value) {
 // Lit tous les champs membres depuis le DOM avant validation
 function captureTousMembres() {
   state.members.forEach(m => {
-    const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const g = id => {
+      const el = document.getElementById(id);
+      if (!el) console.warn('[FRI] captureTousMembres — élément introuvable:', id);
+      return el ? el.value.trim() : '';
+    };
     const nom    = g(`m-${m.id}-nom`).toUpperCase();
     const prenom = g(`m-${m.id}-prenom`);
     const ddn    = g(`m-${m.id}-ddn`);
     const sexe   = g(`m-${m.id}-sexe`);
     const email  = g(`m-${m.id}-email`);
+    console.log('[FRI] captureTousMembres — id:', m.id, 'nom:', nom, 'prenom:', prenom, 'ddn:', ddn, 'sexe:', sexe);
     if (nom)    m.nom    = nom;
     if (prenom) m.prenom = prenom;
     if (ddn)    m.ddn    = ddn;
