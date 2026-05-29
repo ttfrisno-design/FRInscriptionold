@@ -1027,6 +1027,15 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+// ── Forfait country ≥2 créneaux (hors Initiation) ──
+// Déclarée en tête pour être disponible partout (calcTotals, buildRows, renderSummary)
+function calcCountryForfait(membre, isno) {
+  const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+  const sel = (membre.activities || []).filter(id => CFIDS.includes(id));
+  if (sel.length >= 2) return { forfait: true, prix: isno ? 190 : 220, ids: sel };
+  return { forfait: false, ids: [] };
+}
+
 
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
@@ -3327,14 +3336,6 @@ function siteToPlacesId(actId) {
 // ============================================================
 // CALC TOTALS
 // ============================================================
-
-// ── Forfait country ≥2 créneaux (hors Initiation) ──
-function calcCountryForfait(membre, isno) {
-  const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-  const sel = (membre.activities || []).filter(id => CFIDS.includes(id));
-  if (sel.length >= 2) return { forfait: true, prix: isno ? 190 : 220, ids: sel };
-  return { forfait: false, ids: [] };
-}
 
 function calcTotals() {
   const isno = state.responsable.commune === 'isno';
