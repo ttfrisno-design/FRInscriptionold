@@ -1774,9 +1774,9 @@ function inscrireListeAttente(memberId, primaryId, primaryLink) {
   document.getElementById('modal-liste-attente')?.remove();
 
   // Initialiser le set de liste d'attente
-  if (!m.waitingList) m.waitingList = new Set();
-  m.waitingList.add(primaryId);
-  if (primaryLink) m.waitingList.add(primaryLink);
+  if (!m.waitingList) m.waitingList = [];
+  if (!m.waitingList.includes(primaryId)) m.waitingList.push(primaryId);
+  if (primaryLink && !m.waitingList.includes(primaryLink)) m.waitingList.push(primaryLink);
 
   // Ajouter aux activités sélectionnées (comme une inscription normale)
   if (!m.activities.includes(primaryId))    m.activities.push(primaryId);
@@ -3023,7 +3023,7 @@ function updateMemberTotal(memberId) {
       if (counted.has(pairKey)) return;
       counted.add(pairKey);
     }
-    if (waiting.has(actId)) { waitingCount++; return; } // liste d'attente : pas compté
+    if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) { waitingCount++; return; } // liste d'attente : pas compté
     let price = isno ? act.isno : act.hc;
     // Réduction femmes TT : -30€ (Isneauville ET hors commune)
     if (isTTActivity(actId) && m.sexe === 'F') { price = Math.max(0, price - 30); ttReduction += 30; }
@@ -3336,15 +3336,12 @@ function calcTotals() {
         counted.add(pairKey);
       }
       // Activité en liste d'attente : ne pas comptabiliser dans le total à payer
-      if (waiting.has(actId)) return;
+      if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return;
       let price = isno ? act.isno : act.hc;
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      // Forfait country ≥2 créneaux
       const cF = calcCountryForfait(m, isno);
       const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      if (cF.forfait && CFIDS.includes(actId)) {
-        price = (cF.ids[0] === actId) ? cF.prix : 0;
-      }
+      if (cF.forfait && CFIDS.includes(actId)) price = (cF.ids[0] === actId) ? cF.prix : 0;
       totalBeforeDiscount += price;
       const isCountryForfaitActive = cF.forfait && CFIDS.includes(actId);
       if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) discountableTotal += price;
@@ -3356,7 +3353,7 @@ function calcTotals() {
     const counted = new Set();
     const waiting = m.waitingList || new Set();
     m.activities.forEach(actId => {
-      if (waiting.has(actId)) return; // liste d'attente exclue
+      if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return; // liste d'attente exclue
       const act = getActById(actId);
       if (act && act.linkedWith) {
         const pk = [actId, act.linkedWith].sort().join('|');
@@ -3404,10 +3401,6 @@ function renderSummary() {
         const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
         const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
         const nomClean = act.name.replace(/\n/g, ' — ');
-      // Liste d'attente : tarif = 0
-      const _wl2 = m.waitingList;
-      const _isWaiting2 = _wl2 ? (_wl2 instanceof Set ? _wl2.has(actId) : (_wl2||[]).includes(actId)) : false;
-      if (_isWaiting2) price = 0;
         const price = isno ? act.isno : act.hc;
         return `<tr>
           <td>${m.prenom} ${m.nom}</td>
@@ -3419,15 +3412,7 @@ function renderSummary() {
         </tr>`;
       }
       const nomClean = act.name.replace(/\n/g, ' — ');
-      let price = isno ? act.isno : act.hc;
-      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      const cFrs2 = calcCountryForfait(m, isno);
-      const CFIDS2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      let prixLabel2 = price + '€';
-      if (cFrs2.forfait && CFIDS2.includes(actId)) {
-        price = (cFrs2.ids[0] === actId) ? cFrs2.prix : 0;
-        prixLabel2 = (cFrs2.ids[0] === actId) ? price + '€ <small>(forfait)</small>' : '<span style="color:#999">inclus</span>';
-      }
+      const price = isno ? act.isno : act.hc;
       return `<tr>
         <td>${m.prenom} ${m.nom}</td>
         <td>${nomClean}</td>
@@ -4455,7 +4440,6 @@ function renderPayment() {
 }
 
 
-// ── Helper : forfait country ≥2 créneaux (hors Initiation) ──
 function calcCountryForfait(membre, isno) {
   const COUNTRY_FORFAIT_IDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
   const countrySelected = (membre.activities || []).filter(id => COUNTRY_FORFAIT_IDS.includes(id));
@@ -4494,10 +4478,14 @@ function buildRows(reg) {
         const nomClean = act.name.replace(/\n/g, ' — ');
         let price = isno ? act.isno : act.hc;
         if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-        // Liste d'attente : tarif = 0
         const _wl = m.waitingList;
-        const _isWaiting = _wl ? (_wl instanceof Set ? _wl.has(actId) : (_wl||[]).includes(actId)) : false;
+        const _isWaiting = (_wl||[]).includes(actId);
         if (_isWaiting) price = 0;
+        const cFl = calcCountryForfait(m, isno);
+        const CFIDSl = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+        if (cFl.forfait && CFIDSl.includes(actId)) {
+          price = (cFl.ids[0] === actId) ? cFl.prix : 0;
+        }
 
         // Appliquer remise 15% si éligible — tarif = montant réellement réglé
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
@@ -4517,9 +4505,9 @@ function buildRows(reg) {
           ddn: m.ddn, sexe: m.sexe,
           activite: nomClean, jour: joursCombi, heure: heuresCombi,
           lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-          tarif:      price,
+          tarif: price,
           tarif_brut: tarifBrut,
-          statut_inscription: _isWaiting ? 'En attente' : '',
+          statut_inscription: _isWaiting ? 'Liste attente' : '',
           fnsmr: 15,
           remise: (!_isWaiting && estElig) ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
@@ -4531,7 +4519,7 @@ function buildRows(reg) {
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
           pass_aide: passAide,
-          statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
+          statut_inscription: (m.waitingList && m.waitingList.includes && m.waitingList.includes(actId)) ? 'Liste attente' : ''
         });
         return;
       }
@@ -4539,13 +4527,19 @@ function buildRows(reg) {
       // Non-linked activity — standard row
       const nomClean = act.name.replace(/\n/g, ' — ');
       let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      // Remise 15% si éligible
+      const _wl2 = m.waitingList;
+      const _isWaiting2 = (_wl2||[]).includes(actId);
+      if (_isWaiting2) price = 0;
+      const cFl2 = calcCountryForfait(m, isno);
+      const CFIDSl2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cFl2.forfait && CFIDSl2.includes(actId)) {
+        price = (cFl2.ids[0] === actId) ? cFl2.prix : 0;
+      }
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
       const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
-      const estElig2 = aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
-      const tarifBrut2 = price;
+      const estElig2 = !_isWaiting2 && aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+      const tarifBrut2 = isno ? act.isno : act.hc;
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
         date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
@@ -4558,9 +4552,9 @@ function buildRows(reg) {
         ddn: m.ddn, sexe: m.sexe,
         activite: nomClean, jour: act.jour, heure: act.heure,
         lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-        tarif: price,           // tarif réellement réglé (après -15% si éligible)
+        tarif: price,
         tarif_brut: tarifBrut2,
-        statut_inscription: _isWaiting2 ? 'En attente' : '',
+        statut_inscription: _isWaiting2 ? 'Liste attente' : '',
         fnsmr: 15,
         remise: (!_isWaiting2 && estElig2) ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
@@ -4572,7 +4566,7 @@ function buildRows(reg) {
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
         pass_aide: passAide,
-        statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
+        statut_inscription: (m.waitingList && m.waitingList.includes && m.waitingList.includes(actId)) ? 'Liste attente' : ''
       });
     });
   });
@@ -5892,9 +5886,10 @@ function mergerDossiersSheet(dossiers) {
 
     const reg = byCode[d.code];
 
-    // Mettre à jour le total si plus grand (dernière ligne)
-    if (Number(d.total) > reg.totals.grandTotal) {
+    // Toujours prendre le total du Sheet (col AF fait foi)
+    if (Number(d.total) > 0) {
       reg.totals.grandTotal = Number(d.total);
+      reg._sheetTotal = Number(d.total);
     }
 
     // Ajouter le membre si pas déjà présent
@@ -6726,14 +6721,22 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:  l.membreNom,
           avoir:      avoir
         });
-      } catch(e) { console.warn('Suppression activité GAS KO:', e); }
+        // Recharger depuis le Sheet — le total AF fait foi
+        await chargerDossiersDepuisSheet();
+        try { renderAdmin(); } catch(e) {}
+        try { renderAdminStats(); } catch(e) {}
+      } catch(e) {
+        console.warn('Suppression activité GAS KO:', e);
+        try { renderAdmin(); } catch(e2) {}
+      }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
+    return;
   }
 
-  renderAdmin();
-  renderAdminStats();
+  try { renderAdmin(); } catch(e) {}
+  try { renderAdminStats(); } catch(e) {}
 }
 
 async function deleteRegistration(id) {
