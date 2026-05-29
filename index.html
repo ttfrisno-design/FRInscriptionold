@@ -4250,11 +4250,15 @@ async function lancerCheckoutHA(code, total) {
   } catch(e) {
     console.error('lancerCheckoutHA KO:', e);
     if (btn) { btn.disabled = false; btn.textContent = '💳 Réessayer le paiement HelloAsso'; }
-    // Fallback : lien direct HA
+    const errDetail = (e && e.message) ? e.message : String(e);
     const zone = document.getElementById('ha-checkout-zone');
     if (zone) {
+      const isCreds = errDetail.toLowerCase().includes('credential') || errDetail.toLowerCase().includes('ha_client');
       zone.innerHTML = '<div style="background:#fff3e0;border:1px solid #e65100;border-radius:8px;padding:12px;font-size:13px;color:#e65100;margin-bottom:12px;">'
-        + '⚠️ La connexion HelloAsso n\'a pas pu être établie. Utilisez le lien direct ci-dessous.</div>'
+        + (isCreds
+          ? '⚙️ <strong>Configuration requise :</strong> Les credentials HelloAsso ne sont pas encore configurés dans le GAS.<br>Ajoutez <code>HA_CLIENT_ID</code> et <code>HA_CLIENT_SECRET</code> dans les propriétés du script Apps Script.'
+          : '⚠️ Connexion HelloAsso impossible : ' + errDetail)
+        + '</div>'
         + '<a href="' + HELLOASSO_URL + '" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;text-decoration:none;display:flex;">'
         + '💳 Payer sur HelloAsso (lien direct)</a>';
     }
