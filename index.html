@@ -4239,13 +4239,16 @@ async function lancerCheckoutHA(code, total) {
       errorUrl:    currentUrl + '#paiement-erreur?code=' + code
     });
 
-    if (result && result.redirectUrl) {
+    // callAppsScriptFetch retourne { ok, data } — extraire data
+    const data = (result && result.data) ? result.data : result;
+    if (data && data.redirectUrl) {
       // Enregistrer le dossier dans le Sheet AVANT de partir sur HA
       await finaliserInscription(code);
       // Puis rediriger vers HA
-      window.location.href = result.redirectUrl;
+      window.location.href = data.redirectUrl;
     } else {
-      throw new Error(result.message || 'Réponse inattendue');
+      const errMsg = (data && data.message) ? data.message : 'Réponse inattendue du serveur';
+      throw new Error(errMsg);
     }
   } catch(e) {
     console.error('lancerCheckoutHA KO:', e);
