@@ -3478,7 +3478,7 @@ function buildRows(reg) {
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
           pass_aide: passAide,
-          statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
+          statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
         });
         return;
       }
@@ -3523,7 +3523,7 @@ function buildRows(reg) {
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
         pass_aide: passAide,
-        statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
+        statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
       });
     });
   });
