@@ -4409,11 +4409,11 @@ async function lancerCheckoutHA(code, total, echelonne) {
     // callAppsScriptFetch retourne { ok, data } — extraire data
     const data = (result && result.data) ? result.data : result;
     if (data && data.redirectUrl) {
-      // Sauvegarder les infos en localStorage pour traitement au retour de HA
+      // Sauvegarder le dossier complet pour le retrouver au retour de HA
       const pendingHA = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
-      pendingHA[code] = { total, timestamp: Date.now(), echelonne: !!echelonne };
+      pendingHA[code] = { total, timestamp: Date.now(), echelonne: !!echelonne, reg: reg };
       localStorage.setItem('fri_pending_ha', JSON.stringify(pendingHA));
-      // Rediriger vers HA — l'inscription sera validée AU RETOUR après paiement confirmé
+      // Rediriger vers HA — l'inscription sera enregistrée AU RETOUR
       window.location.href = data.redirectUrl;
     } else {
       const errMsg = (data && data.message) ? data.message : 'Réponse inattendue du serveur';
@@ -4457,11 +4457,18 @@ async function handleReturnFromHelloAsso() {
   try {
     const url = getAppsScriptUrl();
 
-    // Étape 1 : enregistrer le dossier dans le Sheet (sendToGoogleSheets)
-    const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
-    const reg = pending[code];
-    if (reg) {
+    // Étape 1 : récupérer le dossier depuis fri_pending_ha ou fri_pending
+    const pendingHA2 = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
+    const haEntry = pendingHA2[code];
+    const reg = (haEntry && haEntry.reg) ? haEntry.reg
+              : (JSON.parse(localStorage.getItem('fri_pending') || '{}'))[code];
+
+    if (!reg) {
+      console.warn('[FRI] Dossier introuvable pour code:', code);
+    } else {
       reg.status = 'paid';
+      reg.responsable = reg.responsable || {};
+      reg.responsable.modePaiement = haEntry && haEntry.echelonne ? 'helloasso3x' : 'helloasso';
       await sendToGoogleSheets(reg);
       console.log('[FRI] Dossier enregistré dans le Sheet');
     }
@@ -7382,6 +7389,15 @@ async function validerFormulaireCheques(code, total, showTrois) {
       detectCommune();
     }
   }, 500);
+})();
+
+// ── Gérer le retour depuis HelloAsso au chargement de la page ──
+(function() {
+  if (window.location.hash && window.location.hash.includes('paiement-valide')) {
+    handleReturnFromHelloAsso().catch(function(e) {
+      console.error('handleReturnFromHelloAsso KO:', e);
+    });
+  }
 })();
 
 </script>
