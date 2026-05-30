@@ -4471,11 +4471,19 @@ async function handleReturnFromHelloAsso() {
       reg.responsable.modePaiement = haEntry && haEntry.echelonne ? 'helloasso3x' : 'helloasso';
       await sendToGoogleSheets(reg);
       console.log('[FRI] Dossier enregistré dans le Sheet');
+      // Petite pause pour laisser Apps Script finir l'écriture
+      await new Promise(r => setTimeout(r, 2000));
     }
 
-    // Étape 2 : valider le paiement HA
-    await callAppsScriptValidate(url, code);
-    console.log('[FRI] Paiement validé');
+    // Étape 2 : valider le paiement via GAS (mode helloasso)
+    // Note : le webhook HA appelle aussi validerPaiementSheet automatiquement
+    // On appelle quand même pour garantir la validation si le webhook est en retard
+    try {
+      await callAppsScriptValidate(url, code);
+      console.log('[FRI] Paiement validé via callAppsScriptValidate');
+    } catch(eVal) {
+      console.warn('[FRI] callAppsScriptValidate KO (le webhook HA devrait valider) :', eVal);
+    }
 
     // Nettoyer
     const pendingHA = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
