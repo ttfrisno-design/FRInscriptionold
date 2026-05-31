@@ -1158,15 +1158,19 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4
   };
 
   window.isSignatureVide = function() {
-    if (!canvas) return true;
-    var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    for (var i = 3; i < data.length; i += 4) { if (data[i] > 10) return false; }
+    var c = canvas || document.getElementById('ri-signature-canvas');
+    if (!c) return true;
+    try {
+      var data = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      for (var i = 3; i < data.length; i += 4) { if (data[i] > 10) return false; }
+    } catch(e) { return true; }
     return true;
   };
 
   window.getSignatureBase64 = function() {
-    if (!canvas) return '';
-    return canvas.toDataURL('image/png');
+    var c = canvas || document.getElementById('ri-signature-canvas');
+    if (!c) return '';
+    return c.toDataURL('image/png');
   };
 
   // Exposer initCanvas pour l'appeler depuis saveDossier
@@ -1183,18 +1187,32 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4
 })();
 
 window.checkReglementValid = function() {
+  // S'assurer que le canvas est initialisé
+  if (!canvas && document.getElementById('ri-signature-canvas')) {
+    try { initCanvas(); } catch(e) {}
+  }
   var cb  = document.getElementById('cb-reglement');
   var btn = document.getElementById('btn-valider-reglement');
   if (!cb || !btn) return;
   var ok = cb.checked && !window.isSignatureVide();
-  btn.style.opacity      = ok ? '1' : '0.5';
+  btn.style.opacity       = ok ? '1' : '0.5';
   btn.style.pointerEvents = ok ? 'auto' : 'none';
 };
 
 window.validerReglementInterieur = async function() {
+  // S'assurer que le canvas est initialisé
+  if (!canvas && document.getElementById('ri-signature-canvas')) {
+    try { initCanvas(); } catch(e) {}
+  }
   var cb = document.getElementById('cb-reglement');
-  if (!cb || !cb.checked || window.isSignatureVide()) {
-    alert('Veuillez lire le règlement, cocher la case ET apposer votre signature.');
+  var sigVide = window.isSignatureVide();
+  if (!cb || !cb.checked) {
+    alert('Veuillez cocher la case pour accepter le règlement intérieur.');
+    return;
+  }
+  if (sigVide) {
+    alert('Veuillez apposer votre signature dans le cadre prévu.');
+    document.getElementById('ri-signature-canvas') && document.getElementById('ri-signature-canvas').scrollIntoView({behavior:'smooth', block:'center'});
     return;
   }
 
