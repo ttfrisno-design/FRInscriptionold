@@ -1693,10 +1693,10 @@ function validerAidesEtProceder() {
       if (numB2) { numB2.style.background = 'var(--green)'; numB2.style.color = 'white'; numB2.textContent = '✓'; }
 
       setupPaymentStep(code);
-      // Scroller vers rubrique 3
+      // Scroller vers rubrique 3 (paiement)
       setTimeout(() => {
-        const cardB = document.getElementById('card-step-b');
-        if (cardB) cardB.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const cardC = document.getElementById('card-step-c');
+        if (cardC) cardC.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
     }
   }
@@ -7287,15 +7287,15 @@ function setupPaymentStep(code) {
   var mode  = reg.responsable.modePaiement || 'helloasso';
   var total = (state.solde !== undefined ? state.solde : calcTotals().grandTotal) || 0;
   var cardB = document.getElementById('card-step-b');
-  cardB.style.opacity = '1'; cardB.style.pointerEvents = '';
-  cardB.style.borderLeftColor = 'var(--green)';
-  document.getElementById('step-b-num').style.background = 'var(--green)';
+  if (cardB) { cardB.style.opacity = '1'; cardB.style.pointerEvents = 'auto'; cardB.style.borderLeftColor = 'var(--green)'; }
+  var stepBNum = document.getElementById('step-b-num');
+  if (stepBNum) stepBNum.style.background = 'var(--green)';
 
-  // Activer aussi la rubrique 2 (Aides & Pass)
+  // Activer aussi la rubrique 3 (Aides & Pass + Paiement)
   var cardB2 = document.getElementById('card-step-b3');
   if (cardB2) {
     cardB2.style.opacity = '1';
-    cardB2.style.pointerEvents = '';
+    cardB2.style.pointerEvents = 'auto';
     cardB2.style.borderLeftColor = 'var(--gold)';
   }
 
