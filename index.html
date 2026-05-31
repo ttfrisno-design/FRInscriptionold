@@ -1113,84 +1113,75 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4
 // ══════════════════════════════════════════════════════════════
 // RÈGLEMENT INTÉRIEUR — Signature + Validation
 // ══════════════════════════════════════════════════════════════
-(function() {
-  var canvas, ctx, drawing = false;
+// ── Signature Règlement Intérieur — variables globales ──
+var _riCanvas = null, _riCtx = null, _riDrawing = false;
 
-  function initCanvas() {
-    canvas = document.getElementById('ri-signature-canvas');
-    if (!canvas) return;
-    ctx = canvas.getContext('2d');
-    ctx.strokeStyle = '#1a2e22';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+function _riInitCanvas() {
+  _riCanvas = document.getElementById('ri-signature-canvas');
+  if (!_riCanvas) return;
+  _riCtx = _riCanvas.getContext('2d');
+  _riCtx.strokeStyle = '#1a2e22';
+  _riCtx.lineWidth = 2;
+  _riCtx.lineCap = 'round';
+  _riCtx.lineJoin = 'round';
 
-    // Mouse
-    canvas.addEventListener('mousedown',  e => { drawing = true; ctx.beginPath(); ctx.moveTo(pos(e).x, pos(e).y); });
-    canvas.addEventListener('mousemove',  e => { if (!drawing) return; ctx.lineTo(pos(e).x, pos(e).y); ctx.stroke(); updateSigStatus(); });
-    canvas.addEventListener('mouseup',    () => drawing = false);
-    canvas.addEventListener('mouseleave', () => drawing = false);
-    // Touch
-    canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; ctx.beginPath(); var t = pos(e.touches[0]); ctx.moveTo(t.x, t.y); });
-    canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!drawing) return; var t = pos(e.touches[0]); ctx.lineTo(t.x, t.y); ctx.stroke(); updateSigStatus(); });
-    canvas.addEventListener('touchend',   () => drawing = false);
+  function _riPos(e) {
+    var r = _riCanvas.getBoundingClientRect();
+    var scaleX = _riCanvas.width / r.width;
+    var scaleY = _riCanvas.height / r.height;
+    var src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * scaleX, y: (src.clientY - r.top) * scaleY };
   }
+  _riCanvas.addEventListener('mousedown',  function(e) { _riDrawing=true; _riCtx.beginPath(); var p=_riPos(e); _riCtx.moveTo(p.x,p.y); });
+  _riCanvas.addEventListener('mousemove',  function(e) { if(!_riDrawing) return; var p=_riPos(e); _riCtx.lineTo(p.x,p.y); _riCtx.stroke(); _riUpdateStatus(); });
+  _riCanvas.addEventListener('mouseup',    function() { _riDrawing=false; });
+  _riCanvas.addEventListener('mouseleave', function() { _riDrawing=false; });
+  _riCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); _riDrawing=true; _riCtx.beginPath(); var p=_riPos(e); _riCtx.moveTo(p.x,p.y); }, {passive:false});
+  _riCanvas.addEventListener('touchmove',  function(e) { e.preventDefault(); if(!_riDrawing) return; var p=_riPos(e); _riCtx.lineTo(p.x,p.y); _riCtx.stroke(); _riUpdateStatus(); }, {passive:false});
+  _riCanvas.addEventListener('touchend',   function() { _riDrawing=false; });
+}
 
-  function pos(e) {
-    var r = canvas.getBoundingClientRect();
-    var scaleX = canvas.width / r.width;
-    var scaleY = canvas.height / r.height;
-    return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+function _riUpdateStatus() {
+  var el = document.getElementById('sig-status');
+  if (el) { el.textContent = '✅ Signature apposée'; el.style.color = '#2d6a4f'; }
+  checkReglementValid();
+}
+
+function effacerSignatureRI() {
+  if (!_riCanvas) _riInitCanvas();
+  if (_riCtx) _riCtx.clearRect(0, 0, _riCanvas.width, _riCanvas.height);
+  var el = document.getElementById('sig-status');
+  if (el) { el.textContent = 'Signez dans le cadre ci-dessus'; el.style.color = '#999'; }
+  checkReglementValid();
+}
+
+function isSignatureRIVide() {
+  if (!_riCanvas) {
+    _riCanvas = document.getElementById('ri-signature-canvas');
+    if (!_riCanvas) return true;
+    _riCtx = _riCanvas.getContext('2d');
   }
+  try {
+    var data = _riCtx.getImageData(0, 0, _riCanvas.width, _riCanvas.height).data;
+    for (var i = 3; i < data.length; i += 4) { if (data[i] > 10) return false; }
+  } catch(e) { return true; }
+  return true;
+}
 
-  function updateSigStatus() {
-    var el = document.getElementById('sig-status');
-    if (el) { el.textContent = '✅ Signature apposée'; el.style.color = '#2d6a4f'; }
-    checkReglementValid();
-  }
+function getSignatureRIBase64() {
+  if (!_riCanvas) _riInitCanvas();
+  return _riCanvas ? _riCanvas.toDataURL('image/png') : '';
+}
 
-  window.effacerSignatureRI = function() {
-    if (!canvas) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    var el = document.getElementById('sig-status');
-    if (el) { el.textContent = 'Signez dans le cadre ci-dessus'; el.style.color = '#999'; }
-    checkReglementValid();
-  };
+window._riCanvasInit = function() { _riInitCanvas(); };
+window.isSignatureVide = function() { return isSignatureRIVide(); };
+window.getSignatureBase64 = function() { return getSignatureRIBase64(); };
+window.effacerSignatureRI = effacerSignatureRI;
 
-  window.isSignatureVide = function() {
-    var c = canvas || document.getElementById('ri-signature-canvas');
-    if (!c) return true;
-    try {
-      var data = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      for (var i = 3; i < data.length; i += 4) { if (data[i] > 10) return false; }
-    } catch(e) { return true; }
-    return true;
-  };
-
-  window.getSignatureBase64 = function() {
-    var c = canvas || document.getElementById('ri-signature-canvas');
-    if (!c) return '';
-    return c.toDataURL('image/png');
-  };
-
-  // Exposer initCanvas pour l'appeler depuis saveDossier
-  window._riCanvasInit = function() {
-    if (!document.getElementById('ri-signature-canvas')) return;
-    initCanvas();
-  };
-  // Aussi via MutationObserver si section-5 active
-  var obs = new MutationObserver(function() {
-    var s5 = document.getElementById('section-5');
-    if (s5 && s5.classList.contains('active')) initCanvas();
-  });
-  if (document.body) obs.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
-})();
 
 window.checkReglementValid = function() {
   // S'assurer que le canvas est initialisé
-  if (!canvas && document.getElementById('ri-signature-canvas')) {
-    try { initCanvas(); } catch(e) {}
-  }
+  if (!_riCanvas) _riInitCanvas();
   var cb  = document.getElementById('cb-reglement');
   var btn = document.getElementById('btn-valider-reglement');
   if (!cb || !btn) return;
@@ -1201,9 +1192,7 @@ window.checkReglementValid = function() {
 
 window.validerReglementInterieur = async function() {
   // S'assurer que le canvas est initialisé
-  if (!canvas && document.getElementById('ri-signature-canvas')) {
-    try { initCanvas(); } catch(e) {}
-  }
+  if (!_riCanvas) _riInitCanvas();
   var cb = document.getElementById('cb-reglement');
   var sigVide = window.isSignatureVide();
   if (!cb || !cb.checked) {
