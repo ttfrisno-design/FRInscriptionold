@@ -714,10 +714,77 @@
     </button>
   </div>
 
-  <!-- ÉTAPE B : Aides & Pass + Avoirs + Coupon ANCV + Mode de règlement -->
-  <div class="card" id="card-step-b2" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
+  
+  <!-- ÉTAPE B : Règlement intérieur -->
+  <div class="card" id="card-step-b" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
     <div class="card-title">
-      <span id="step-b2-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
+      <span id="step-b-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
+      Règlement intérieur
+    </div>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:14px;">Veuillez lire et accepter le règlement intérieur du Foyer Rural d'Isneauville avant de procéder au paiement.</p>
+
+    <!-- Contenu règlement intérieur -->
+    <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:10px;padding:16px;max-height:320px;overflow-y:auto;font-size:12px;line-height:1.7;color:#333;margin-bottom:16px">
+      <h3 style="font-size:14px;font-weight:700;color:#1a2e22;margin-bottom:10px">RÈGLEMENT INTÉRIEUR — Foyer Rural d'Isneauville</h3>
+
+      <p><strong>STATUTS</strong><br>
+      Par l'apposition de sa signature sur la fiche d'inscription l'adhérent reconnaît avoir pris connaissance des statuts de l'association et des règles mises en place et déclare y adhérer sans réserve.</p>
+
+      <p><strong>ACTIVITÉS</strong><br>
+      Les activités et les horaires indiqués ne sont pas contractuels ; les cours peuvent être supprimés en raison d'un nombre insuffisant d'adhérents et/ou les horaires modifiés. Un questionnaire de santé est à remplir.</p>
+
+      <p><strong>INSCRIPTIONS</strong><br>
+      L'inscription n'est validée qu'après versement de la cotisation. Une activité payée et interrompue avant la fin de la saison ne sera partiellement remboursée que pour cause de maladie grave ou d'accident (sur présentation d'un certificat médical) et après avis favorable du CA. Un forfait de 30 € pour frais de secrétariat sera prélevé sur tout remboursement.</p>
+
+      <p><strong>ÉLÉMENTS DE CALCUL DE LA COTISATION</strong><br>
+      Si vous pratiquez au moins trois activités dans la même famille (même adresse) vous bénéficiez d'une réduction de 15 % sur l'ensemble des cotisations (hors forfait Country et Marche Nordique, droit adhésion, assurance).</p>
+
+      <p><strong>ACCOMPAGNEMENT DES MINEURS</strong><br>
+      Les élèves mineurs doivent toujours être accompagnés d'un adulte jusqu'à la porte du cours et récupérés à la fin du cours. Les parents ne sont pas autorisés à assister aux cours.</p>
+
+      <p><strong>ASSIDUITÉ</strong><br>
+      Les élèves doivent arriver à l'heure. En cas d'absence, prévenir l'animateur ou l'association : frisneauville@orange.fr</p>
+
+      <p><strong>TENUE</strong><br>
+      Une tenue adaptée est obligatoire. Des baskets propres sont exigées dans le complexe sportif. Pour les activités sur tapis, une serviette de protection est obligatoire.</p>
+
+      <p><strong>COMPORTEMENT</strong><br>
+      Le comportement doit être correct et respectueux envers tous. En cas de manquement, une exclusion temporaire ou définitive peut être prononcée.</p>
+
+      <p><strong>DROIT À L'IMAGE</strong><br>
+      Par la validation de cette inscription, l'adhérent autorise le Foyer Rural d'Isneauville à publier des photographies dans un but d'information ou de publicité de l'activité uniquement. Les photos ne seront ni vendues, ni utilisées à d'autres usages.</p>
+
+      <p><strong>COVID / CRISE SANITAIRE</strong><br>
+      En cas de suspension ou annulation suite à une crise sanitaire, la cotisation payée ne donne pas droit à un remboursement automatique.</p>
+    </div>
+
+    <!-- Signature -->
+    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:#1b5e20;margin-bottom:10px">✍️ Signature électronique</div>
+      <canvas id="signature-canvas" width="520" height="120"
+        style="border:2px solid #2d6a4f;border-radius:8px;background:white;cursor:crosshair;touch-action:none;width:100%;max-width:520px;display:block;margin-bottom:8px">
+      </canvas>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button onclick="effacerSignatureRI()" style="font-size:12px;padding:5px 12px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer">🗑️ Effacer</button>
+        <span id="sig-status" style="font-size:12px;color:#999;padding:5px 0">Signez dans le cadre ci-dessus</span>
+      </div>
+    </div>
+
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:var(--dark);margin-bottom:14px">
+      <input type="checkbox" id="cb-reglement" onchange="checkReglementValid()" style="margin-top:3px;width:18px;height:18px;flex-shrink:0">
+      <span>J'ai lu et j'accepte le règlement intérieur du Foyer Rural d'Isneauville. Je reconnais avoir pris connaissance des statuts et m'engage à les respecter.</span>
+    </label>
+
+    <button id="btn-valider-reglement" class="btn btn-primary" onclick="validerReglementInterieur()"
+      style="width:100%;justify-content:center;opacity:0.5;pointer-events:none">
+      ✅ Valider et continuer
+    </button>
+  </div>
+
+<!-- ÉTAPE B3 : Aides & Pass + Avoirs + Coupon ANCV + Mode de règlement -->
+  <div class="card" id="card-step-b3" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
+    <div class="card-title">
+      <span id="step-b3-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">3</span>
       Aides, Avoirs &amp; Mode de règlement
     </div>
 
@@ -1041,6 +1108,138 @@ function calcCountryForfait(membre, isno) {
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4kE7ZDafewgD18B_PFKJkT4448mzbukec0e6Hc6soPoyysNCy_T-A/exec';
+
+
+// ══════════════════════════════════════════════════════════════
+// RÈGLEMENT INTÉRIEUR — Signature + Validation
+// ══════════════════════════════════════════════════════════════
+(function() {
+  var canvas, ctx, drawing = false;
+
+  function initCanvas() {
+    canvas = document.getElementById('signature-canvas');
+    if (!canvas) return;
+    ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1a2e22';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Mouse
+    canvas.addEventListener('mousedown',  e => { drawing = true; ctx.beginPath(); ctx.moveTo(pos(e).x, pos(e).y); });
+    canvas.addEventListener('mousemove',  e => { if (!drawing) return; ctx.lineTo(pos(e).x, pos(e).y); ctx.stroke(); updateSigStatus(); });
+    canvas.addEventListener('mouseup',    () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+    // Touch
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; ctx.beginPath(); var t = pos(e.touches[0]); ctx.moveTo(t.x, t.y); });
+    canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!drawing) return; var t = pos(e.touches[0]); ctx.lineTo(t.x, t.y); ctx.stroke(); updateSigStatus(); });
+    canvas.addEventListener('touchend',   () => drawing = false);
+  }
+
+  function pos(e) {
+    var r = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / r.width;
+    var scaleY = canvas.height / r.height;
+    return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+  }
+
+  function updateSigStatus() {
+    var el = document.getElementById('sig-status');
+    if (el) { el.textContent = '✅ Signature apposée'; el.style.color = '#2d6a4f'; }
+    checkReglementValid();
+  }
+
+  window.effacerSignatureRI = function() {
+    if (!canvas) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var el = document.getElementById('sig-status');
+    if (el) { el.textContent = 'Signez dans le cadre ci-dessus'; el.style.color = '#999'; }
+    checkReglementValid();
+  };
+
+  window.isSignatureVide = function() {
+    if (!canvas) return true;
+    var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (var i = 3; i < data.length; i += 4) { if (data[i] > 10) return false; }
+    return true;
+  };
+
+  window.getSignatureBase64 = function() {
+    if (!canvas) return '';
+    return canvas.toDataURL('image/png');
+  };
+
+  // Initialiser le canvas quand section-5 devient active
+  var obs = new MutationObserver(function() {
+    var s5 = document.getElementById('section-5');
+    if (s5 && s5.classList.contains('active') && !canvas) initCanvas();
+  });
+  var body = document.body;
+  if (body) obs.observe(body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  // Aussi à l'init si déjà actif
+  setTimeout(function() {
+    if (document.getElementById('section-5') && !canvas) initCanvas();
+  }, 500);
+})();
+
+window.checkReglementValid = function() {
+  var cb  = document.getElementById('cb-reglement');
+  var btn = document.getElementById('btn-valider-reglement');
+  if (!cb || !btn) return;
+  var ok = cb.checked && !window.isSignatureVide();
+  btn.style.opacity      = ok ? '1' : '0.5';
+  btn.style.pointerEvents = ok ? 'auto' : 'none';
+};
+
+window.validerReglementInterieur = async function() {
+  var cb = document.getElementById('cb-reglement');
+  if (!cb || !cb.checked || window.isSignatureVide()) {
+    alert('Veuillez lire le règlement, cocher la case ET apposer votre signature.');
+    return;
+  }
+
+  var btn = document.getElementById('btn-valider-reglement');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement...'; }
+
+  try {
+    // Récupérer les infos du responsable
+    const reg = state.responsable || {};
+    const code = document.getElementById('dossier-code') ? document.getElementById('dossier-code').textContent.trim() : '';
+    const sigBase64 = window.getSignatureBase64();
+    const dateStr   = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+    // Envoyer au GAS pour sauvegarde sur Drive
+    const url = getAppsScriptUrl();
+    const result = await callAppsScriptFetch(url, {
+      action:      'saveReglement',
+      _token:      FRI_SECRET_TOKEN,
+      code:        code,
+      nom:         (reg.nom  || '').toUpperCase(),
+      prenom:      reg.prenom || '',
+      email:       reg.email1 || '',
+      date:        dateStr,
+      signature:   sigBase64
+    });
+
+    // Activer l'étape suivante
+    activerEtapeB3();
+    if (btn) { btn.textContent = '✅ Règlement accepté'; btn.style.background = '#2d6a4f'; }
+
+  } catch(e) {
+    console.error('saveReglement KO:', e);
+    // Continuer quand même
+    activerEtapeB3();
+    if (btn) { btn.textContent = '✅ Règlement accepté'; btn.style.background = '#2d6a4f'; }
+  }
+};
+
+function activerEtapeB3() {
+  var card = document.getElementById('card-step-b3');
+  var num  = document.getElementById('step-b3-num');
+  if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; card.style.borderLeftColor = 'var(--green)'; }
+  if (num)  { num.style.background = 'var(--green)'; }
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function getAppsScriptUrl() {
   return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
@@ -1468,9 +1667,9 @@ function validerAidesEtProceder() {
       localStorage.setItem('fri_pending', JSON.stringify(pending));
 
       // Marquer l'étape 2 comme validée (vert)
-      const cardB2 = document.getElementById('card-step-b2');
+      const cardB2 = document.getElementById('card-step-b3');
       if (cardB2) { cardB2.style.borderLeftColor = 'var(--green)'; }
-      const numB2 = document.getElementById('step-b2-num');
+      const numB2 = document.getElementById('step-b3-num');
       if (numB2) { numB2.style.background = 'var(--green)'; numB2.style.color = 'white'; numB2.textContent = '✓'; }
 
       setupPaymentStep(code);
@@ -3692,14 +3891,15 @@ function saveDossier() {
   document.getElementById('dossier-code').textContent = code;
   document.getElementById('dossier-box').style.display = 'block';
 
-  // Activer l'étape 2 (Aides & Pass) et scroller dessus
-  const cardB2 = document.getElementById('card-step-b2');
-  if (cardB2) {
-    cardB2.style.opacity = '1';
-    cardB2.style.pointerEvents = '';
-    cardB2.style.borderLeftColor = 'var(--gold)';
-    const numB2 = document.getElementById('step-b2-num');
-    if (numB2) { numB2.style.background = 'var(--gold)'; numB2.style.color = 'var(--dark)'; }
+  // Activer l'étape 2 (Règlement intérieur) et scroller dessus
+  const cardBRI2 = document.getElementById('card-step-b');
+  if (cardBRI2) {
+    cardBRI2.style.opacity = '1';
+    cardBRI2.style.pointerEvents = '';
+    cardBRI2.style.borderLeftColor = 'var(--green)';
+    const numBRI2 = document.getElementById('step-b-num');
+    if (numBRI2) { numBRI2.style.background = 'var(--green)'; numBRI2.style.color = 'white'; }
+    setTimeout(() => cardBRI2.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
   }
 
   // Désactiver card-step-b et card-step-c jusqu'à validation des aides
@@ -7072,7 +7272,7 @@ function setupPaymentStep(code) {
   document.getElementById('step-b-num').style.background = 'var(--green)';
 
   // Activer aussi la rubrique 2 (Aides & Pass)
-  var cardB2 = document.getElementById('card-step-b2');
+  var cardB2 = document.getElementById('card-step-b3');
   if (cardB2) {
     cardB2.style.opacity = '1';
     cardB2.style.pointerEvents = '';
