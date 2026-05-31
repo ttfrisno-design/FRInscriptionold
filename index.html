@@ -889,7 +889,7 @@
   </div>
 
   <!-- ÉTAPE C : Paiement (HelloAsso ou autre) -->
-  <div class="card" id="card-step-b" style="border-left:4px solid #ccc;opacity:0.5;pointer-events:none">
+  <div class="card" id="card-step-pay" style="border-left:4px solid #ccc;opacity:0.5;pointer-events:none">
     <div class="card-title">
       <span style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px" id="step-b-num">3</span>
       <span id="step-b-title">Paiement</span>
@@ -1695,8 +1695,8 @@ function validerAidesEtProceder() {
       setupPaymentStep(code);
       // Scroller vers rubrique 3 (paiement)
       setTimeout(() => {
-        const cardC = document.getElementById('card-step-c');
-        if (cardC) cardC.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const cardPay = document.getElementById('card-step-pay');
+        if (cardPay) cardPay.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
     }
   }
@@ -3930,8 +3930,8 @@ function saveDossier() {
 
   // card-step-b3 (Aides & règlement) reste désactivé jusqu'à validation du règlement
   // card-step-c reste caché
-  const cardC = document.getElementById('card-step-c');
-  if (cardC) { cardC.style.display = 'none'; }
+  const cardPay = document.getElementById('card-step-pay');
+  if (cardPay) { cardPay.style.opacity = '0.5'; cardPay.style.pointerEvents = 'none'; }
 }
 
 function buildChequeRow(n, label, montant, readonly, suffix) {
@@ -7286,7 +7286,7 @@ function setupPaymentStep(code) {
 
   var mode  = reg.responsable.modePaiement || 'helloasso';
   var total = (state.solde !== undefined ? state.solde : calcTotals().grandTotal) || 0;
-  var cardB = document.getElementById('card-step-b');
+  var cardB = document.getElementById('card-step-pay');
   if (cardB) { cardB.style.opacity = '1'; cardB.style.pointerEvents = 'auto'; cardB.style.borderLeftColor = 'var(--green)'; }
   var stepBNum = document.getElementById('step-b-num');
   if (stepBNum) stepBNum.style.background = 'var(--green)';
@@ -7299,7 +7299,7 @@ function setupPaymentStep(code) {
     cardB2.style.borderLeftColor = 'var(--gold)';
   }
 
-  document.getElementById('card-step-c').style.display = 'none';
+  var elPay = document.getElementById('card-step-pay'); if (elPay) { elPay.style.opacity = '0.5'; elPay.style.pointerEvents = 'none'; }
 
   // Afficher l'étape de confirmation uniquement pour HelloAsso
   if (mode === 'helloasso') {
