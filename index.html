@@ -1119,7 +1119,7 @@ var _riCanvas = null, _riCtx = null, _riDrawing = false;
 function _riInitCanvas() {
   _riCanvas = document.getElementById('ri-signature-canvas');
   if (!_riCanvas) return;
-  _riCtx = _riCanvas.getContext('2d');
+  _riCtx = _riCanvas.getContext('2d', { willReadFrequently: true });
   _riCtx.strokeStyle = '#1a2e22';
   _riCtx.lineWidth = 2;
   _riCtx.lineCap = 'round';
@@ -1159,7 +1159,7 @@ function isSignatureRIVide() {
   if (!_riCanvas) {
     _riCanvas = document.getElementById('ri-signature-canvas');
     if (!_riCanvas) return true;
-    _riCtx = _riCanvas.getContext('2d');
+    _riCtx = _riCanvas.getContext('2d', { willReadFrequently: true });
   }
   try {
     var data = _riCtx.getImageData(0, 0, _riCanvas.width, _riCanvas.height).data;
@@ -1217,16 +1217,29 @@ window.validerReglementInterieur = async function() {
 
     // Envoyer au GAS pour sauvegarde sur Drive
     const url = getAppsScriptUrl();
-    const result = await callAppsScriptFetch(url, {
-      action:      'saveReglement',
-      _token:      FRI_SECRET_TOKEN,
-      code:        code,
-      nom:         (reg.nom  || '').toUpperCase(),
-      prenom:      reg.prenom || '',
-      email:       reg.email1 || '',
-      date:        dateStr,
-      signature:   sigBase64
-    });
+    // saveReglement : POST no-cors (Apps Script redirect) — on ne lit pas la réponse
+    // La signature base64 est trop grande pour JSONP GET
+    try {
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action:    'saveReglement',
+          _token:    FRI_SECRET_TOKEN,
+          code:      code,
+          nom:       (reg.nom  || '').toUpperCase(),
+          prenom:    reg.prenom || '',
+          email:     reg.email1 || '',
+          date:      dateStr,
+          signature: sigBase64
+        })
+      });
+      console.log('[FRI] saveReglement envoyé (no-cors)');
+    } catch(fetchErr) {
+      console.warn('saveReglement fetch KO (non bloquant):', fetchErr);
+    }
+    const result = { status: 'ok' }; // continuer dans tous les cas
 
     // Activer l'étape suivante
     activerEtapeB3();
