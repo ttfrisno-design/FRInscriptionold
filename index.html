@@ -3908,16 +3908,10 @@ function saveDossier() {
     }, 300);
   }
 
-  // Désactiver card-step-b et card-step-c jusqu'à validation des aides
-  const cardB = document.getElementById('card-step-b');
-  if (cardB) { cardB.style.opacity = '0.4'; cardB.style.pointerEvents = 'none'; cardB.style.borderLeftColor = '#ccc'; }
+  // card-step-b3 (Aides & règlement) reste désactivé jusqu'à validation du règlement
+  // card-step-c reste caché
   const cardC = document.getElementById('card-step-c');
   if (cardC) { cardC.style.display = 'none'; }
-
-  // Scroller vers l'étape 2
-  setTimeout(() => {
-    if (cardB2) cardB2.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 200);
 }
 
 function buildChequeRow(n, label, montant, readonly, suffix) {
