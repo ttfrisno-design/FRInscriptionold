@@ -761,7 +761,7 @@
     <!-- Signature -->
     <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:14px;">
       <div style="font-size:13px;font-weight:700;color:#1b5e20;margin-bottom:10px">✍️ Signature électronique</div>
-      <canvas id="signature-canvas" width="520" height="120"
+      <canvas id="ri-signature-canvas" width="520" height="120"
         style="border:2px solid #2d6a4f;border-radius:8px;background:white;cursor:crosshair;touch-action:none;width:100%;max-width:520px;display:block;margin-bottom:8px">
       </canvas>
       <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -1117,7 +1117,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4
   var canvas, ctx, drawing = false;
 
   function initCanvas() {
-    canvas = document.getElementById('signature-canvas');
+    canvas = document.getElementById('ri-signature-canvas');
     if (!canvas) return;
     ctx = canvas.getContext('2d');
     ctx.strokeStyle = '#1a2e22';
@@ -1169,17 +1169,17 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4
     return canvas.toDataURL('image/png');
   };
 
-  // Initialiser le canvas quand section-5 devient active
+  // Exposer initCanvas pour l'appeler depuis saveDossier
+  window._riCanvasInit = function() {
+    if (!document.getElementById('ri-signature-canvas')) return;
+    initCanvas();
+  };
+  // Aussi via MutationObserver si section-5 active
   var obs = new MutationObserver(function() {
     var s5 = document.getElementById('section-5');
-    if (s5 && s5.classList.contains('active') && !canvas) initCanvas();
+    if (s5 && s5.classList.contains('active')) initCanvas();
   });
-  var body = document.body;
-  if (body) obs.observe(body, { subtree: true, attributes: true, attributeFilter: ['class'] });
-  // Aussi à l'init si déjà actif
-  setTimeout(function() {
-    if (document.getElementById('section-5') && !canvas) initCanvas();
-  }, 500);
+  if (document.body) obs.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
 })();
 
 window.checkReglementValid = function() {
@@ -3895,11 +3895,17 @@ function saveDossier() {
   const cardBRI2 = document.getElementById('card-step-b');
   if (cardBRI2) {
     cardBRI2.style.opacity = '1';
-    cardBRI2.style.pointerEvents = '';
+    cardBRI2.style.pointerEvents = 'auto';
     cardBRI2.style.borderLeftColor = 'var(--green)';
+    cardBRI2.removeAttribute('disabled');
     const numBRI2 = document.getElementById('step-b-num');
     if (numBRI2) { numBRI2.style.background = 'var(--green)'; numBRI2.style.color = 'white'; }
-    setTimeout(() => cardBRI2.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+    // Initialiser le canvas signature règlement intérieur
+    setTimeout(() => {
+      cardBRI2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Forcer l'init du canvas RI maintenant qu'il est visible
+      if (window._riCanvasInit) window._riCanvasInit();
+    }, 300);
   }
 
   // Désactiver card-step-b et card-step-c jusqu'à validation des aides
