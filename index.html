@@ -3694,6 +3694,8 @@ function buildRows(reg) {
           tarif: price,
           tarif_brut: tarifBrut,
           statut_inscription: _isWaiting ? 'Liste attente' : '',
+          note_tarif: (cFl.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
+            ? (cFl.ids[0] === actId ? 'Forfait country ' + cFl.ids.length + ' séances' : 'Inclus forfait') : '',
           fnsmr: 15,
           remise: (!_isWaiting && estElig) ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
@@ -3723,7 +3725,7 @@ function buildRows(reg) {
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
       const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
       const estElig2 = !_isWaiting2 && aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
-      const tarifBrut2 = isno ? act.isno : act.hc;
+      const tarifBrut2 = price; // après forfait country
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
         date: formatDateFRI(reg.date), id: String(reg.id), code_dossier: reg.code || '',
@@ -3739,6 +3741,8 @@ function buildRows(reg) {
         tarif: price,
         tarif_brut: tarifBrut2,
         statut_inscription: _isWaiting2 ? 'Liste attente' : '',
+        note_tarif: (cFl2.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
+          ? (cFl2.ids[0] === actId ? 'Forfait country ' + cFl2.ids.length + ' séances' : 'Inclus forfait') : '',
         fnsmr: 15,
         remise: (!_isWaiting2 && estElig2) ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
