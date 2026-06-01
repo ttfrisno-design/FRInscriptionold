@@ -1261,6 +1261,14 @@ function activerEtapeB3() {
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+
+function formatDateFRI(d) {
+  var dt = d ? new Date(d) : new Date();
+  if (isNaN(dt.getTime())) dt = new Date();
+  return dt.toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric'})
+       + ' à ' + dt.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+}
+
 function getAppsScriptUrl() {
   return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
 }
@@ -2820,7 +2828,7 @@ function genererQSFFTT(memberId) {
   const age = getAge(m.ddn);
   const isMineur = age < 18;
   const r = state.responsable;
-  const today = new Date().toLocaleDateString('fr-FR');
+  const today = formatDateFRI();
 
   // Lire nom/prénom depuis le DOM
   const elNom    = document.getElementById('m-' + memberId + '-nom');
@@ -2927,7 +2935,7 @@ async function validerEtGenererQSFFTT(memberId) {
   const age = getAge(m.ddn);
   const isMineur = age < 18;
   const r = state.responsable;
-  const today = new Date().toLocaleDateString('fr-FR');
+  const today = formatDateFRI();
 
   // Lire les réponses du modal
   const modalId = 'modal-qs-fftt-' + memberId;
@@ -2966,7 +2974,7 @@ async function _genererPDFQSFFTT(memberId, reponses, hasOui, signatureDataUrl) {
     const age = getAge(m.ddn);
     const isMineur = age < 18;
     const r = state.responsable;
-    const today = new Date().toLocaleDateString('fr-FR');
+    const today = formatDateFRI();
     const numRef = isMineur ? 'N° 25-10-2' : 'N° 25-10-1';
 
     // Charger jsPDF
@@ -3673,7 +3681,7 @@ function buildRows(reg) {
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
 
         rows.push({
-          date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
+          date: formatDateFRI(reg.date), id: String(reg.id), code_dossier: reg.code || '',
           responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
           adresse: reg.responsable.adresse, cp: reg.responsable.cp,
           ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
@@ -3718,7 +3726,7 @@ function buildRows(reg) {
       const tarifBrut2 = isno ? act.isno : act.hc;
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
-        date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
+        date: formatDateFRI(reg.date), id: String(reg.id), code_dossier: reg.code || '',
         responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
         adresse: reg.responsable.adresse, cp: reg.responsable.cp,
         ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
@@ -3893,7 +3901,7 @@ function saveDossier() {
   // Réutiliser le code généré lors du QS Santé si disponible
   const code = state.codeDossierPreview || generateDossierCode();
   const reg = {
-    date: new Date().toLocaleDateString('fr-FR'),
+    date: formatDateFRI(),
     id: Date.now(),
     code: code,
     status: 'pending_payment',
@@ -4077,7 +4085,7 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   const r = state.responsable;
   const age = getAge(m.ddn);
   const isMineur = age < 18;
-  const today = new Date().toLocaleDateString('fr-FR');
+  const today = formatDateFRI();
 
   // Charger jsPDF dynamiquement si pas encore disponible
   async function getJsPDF() {
@@ -4803,7 +4811,7 @@ async function finaliserInscription(code) {
 
   try {
     reg.status = 'pending_manual';
-    reg.dateDossier = new Date().toLocaleDateString('fr-FR');
+    reg.dateDossier = formatDateFRI();
 
     delete pending[code];
     localStorage.setItem('fri_pending', JSON.stringify(pending));
@@ -4903,7 +4911,7 @@ async function confirmPayment() {
 
   // Mark as paid immediately
   reg.status = 'paid';
-  reg.datePaiement = new Date().toLocaleDateString('fr-FR');
+  reg.datePaiement = formatDateFRI();
 
   // Remove from pending
   delete pending[code];
@@ -5491,15 +5499,15 @@ function buildExcelData(registrations) {
 }
 
 function exportExcel() {
-  const regs = [{ date: new Date().toLocaleDateString('fr-FR'), id: Date.now(), responsable: state.responsable, members: state.members, totals: calcTotals() }];
-  doExport(regs, `inscription_${state.responsable.nom}_${state.responsable.prenom}_${new Date().toLocaleDateString('fr-FR').replace(/\//g,'-')}.xlsx`);
+  const regs = [{ date: formatDateFRI(), id: Date.now(), responsable: state.responsable, members: state.members, totals: calcTotals() }];
+  doExport(regs, `inscription_${state.responsable.nom}_${state.responsable.prenom}_${formatDateFRI().replace(/\//g,'-')}.xlsx`);
 }
 
 function exportAllExcel(format) {
   if (!requireAdmin()) return;
   const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
   if (!regs.length) { alert('Aucune inscription enregistrée.'); return; }
-  const filename = `inscriptions_gestaffil_${new Date().toLocaleDateString('fr-FR').replace(/\//g,'-')}`;
+  const filename = `inscriptions_gestaffil_${formatDateFRI().replace(/\//g,'-')}`;
   if (format === 'csv') {
     const data = buildExcelData(regs);
     const csv = data.map(row => row.map(cell => `"${String(cell||'').replace(/"/g,'""')}"`).join(';')).join('\n');
@@ -5531,7 +5539,7 @@ function doExport(regs, filename) {
   const totalsData = [
     ['RÉCAPITULATIF DES INSCRIPTIONS — FOYER RURAL D\'ISNEAUVILLE — SAISON 2026/2027'],
     [],
-    ['Date export', new Date().toLocaleDateString('fr-FR')],
+    ['Date export', formatDateFRI()],
     ['Nombre d\'inscriptions', regs.length],
     ['Nombre de membres', regs.reduce((a,r) => a + r.members.length, 0)],
     ['Nombre d\'activités enregistrées', regs.reduce((a,r) => a + r.members.reduce((b,m) => b + m.activities.length, 0), 0)],
@@ -6118,7 +6126,7 @@ async function validerPaiement(code, regId) {
   const regLocal = regsLocal.find(r => r.code === code || String(r.id) === code);
   if (regLocal) {
     regLocal.status         = 'paid';
-    regLocal.dateValidation = new Date().toLocaleDateString('fr-FR');
+    regLocal.dateValidation = formatDateFRI();
     regLocal.validePar      = adminSession;
     localStorage.setItem('fri_registrations', JSON.stringify(regsLocal));
   }
@@ -6386,7 +6394,7 @@ async function testInscriptionDirecte() {
     action: 'addRegistration',
     status: 'paid',
     rows: [{
-      date: new Date().toLocaleDateString('fr-FR'),
+      date: formatDateFRI(),
       id: 'TEST-' + Date.now(),
       code_dossier: 'FRI-TEST',
       membre_nom: 'TEST', membre_prenom: 'Admin',
