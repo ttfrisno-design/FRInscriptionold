@@ -6109,7 +6109,6 @@ function renderAdmin() {
             let actsStr = '';
             const memNomComplet = (m.prenom + ' ' + m.nom).trim();
             console.log('[FRI] _rows pour', reg.code, ':', (reg._rows||[]).map(r=>({act:r.activite_id, statut:r.statut_inscription, mem:r.prenom_membre+' '+r.nom_membre})));
-            console.log('[FRI] _rows pour', reg.code, memNomComplet, ':', (reg._rows||[]).map(r=>({act:r.activite_id,statut:r.statut_inscription,nom:r.nom_membre,prenom:r.prenom_membre})));
             const sheetRows = (reg._rows || []).filter(r =>
               r.activite && (r.prenom_membre + ' ' + r.nom_membre).trim() === memNomComplet
               && !(r.statut_inscription || '').toLowerCase().includes('supprim')
@@ -6301,8 +6300,6 @@ function mergerDossiersSheet(dossiers) {
   // Groupe par N° dossier (format FRI-XXXX)
   const byCode = {};
 
-  // Log du premier dossier pour diagnostic
-  if (dossiers.length > 0) console.log('[FRI] mergerDossiersSheet d[0]:', JSON.stringify(dossiers[0]).substring(0, 300));
   dossiers.forEach(d => {
     // Ignorer les lignes sans code valide (format FRI-XXXX = 8 chars exactement)
     if (!d.code) return;
@@ -6415,9 +6412,13 @@ function mergerDossiersSheet(dossiers) {
       local[idx]._fromSheet  = true;
       local[idx]._sheetTotal = sheetReg._sheetTotal || sheetReg.totals.grandTotal;
       local[idx].totals.grandTotal = local[idx]._sheetTotal;
-      // Toujours remplacer les membres depuis le Sheet (source fiable)
+      // Toujours remplacer les membres, _rows et responsable depuis le Sheet (source fiable)
       if (sheetReg.members && sheetReg.members.length > 0) {
         local[idx].members = sheetReg.members;
+      }
+      // _rows contient statut_inscription, activite_id, tarif_brut — essentiels pour renderAdmin
+      if (sheetReg._rows && sheetReg._rows.length > 0) {
+        local[idx]._rows = sheetReg._rows;
       }
       // Mettre à jour le responsable depuis le Sheet
       if (sheetReg.responsable.email1) {
