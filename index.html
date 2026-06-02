@@ -6111,7 +6111,12 @@ function renderAdmin() {
             const sheetRows = (reg._rows || []).filter(r =>
               r.activite && (r.prenom_membre + ' ' + r.nom_membre).trim() === memNomComplet
               && !(r.statut_inscription || '').toLowerCase().includes('supprim')
-            );
+            ).sort((a, b) => {
+              // Mettre les lignes 'attente' en premier pour que le badge soit visible
+              const aW = (a.statut_inscription || '').toLowerCase().includes('attente') ? 0 : 1;
+              const bW = (b.statut_inscription || '').toLowerCase().includes('attente') ? 0 : 1;
+              return aW - bW;
+            });
             if (sheetRows.length > 0) {
               // Source Sheet — noms exacts, activités réelles
               const seenActs = new Set();
@@ -6346,16 +6351,10 @@ function mergerDossiersSheet(dossiers) {
         qsResult:  d.qs_sante === 'Certificat requis' ? 'certificat_requis'
                  : d.qs_sante === 'Attestation OK'    ? 'attestation_ok' : null
       });
-      // Conserver les données Sheet dans _rows pour accès aux champs pass_aide et qs_sante
-      if (!reg._rows) reg._rows = [];
-      reg._rows.push({
-        qs_sante:   d.qs_sante   || '',
-        pass_aide:  d.pass_aide  || '',
-        activite:   d.activite   || '',
-        activite_id:d.activite_id|| ''
-      });
     }
 
+    // Push de d complet — contient statut_inscription, tarif_brut, prenom_membre, nom_membre, etc.
+    if (!reg._rows) reg._rows = [];
     reg._rows.push(d);
 
     // Reconstruire les activités du membre depuis activite_id (col 36)
