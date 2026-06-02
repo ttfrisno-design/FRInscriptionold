@@ -6108,6 +6108,8 @@ function renderAdmin() {
             // Afficher les activités : depuis _rows Sheet (fiable) ou depuis activities (localStorage)
             let actsStr = '';
             const memNomComplet = (m.prenom + ' ' + m.nom).trim();
+            console.log('[FRI] _rows pour', reg.code, ':', (reg._rows||[]).map(r=>({act:r.activite_id, statut:r.statut_inscription, mem:r.prenom_membre+' '+r.nom_membre})));
+            console.log('[FRI] _rows pour', reg.code, memNomComplet, ':', (reg._rows||[]).map(r=>({act:r.activite_id,statut:r.statut_inscription,nom:r.nom_membre,prenom:r.prenom_membre})));
             const sheetRows = (reg._rows || []).filter(r =>
               r.activite && (r.prenom_membre + ' ' + r.nom_membre).trim() === memNomComplet
               && !(r.statut_inscription || '').toLowerCase().includes('supprim')
