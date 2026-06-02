@@ -6128,10 +6128,15 @@ function renderAdmin() {
                 const nom = r.activite || r.activite_id || '?';
                 const isWait = (r.statut_inscription || '').toLowerCase().includes('attente');
                 if (isWait) {
-                  return `<span style="font-size:10px;color:#ffb74d;">⏳ ${nom}</span>`
-                    + `<button onclick="basculerListeAttente('${reg.code || reg.id}','${(r.activite_id||'').replace(/'/g,"\'")}','${(r.activite||'').replace(/'/g,"\'")}','${(r.prenom_membre||'').replace(/'/g,"\'")}','${(r.nom_membre||'').replace(/'/g,"\'")}','${r.tarif_brut||0}')"
+                  // Calculer le tarif depuis la définition de l'activité (pas le tarif Sheet = 0 pour liste attente)
+                  const actDef = getActById(r.activite_id || '');
+                  const isnoMem = (reg.responsable && reg.responsable.commune === 'isno') ||
+                                  (reg.responsable && (reg.responsable.ville||'').toUpperCase().indexOf('ISNEAUVILLE') >= 0);
+                  const tarifReel = actDef ? (isnoMem ? actDef.isno : actDef.hc) : (r.tarif_brut || 0);
+                  return `<span style="font-size:10px;color:#ffb74d;">⏳ ${nom} (${tarifReel} €)</span>`
+                    + `<button onclick="basculerListeAttente('${reg.code || reg.id}','${(r.activite_id||'').replace(/'/g,"\'")}','${(r.activite||'').replace(/'/g,"\'")}','${(r.prenom_membre||'').replace(/'/g,"\'")}','${(r.nom_membre||'').replace(/'/g,"\'")}','${tarifReel}')"
                       style="background:#ff9800;border:none;color:white;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;"
-                      title="Basculer en liste des inscrits">↑ Inscrire</button>`;
+                      title="Basculer en liste des inscrits — ${tarifReel} €">↑ Inscrire</button>`;
                 }
                 return `<span style="font-size:10px;color:rgba(255,255,255,0.75);">· ${nom}</span>`;
               }).filter(Boolean).join('<br>') || '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
