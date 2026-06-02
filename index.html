@@ -5946,6 +5946,52 @@ function formatDateAdmin(d) {
   // Déjà au format dd/mm/yyyy → retourner tel quel
   return s;
 }
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN — Basculer une activité de liste d'attente → inscrit
+// ══════════════════════════════════════════════════════════════
+async function basculerListeAttente(code, actId, actNom, prenomMembre, nomMembre, tarifBrut) {
+  if (!requireAdmin()) return;
+
+  const confirm = window.confirm(
+    `Basculer "${actNom}" de ${prenomMembre} ${nomMembre}\n`
+    + `de la liste d'attente vers les inscrits ?\n\n`
+    + `Cela va :\n`
+    + `• Mettre à jour le Sheet (statut + tarif ${tarifBrut} €)\n`
+    + `• Déplacer la ligne de l'onglet LA vers les inscrits\n`
+    + `• Envoyer un email à l'adhérent et au FRI`
+  );
+  if (!confirm) return;
+
+  showAdminToast('⏳ Bascule en cours...', 'orange');
+
+  try {
+    const url = getAppsScriptUrl();
+    const result = await callAppsScriptFetch(url, {
+      action:       'basculerListeAttente',
+      _token:       FRI_SECRET_TOKEN,
+      code:         code,
+      actId:        actId,
+      actNom:       actNom,
+      prenomMembre: prenomMembre,
+      nomMembre:    nomMembre,
+      tarifBrut:    tarifBrut
+    });
+
+    const data = result && result.data ? result.data : result;
+    if (data && data.status === 'ok') {
+      showAdminToast('✅ Basculé — email envoyé', 'green');
+      await chargerDossiersDepuisSheet();
+      renderAdmin();
+    } else {
+      showAdminToast('⚠️ Erreur : ' + (data && data.message ? data.message : 'inconnue'), 'red');
+    }
+  } catch(e) {
+    console.error('basculerListeAttente KO:', e);
+    showAdminToast('⚠️ Erreur : ' + e.message, 'red');
+  }
+}
+
 function renderAdmin() {
   if (!adminSession) return;
   const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
@@ -6074,6 +6120,13 @@ function renderAdmin() {
                 if (seenActs.has(key)) return '';
                 seenActs.add(key);
                 const nom = r.activite || r.activite_id || '?';
+                const isWait = (r.statut_inscription || '').toLowerCase().includes('attente');
+                if (isWait) {
+                  return `<span style="font-size:10px;color:#ffb74d;">⏳ ${nom}</span>`
+                    + `<button onclick="basculerListeAttente('${reg.code || reg.id}','${(r.activite_id||'').replace(/'/g,"\'")}','${(r.activite||'').replace(/'/g,"\'")}','${(r.prenom_membre||'').replace(/'/g,"\'")}','${(r.nom_membre||'').replace(/'/g,"\'")}','${r.tarif_brut||0}')"
+                      style="background:#ff9800;border:none;color:white;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;"
+                      title="Basculer en liste des inscrits">↑ Inscrire</button>`;
+                }
                 return `<span style="font-size:10px;color:rgba(255,255,255,0.75);">· ${nom}</span>`;
               }).filter(Boolean).join('<br>') || '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
             } else {
