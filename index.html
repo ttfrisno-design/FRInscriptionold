@@ -6301,6 +6301,8 @@ function mergerDossiersSheet(dossiers) {
   // Groupe par N° dossier (format FRI-XXXX)
   const byCode = {};
 
+  // Log du premier dossier pour diagnostic
+  if (dossiers.length > 0) console.log('[FRI] mergerDossiersSheet d[0]:', JSON.stringify(dossiers[0]).substring(0, 300));
   dossiers.forEach(d => {
     // Ignorer les lignes sans code valide (format FRI-XXXX = 8 chars exactement)
     if (!d.code) return;
