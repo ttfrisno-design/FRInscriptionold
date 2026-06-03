@@ -1785,7 +1785,7 @@ function validateStep2() {
     const ddnMax  = new Date('2025-12-31');
     if (ddnDate < ddnMin || ddnDate > ddnMax) {
       showToast(`Date de naissance de ${m.prenom} invalide — doit être entre le 01/01/1910 et le 31/12/2025.`, 'red');
-      const ddnEl = document.getElementById(\`m-\${m.id}-ddn\`);
+      const ddnEl = document.getElementById('m-'+m.id+'-ddn');
       if (ddnEl) { ddnEl.style.borderColor = 'red'; ddnEl.scrollIntoView({behavior:'smooth', block:'center'}); }
       return false;
     }
@@ -1833,7 +1833,7 @@ function captureResponsable() {
 function detectCommune() {
   const villeRaw = (document.getElementById('rl-ville')?.value || '').trim();
   const cpRaw    = (document.getElementById('rl-cp')?.value || '').trim();
-  const ville = villeRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const ville = villeRaw.toLowerCase().replace(/[àâäéèêëîïôöùûüç]/g, function(c){return{à:'a',â:'a',ä:'a',é:'e',è:'e',ê:'e',ë:'e',î:'i',ï:'i',ô:'o',ö:'o',ù:'u',û:'u',ü:'u',ç:'c'}[c]||c;});
   const cp    = cpRaw.trim();
   const isno = ['isneauville', '76230'].some(v => ville.includes(v)) || cp === '76230';
   const badge = document.getElementById('commune-badge');
