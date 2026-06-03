@@ -1726,6 +1726,22 @@ function isValidEmail(email) {
 }
 
 // Met à jour un champ d'un membre dans state en temps réel
+
+function validateDDNLive(el) {
+  if (!el || !el.value) return;
+  const v    = new Date(el.value);
+  const vMin = new Date('1910-01-01');
+  const vMax = new Date('2025-12-31');
+  const ok   = v >= vMin && v <= vMax;
+  el.style.borderColor = ok ? '' : 'red';
+  el.style.background  = ok ? '' : '#fff0f0';
+  if (!ok) {
+    el.title = 'Date invalide — doit être entre le 01/01/1910 et le 31/12/2025';
+  } else {
+    el.title = '';
+  }
+}
+
 function captureMemberField(memberId, field, value) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return;
@@ -1765,6 +1781,16 @@ function validateStep2() {
   for (let m of state.members) {
     if (!m.nom || !m.prenom || !m.ddn || !m.sexe) {
       showToast(`Veuillez compléter toutes les informations de ${m.prenom || 'ce membre'} (nom, prénom, date de naissance, sexe).`, 'red'); return false;
+    }
+    // Valider la plage de la date de naissance
+    const ddnDate = new Date(m.ddn);
+    const ddnMin  = new Date('1910-01-01');
+    const ddnMax  = new Date('2025-12-31');
+    if (ddnDate < ddnMin || ddnDate > ddnMax) {
+      showToast(`Date de naissance de ${m.prenom} invalide — doit être entre le 01/01/1910 et le 31/12/2025.`, 'red');
+      const ddnEl = document.getElementById(\`m-\${m.id}-ddn\`);
+      if (ddnEl) { ddnEl.style.borderColor = 'red'; ddnEl.scrollIntoView({behavior:'smooth', block:'center'}); }
+      return false;
     }
     if (m.email && !isValidEmail(m.email)) {
       const emailEl = document.getElementById('m-' + m.id + '-email');
@@ -2692,7 +2718,8 @@ function memberHtml(m) {
       <div class="field">
         <label>Date de naissance <span class="req">*</span></label>
         <input type="date" id="m-${m.id}-ddn" value="${m.ddn}"
-          onchange="captureMemberField(${m.id},'ddn',this.value)">
+          min="1910-01-01" max="2025-12-31"
+          onchange="captureMemberField(${m.id},'ddn',this.value); validateDDNLive(this);">
       </div>
     </div>
     <div class="form-grid membre-sexe-email-grid" style="gap:14px">
