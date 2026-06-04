@@ -3786,7 +3786,14 @@ function buildRows(reg) {
           statut_inscription: _isWaiting ? 'Liste attente' : '',
           note_tarif: (cFl.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
             ? (cFl.ids[0] === actId ? 'Forfait country ' + cFl.ids.length + ' séances' : 'Inclus forfait') : '',
-          fnsmr: 15,
+          fnsmr: (function(){
+            // FNSMR 0 si activité en attente ET le membre a d'autres activités payantes
+            if (!_isWaiting) return 15;
+            const autresPayantes = (m.activities||[]).filter(function(aid){
+              return aid !== actId && !(_wl||[]).includes(aid);
+            });
+            return autresPayantes.length > 0 ? 0 : 15; // 15 si TOUTES en attente
+          })(),
           remise: (!_isWaiting && estElig) ? 15 : 0,
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
@@ -3846,8 +3853,14 @@ function buildRows(reg) {
         statut_inscription: _isWaiting2 ? 'Liste attente' : '',
         note_tarif: (cFl2.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
           ? (cFl2.ids[0] === actId ? 'Forfait country ' + cFl2.ids.length + ' séances' : 'Inclus forfait') : '',
-        fnsmr: 15,
-        remise: (!_isWaiting2 && estElig2) ? 15 : 0,
+        fnsmr: (function(){
+            if (!_isWaiting2) return 15;
+            const autresPayantes2 = (m.activities||[]).filter(function(aid){
+              return aid !== actId && !(_wl2||[]).includes(aid);
+            });
+            return autresPayantes2.length > 0 ? 0 : 15;
+          })(),
+          remise: (!_isWaiting2 && estElig2) ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
         mode_paiement: reg.responsable.modePaiement || 'helloasso',
         avoir_montant: reg.responsable.avoirMontant || 0,
