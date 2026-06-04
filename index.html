@@ -2814,56 +2814,131 @@ function memberHtml(m) {
           </label>
         </div>
         <div id="fftt-price-info-${m.id}" style="font-size:13px;color:#e65100;font-weight:700;margin-bottom:10px;"></div>
-        <!-- Bordereau pré-rempli + signature -->
+        <!-- Formulaire complet bordereau FFTT -->
         <div style="margin-top:12px;padding:14px 16px;background:#fff8f3;border:1.5px solid #e65100;border-radius:10px;">
-          <div style="font-size:14px;font-weight:700;color:#bf360c;margin-bottom:8px;">📋 Bordereau de demande de licence FFTT</div>
-          <p style="font-size:12.5px;color:#5D4037;line-height:1.7;margin:0 0 10px;">
-            Le site a pré-rempli les informations dont il dispose.<br>
-            <strong style="color:#c62828;">Informations à compléter par vous :</strong> nom de naissance, pays/ville de naissance, nationalité, catégorie d'âge, certification médicale, assurance.
-          </p>
+          <div style="font-size:14px;font-weight:700;color:#bf360c;margin-bottom:6px;">📋 Bordereau de demande de licence FFTT</div>
+          <p style="font-size:12px;color:#5D4037;line-height:1.6;margin:0 0 10px;">Les informations connues sont pré-remplies. Complétez les champs en rouge puis signez.</p>
 
-          <!-- Infos pré-remplies (affichage résumé) -->
-          <div style="background:white;border:1px solid #FFCCBC;border-radius:8px;padding:10px 14px;font-size:12px;color:#333;margin-bottom:10px;line-height:2;">
-            <strong>Association :</strong> Foyer Rural d'Isneauville &nbsp;|&nbsp;
-            <strong>Saison :</strong> 2026/2027<br>
-            <strong>Nom :</strong> <em id="fftt-nom-${m.id}">(sera rempli depuis votre dossier)</em> &nbsp;
-            <strong>Prénom :</strong> <em id="fftt-prenom-${m.id}"></em><br>
-            <strong>Date de naissance :</strong> <em id="fftt-ddn-${m.id}"></em> &nbsp;
-            <strong>Sexe :</strong> <em id="fftt-sexe-${m.id}"></em><br>
-            <strong>Adresse :</strong> <em id="fftt-adresse-${m.id}"></em><br>
-            <strong>Email :</strong> <em id="fftt-email-${m.id}"></em> &nbsp;
-            <strong>Tél. :</strong> <em id="fftt-tel-${m.id}"></em>
+          <!-- Données pré-remplies -->
+          <div style="font-size:11.5px;font-weight:700;color:#1a2e22;background:#d8f3dc;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✅ Données du dossier (pré-remplies)</div>
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:8px;padding:10px;font-size:12px;color:#333;margin-bottom:10px;line-height:1.9;">
+            <b>Nom :</b> <span id="fftt-nom-${m.id}">—</span> &nbsp; <b>Prénom :</b> <span id="fftt-prenom-${m.id}">—</span><br>
+            <b>Date de naissance :</b> <span id="fftt-ddn-${m.id}">—</span> &nbsp; <b>Sexe :</b> <span id="fftt-sexe-${m.id}">—</span><br>
+            <b>Adresse :</b> <span id="fftt-adresse-${m.id}">—</span><br>
+            <b>Email :</b> <span id="fftt-email-${m.id}">—</span> &nbsp; <b>Tél. :</b> <span id="fftt-tel-${m.id}">—</span>
           </div>
 
-          <!-- Signature canvas -->
-          <div style="font-size:13px;font-weight:700;color:#bf360c;margin-bottom:6px;">
-            ✍️ Signature du licencié (ou représentant légal pour les mineurs)
+          <!-- Données complémentaires -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✏️ À compléter</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Nom de naissance *</label>
+              <input type="text" id="fftt-nom-naiss-${m.id}" placeholder="Nom de naissance" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Nationalité *</label>
+              <input type="text" id="fftt-nationalite-${m.id}" placeholder="Ex: Française" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Pays de naissance **</label>
+              <input type="text" id="fftt-pays-naiss-${m.id}" placeholder="Ex: France" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Ville de naissance **</label>
+              <input type="text" id="fftt-ville-naiss-${m.id}" placeholder="Ex: Rouen" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">CP de naissance **</label>
+              <input type="text" id="fftt-cp-naiss-${m.id}" placeholder="Ex: 76000" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;color:#555;display:block;margin-bottom:2px;">N° licence (renouvellement)</label>
+              <input type="text" id="fftt-num-lic-${m.id}" placeholder="Vide si 1ère demande" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;"></div>
           </div>
+
+          <!-- Catégorie d'âge -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">👤 Catégorie d'âge *</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="veteran" style="accent-color:#e65100;"> Vétéran (≤1986)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="senior" style="accent-color:#e65100;"> Sénior (87–07)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="junior" style="accent-color:#e65100;"> Junior (08–11)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="cadet" style="accent-color:#e65100;"> Cadet (12–13)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="minime" style="accent-color:#e65100;"> Minime (14–15)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="benjamin" style="accent-color:#e65100;"> Benjamin (16–17)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="poussin" style="accent-color:#e65100;"> Poussin (≥2018)</label>
+          </div>
+
+          <!-- Certification médicale -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🏥 Certification médicale — cocher UNE case *</div>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="certif" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je joins un <b>certificat médical de pratique sportive</b> de moins d'un an (formulaire 26-9)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="attestMaj" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je joins l'<b>attestation NON</b> à toutes les questions — <b>majeurs &lt; 40 ans</b> (formulaire 26-10-1)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="attestMin" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je joins l'<b>attestation NON</b> — <b>mineurs</b> (formulaire 26-10-2)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="sansCertif" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je ne joins <b>pas de certificat médical</b> — licence sans pratique sportive
+            </label>
+          </div>
+
+          <!-- Assurances -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🛡 Assurances — cocher UNE case *</div>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-ass-${m.id}" value="souscrit" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je <b>souscris</b> à la garantie dommage corporel de base (inclus dans le tarif de la licence)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-ass-${m.id}" value="renonce" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je <b>ne souhaite pas souscrire</b> — je renonce à toute indemnité dommage corporel
+            </label>
+          </div>
+
+          <!-- RGPD / Opt-in -->
+          <div style="font-size:11.5px;font-weight:700;color:#1565c0;background:#e3f2fd;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🔒 Protection des données (cocher vos choix)</div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:white;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-optin-assoc-${m.id}" style="accent-color:#1565c0;">
+              J'accepte l'utilisation de mes coordonnées par la FFTT à des <b>fins associatives</b>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:white;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-optin-partenaires-${m.id}" style="accent-color:#1565c0;">
+              J'accepte l'utilisation de mes coordonnées à des <b>fins commerciales</b>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-refus-honor-${m.id}" style="accent-color:#e65100;">
+              Je <b>refuse le contrôle d'honorabilité</b> (fonctions dirigeantes, encadrement ou arbitrage)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-refus-photo-${m.id}" style="accent-color:#e65100;">
+              Je <b>refuse la prise de vues</b> et son utilisation dans les publications fédérales
+            </label>
+          </div>
+
+          <!-- Signature -->
+          <div style="font-size:11.5px;font-weight:700;color:#1a2e22;background:#d8f3dc;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✍️ Signature du licencié (ou représentant légal pour les mineurs)</div>
           <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px;margin-bottom:10px;">
             <canvas id="fftt-sig-${m.id}"
               style="width:100%;max-width:480px;height:90px;border:2px solid #2d6a4f;border-radius:6px;background:white;display:block;touch-action:none;cursor:crosshair;"
               width="480" height="90"></canvas>
-            <div style="margin-top:6px;display:flex;gap:8px;">
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
               <button onclick="effacerSignatureFFTT(${m.id})"
-                style="background:#e0e0e0;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">
-                🗑 Effacer
-              </button>
-              <span style="font-size:11px;color:#666;align-self:center;">Signez dans le cadre ci-dessus</span>
+                style="background:#e0e0e0;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">🗑 Effacer</button>
+              <span style="font-size:11px;color:#666;">Signez dans le cadre vert</span>
             </div>
           </div>
 
-          <!-- Bouton générer + envoyer -->
+          <!-- Bouton -->
           <button onclick="validerBordereauFFTT(${m.id})"
             id="btn-bordereau-fftt-${m.id}"
-            style="background:#e65100;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;margin-top:4px;">
+            style="background:#e65100;color:white;border:none;border-radius:8px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;">
             📄 Générer et envoyer le bordereau de licence FFTT
           </button>
           <div id="fftt-bordereau-status-${m.id}" style="display:none;margin-top:8px;padding:8px 12px;border-radius:6px;font-size:12px;"></div>
-
-          <div style="margin-top:10px;padding:8px 12px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;font-size:12px;color:#5D4037;line-height:1.7;">
-            ⚠️ Le bordereau sera <strong>envoyé par email</strong> au Foyer Rural et à votre adresse.<br>
-            Vous devrez le <strong>compléter, signer et apporter</strong> aux permanences (mardi 16h30-18h30) avec votre pièce d'identité.
-          </div>
+          <p style="font-size:11px;color:#888;margin-top:8px;line-height:1.6;">* Obligatoire pour tous les licenciés &nbsp; ** Obligatoire pour dirigeants/éducateurs<br>Le bordereau sera envoyé par email à votre adresse et au Foyer Rural.</p>
         </div>
       </div>
     </div>
@@ -2947,14 +3022,45 @@ function preremplirBordereauFFTT(memId) {
 
 // ── Envoi bordereau FFTT ──────────────────────────────────────
 async function validerBordereauFFTT(memId) {
-  const sig = getSignatureFFTTBase64(memId);
-  if (isSignatureFFTTVide(memId)) {
-    showToast('Veuillez signer le bordereau avant de le soumettre.', 'red'); return;
-  }
+  // Validation des champs obligatoires
+  const g = id => document.getElementById(id);
+  const nomNaiss  = g('fftt-nom-naiss-'   + memId)?.value.trim() || '';
+  const national  = g('fftt-nationalite-' + memId)?.value.trim() || '';
+  const paysNaiss = g('fftt-pays-naiss-'  + memId)?.value.trim() || '';
+  const age    = document.querySelector(`input[name="fftt-age-${memId}"]:checked`)?.value || '';
+  const med    = document.querySelector(`input[name="fftt-med-${memId}"]:checked`)?.value || '';
+  const ass    = document.querySelector(`input[name="fftt-ass-${memId}"]:checked`)?.value || '';
+
+  if (!nomNaiss)  { showToast('Nom de naissance obligatoire.', 'red'); return; }
+  if (!national)  { showToast('Nationalité obligatoire.', 'red'); return; }
+  if (!paysNaiss) { showToast('Pays de naissance obligatoire.', 'red'); return; }
+  if (!age)       { showToast('Veuillez selectionner votre categorie d\'age.', 'red'); return; }
+  if (!med)       { showToast('Veuillez cocher une option de certification médicale.', 'red'); return; }
+  if (!ass)       { showToast('Veuillez cocher une option d\'assurance.', 'red'); return; }
+  if (isSignatureFFTTVide(memId)) { showToast('Veuillez signer le bordereau.', 'red'); return; }
+
   const btn = document.getElementById('btn-bordereau-fftt-' + memId);
   const status = document.getElementById('fftt-bordereau-status-' + memId);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours...'; }
 
+  // Collecter tous les champs
+  const extra = {
+    nomNaissance:   nomNaiss,
+    nationalite:    national,
+    paysNaissance:  paysNaiss,
+    villeNaissance: g('fftt-ville-naiss-' + memId)?.value.trim() || '',
+    cpNaissance:    g('fftt-cp-naiss-'    + memId)?.value.trim() || '',
+    numLicence:     g('fftt-num-lic-'     + memId)?.value.trim() || '',
+    categAge:       age,
+    certifMed:      med,
+    assurance:      ass,
+    optinAssoc:     g('fftt-optin-assoc-'       + memId)?.checked ? '1' : '0',
+    optinPart:      g('fftt-optin-partenaires-' + memId)?.checked ? '1' : '0',
+    refusHonor:     g('fftt-refus-honor-'       + memId)?.checked ? '1' : '0',
+    refusPhoto:     g('fftt-refus-photo-'       + memId)?.checked ? '1' : '0',
+  };
+
+  const sig  = getSignatureFFTTBase64(memId);
   const rows = buildRows();
   const code = state.codeDossier || '';
   const url  = getAppsScriptUrl();
@@ -2966,6 +3072,7 @@ async function validerBordereauFFTT(memId) {
       _token:    FRI_SECRET_TOKEN,
       code:      code,
       signature: sig,
+      extra:     JSON.stringify(extra),
       rows:      JSON.stringify(rows.filter(r => Number(r.fftt_price||0) > 0).slice(0,1))
     });
     const data = result && result.data ? result.data : (result || {});
