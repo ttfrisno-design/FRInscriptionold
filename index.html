@@ -2814,20 +2814,56 @@ function memberHtml(m) {
           </label>
         </div>
         <div id="fftt-price-info-${m.id}" style="font-size:13px;color:#e65100;font-weight:700;margin-bottom:10px;"></div>
-        <div style="padding:12px 14px;background:white;border:1px solid #FFCCBC;border-radius:8px;font-size:13px;color:#4E342E;line-height:1.7;">
-          📋 <strong>Comment demander votre licence ?</strong><br>
-          1. Rendez-vous sur le site FFTT du club :<br>
-          &nbsp;&nbsp;&nbsp;<a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:700;text-decoration:none;">🔗 https://carte.fftt.com/club/09760374</a><br>
-          2. Remplissez le formulaire de demande de licence en ligne.<br>
-          3. Réglez le montant de la licence selon votre catégorie lors de votre passage en permanence.
-        </div>
-        <div style="margin-top:12px;padding:10px 14px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;">
-          <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:8px;">🏓 Questionnaire de Santé FFTT obligatoire</div>
-          <div style="font-size:12px;color:#555;margin-bottom:10px;">Vous devez remplir et signer le QS Santé FFTT (N°25-10-1 pour majeurs / N°25-10-2 pour mineurs) et l'apporter lors de votre passage en permanence.</div>
-          <button onclick="genererQSFFTT(${m.id})"
-            style="background:#e65100;color:white;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
-            📄 Remplir &amp; télécharger mon QS Santé FFTT
+        <!-- Bordereau pré-rempli + signature -->
+        <div style="margin-top:12px;padding:14px 16px;background:#fff8f3;border:1.5px solid #e65100;border-radius:10px;">
+          <div style="font-size:14px;font-weight:700;color:#bf360c;margin-bottom:8px;">📋 Bordereau de demande de licence FFTT</div>
+          <p style="font-size:12.5px;color:#5D4037;line-height:1.7;margin:0 0 10px;">
+            Le site a pré-rempli les informations dont il dispose.<br>
+            <strong style="color:#c62828;">Informations à compléter par vous :</strong> nom de naissance, pays/ville de naissance, nationalité, catégorie d'âge, certification médicale, assurance.
+          </p>
+
+          <!-- Infos pré-remplies (affichage résumé) -->
+          <div style="background:white;border:1px solid #FFCCBC;border-radius:8px;padding:10px 14px;font-size:12px;color:#333;margin-bottom:10px;line-height:2;">
+            <strong>Association :</strong> Foyer Rural d'Isneauville &nbsp;|&nbsp;
+            <strong>Saison :</strong> 2026/2027<br>
+            <strong>Nom :</strong> <em id="fftt-nom-${m.id}">(sera rempli depuis votre dossier)</em> &nbsp;
+            <strong>Prénom :</strong> <em id="fftt-prenom-${m.id}"></em><br>
+            <strong>Date de naissance :</strong> <em id="fftt-ddn-${m.id}"></em> &nbsp;
+            <strong>Sexe :</strong> <em id="fftt-sexe-${m.id}"></em><br>
+            <strong>Adresse :</strong> <em id="fftt-adresse-${m.id}"></em><br>
+            <strong>Email :</strong> <em id="fftt-email-${m.id}"></em> &nbsp;
+            <strong>Tél. :</strong> <em id="fftt-tel-${m.id}"></em>
+          </div>
+
+          <!-- Signature canvas -->
+          <div style="font-size:13px;font-weight:700;color:#bf360c;margin-bottom:6px;">
+            ✍️ Signature du licencié (ou représentant légal pour les mineurs)
+          </div>
+          <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px;margin-bottom:10px;">
+            <canvas id="fftt-sig-${m.id}"
+              style="width:100%;max-width:480px;height:90px;border:2px solid #2d6a4f;border-radius:6px;background:white;display:block;touch-action:none;cursor:crosshair;"
+              width="480" height="90"></canvas>
+            <div style="margin-top:6px;display:flex;gap:8px;">
+              <button onclick="effacerSignatureFFTT(${m.id})"
+                style="background:#e0e0e0;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">
+                🗑 Effacer
+              </button>
+              <span style="font-size:11px;color:#666;align-self:center;">Signez dans le cadre ci-dessus</span>
+            </div>
+          </div>
+
+          <!-- Bouton générer + envoyer -->
+          <button onclick="validerBordereauFFTT(${m.id})"
+            id="btn-bordereau-fftt-${m.id}"
+            style="background:#e65100;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;margin-top:4px;">
+            📄 Générer et envoyer le bordereau de licence FFTT
           </button>
+          <div id="fftt-bordereau-status-${m.id}" style="display:none;margin-top:8px;padding:8px 12px;border-radius:6px;font-size:12px;"></div>
+
+          <div style="margin-top:10px;padding:8px 12px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;font-size:12px;color:#5D4037;line-height:1.7;">
+            ⚠️ Le bordereau sera <strong>envoyé par email</strong> au Foyer Rural et à votre adresse.<br>
+            Vous devrez le <strong>compléter, signer et apporter</strong> aux permanences (mardi 16h30-18h30) avec votre pièce d'identité.
+          </div>
         </div>
       </div>
     </div>
@@ -2840,6 +2876,118 @@ function memberHtml(m) {
 // ============================================================
 
 // Vérifie si un membre a au moins une activité TT avec option fftt
+
+// ── Signature canvas FFTT ──────────────────────────────────────
+var _ffttCanvas = {}, _ffttCtx = {}, _ffttDrawing = {};
+
+function initSignatureFFTT(memId) {
+  const cv = document.getElementById('fftt-sig-' + memId);
+  if (!cv || _ffttCanvas[memId]) return;
+  _ffttCanvas[memId] = cv;
+  _ffttCtx[memId]    = cv.getContext('2d', { willReadFrequently: true });
+  _ffttDrawing[memId] = false;
+
+  const getPos = (e) => {
+    const r = cv.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * cv.width / r.width,
+             y: (src.clientY - r.top)  * cv.height / r.height };
+  };
+  const start = (e) => { e.preventDefault(); _ffttDrawing[memId]=true;
+    _ffttCtx[memId].beginPath(); const p=getPos(e);
+    _ffttCtx[memId].moveTo(p.x,p.y); };
+  const move  = (e) => { e.preventDefault(); if(!_ffttDrawing[memId])return;
+    const p=getPos(e); _ffttCtx[memId].lineWidth=2.2; _ffttCtx[memId].strokeStyle='#1a2e22';
+    _ffttCtx[memId].lineCap='round'; _ffttCtx[memId].lineTo(p.x,p.y);
+    _ffttCtx[memId].stroke(); };
+  const stop  = () => { _ffttDrawing[memId]=false; };
+
+  cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move);
+  cv.addEventListener('mouseup', stop);   cv.addEventListener('touchstart', start, { passive:false });
+  cv.addEventListener('touchmove', move, { passive:false }); cv.addEventListener('touchend', stop);
+}
+
+function effacerSignatureFFTT(memId) {
+  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
+  if (!cv) return;
+  const ctx = _ffttCtx[memId] || cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+}
+
+function isSignatureFFTTVide(memId) {
+  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
+  if (!cv) return true;
+  const ctx = cv.getContext('2d');
+  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return false;
+  return true;
+}
+
+function getSignatureFFTTBase64(memId) {
+  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
+  return cv ? cv.toDataURL('image/png') : '';
+}
+
+// ── Pré-remplissage des champs affichés ──────────────────────
+function preremplirBordereauFFTT(memId) {
+  const m = state.members.find(m => m.id === memId);
+  const r = state.responsable;
+  if (!m) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+  set('fftt-nom-' + memId,     m.nom     || r.nom    || '');
+  set('fftt-prenom-' + memId,  m.prenom  || r.prenom || '');
+  set('fftt-ddn-' + memId,     m.ddn ? new Date(m.ddn).toLocaleDateString('fr-FR') : '');
+  set('fftt-sexe-' + memId,    m.sexe    || '');
+  set('fftt-adresse-' + memId, (r.adresse||'') + (r.cp?' '+r.cp:'') + (r.ville?' '+r.ville:''));
+  set('fftt-email-' + memId,   r.email   || '');
+  set('fftt-tel-' + memId,     r.tel     || '');
+  // Initialiser le canvas
+  setTimeout(() => initSignatureFFTT(memId), 100);
+}
+
+// ── Envoi bordereau FFTT ──────────────────────────────────────
+async function validerBordereauFFTT(memId) {
+  const sig = getSignatureFFTTBase64(memId);
+  if (isSignatureFFTTVide(memId)) {
+    showToast('Veuillez signer le bordereau avant de le soumettre.', 'red'); return;
+  }
+  const btn = document.getElementById('btn-bordereau-fftt-' + memId);
+  const status = document.getElementById('fftt-bordereau-status-' + memId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours...'; }
+
+  const rows = buildRows();
+  const code = state.codeDossier || '';
+  const url  = getAppsScriptUrl();
+  if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
+
+  try {
+    const result = await callAppsScriptFetch(url, {
+      action:    'saveBordereauFFTT',
+      _token:    FRI_SECRET_TOKEN,
+      code:      code,
+      signature: sig,
+      rows:      JSON.stringify(rows.filter(r => Number(r.fftt_price||0) > 0).slice(0,1))
+    });
+    const data = result && result.data ? result.data : (result || {});
+    if (data && data.status === 'ok') {
+      if (status) {
+        status.style.display = '';
+        status.style.background = '#e8f5e9';
+        status.style.border = '1px solid #a5d6a7';
+        status.style.color = '#1b5e20';
+        status.textContent = '✅ Bordereau généré et envoyé par email ! Complétez les champs manquants et apportez-le aux permanences.';
+      }
+      if (btn) { btn.textContent = '✅ Bordereau envoyé'; }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '📄 Générer et envoyer le bordereau'; }
+      showToast('⚠️ Erreur : ' + (data.message || 'inconnue'), 'red');
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Générer et envoyer le bordereau'; }
+    showToast('⚠️ Erreur : ' + e.message, 'red');
+  }
+}
+
 function memberHasTTWithFftt(memberId) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return false;
@@ -2872,6 +3020,7 @@ function toggleFfttCategory(memberId) {
   const cb = document.getElementById(`fftt-want-${memberId}`);
   const detail = document.getElementById(`fftt-detail-${memberId}`);
   if (!cb || !detail) return;
+  if (cb.checked) setTimeout(() => preremplirBordereauFFTT(memberId), 200);;
   detail.style.display = cb.checked ? 'block' : 'none';
   const m = state.members.find(m => m.id === memberId);
   if (m) {
@@ -6143,13 +6292,16 @@ async function basculerListeAttente(code, actId, actNom, prenomMembre, nomMembre
       tarifBrut:    tarifBrut
     });
 
-    const data = result && result.data ? result.data : result;
+    const data = result && result.data ? result.data : (result || {});
     if (data && data.status === 'ok') {
       showAdminToast('✅ Basculé — email envoyé', 'green');
       await chargerDossiersDepuisSheet();
       renderAdmin();
+    } else if (!data || !data.status) {
+      // Pas de réponse du GAS — probablement traité mais timeout JSONP
+      showAdminToast('⚠️ Pas de réponse du GAS — vérifiez que le script est bien déployé (v8.8)', 'orange');
     } else {
-      showAdminToast('⚠️ Erreur : ' + (data && data.message ? data.message : 'inconnue'), 'red');
+      showAdminToast('⚠️ Erreur : ' + (data.message || 'inconnue'), 'red');
     }
   } catch(e) {
     console.error('basculerListeAttente KO:', e);
