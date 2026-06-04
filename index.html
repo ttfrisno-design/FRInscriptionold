@@ -3061,10 +3061,34 @@ async function validerBordereauFFTT(memId) {
   };
 
   const sig  = getSignatureFFTTBase64(memId);
-  const rows = buildRows();
   const code = state.codeDossier || '';
   const url  = getAppsScriptUrl();
   if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
+
+  // Construire un row complet à partir de state pour le membre FFTT
+  const r   = state.responsable || {};
+  const mem = state.members.find(m => m.id === memId) || {};
+  // Trouver l'activité FFTT du membre
+  const allRows = buildRows();
+  const ffttRow = allRows.find(row => Number(row.fftt_price||0) > 0 &&
+    (row.membre_prenom === mem.prenom || row.membre_nom === mem.nom)) || allRows.find(row => Number(row.fftt_price||0) > 0);
+
+  const rowFFTT = [{
+    code_dossier:       code,
+    membre_nom:         mem.nom    || r.nom    || '',
+    membre_prenom:      mem.prenom || r.prenom || '',
+    responsable_nom:    r.nom    || '',
+    responsable_prenom: r.prenom || '',
+    ddn:                mem.ddn  || '',
+    sexe:               mem.sexe || '',
+    adresse:            r.adresse || '',
+    cp:                 r.cp      || '',
+    ville:              r.ville   || '',
+    tel1:               r.tel     || '',
+    email1:             r.email   || '',
+    activite_id:        ffttRow ? (ffttRow.activite_id || '') : '',
+    fftt_price:         ffttRow ? (ffttRow.fftt_price  || 70) : 70,
+  }];
 
   try {
     const result = await callAppsScriptFetch(url, {
@@ -3073,7 +3097,7 @@ async function validerBordereauFFTT(memId) {
       code:      code,
       signature: sig,
       extra:     JSON.stringify(extra),
-      rows:      JSON.stringify(rows.filter(r => Number(r.fftt_price||0) > 0).slice(0,1))
+      rows:      JSON.stringify(rowFFTT)
     });
     const data = result && result.data ? result.data : (result || {});
     if (data && data.status === 'ok') {
