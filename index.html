@@ -3546,7 +3546,10 @@ async function chargerDossierExistant() {
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
         activitesExistantes.push({ actId, tarif: price, nom: act.name.replace(/\n/g,' — ') });
         totalExistant += price;
-        if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) countEligibles++;
+        // Ne compter dans les éligibles que si NON en liste d'attente
+        const wl = m.waitingList || [];
+        const isWaitingExist = Array.isArray(wl) ? wl.includes(actId) : (wl.has ? wl.has(actId) : false);
+        if (!isWaitingExist && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) countEligibles++;
       });
     });
   } else {
@@ -3559,7 +3562,9 @@ async function chargerDossierExistant() {
       const price = Number(d.tarif) || 0;
       activitesExistantes.push({ actId: id, tarif: price, nom: d.activite });
       totalExistant += price;
-      if (!NON_DISCOUNTABLE.includes(id) && !id.startsWith('tt-')) countEligibles++;
+      // Ne compter que si statut != liste attente
+      const statutExist = String(d.statut_inscription || '').toLowerCase();
+      if (!statutExist.includes('attente') && !NON_DISCOUNTABLE.includes(id) && !id.startsWith('tt-')) countEligibles++;
     });
   }
 
@@ -3766,7 +3771,7 @@ function buildRows(reg) {
         // Appliquer remise 15% si éligible — tarif = montant réellement réglé
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
         const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
-        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+        const estElig = !_isWaiting && aRemise15 && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
         const tarifBrut = price;
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
 
