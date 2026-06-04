@@ -1947,6 +1947,21 @@ function placeBadgeHtml(actId) {
 
 // Charger les places depuis l'onglet Places du Sheet via gviz (même méthode que les dossiers)
 // Structure de l'onglet Places : col A=ID Activite, col B=Nom, col C=Capacite, col D=Inscrits, col E=Places restantes
+async 
+// ── Mapping ID site → placesId Sheet (synchronisé avec getPlacesId GAS) ──
+const SITE_TO_PLACESID = {'body-sculpt-lu':'FITL1730','zumba-lu':'FITL2030','body-sculpt-ma':'FITM10','circuit-ve':'FITV10','stretching-ve':'FITV11','body-sculpt-cm-ve':'FITV1830','zumba-sa':'FITS0945','body-sculpt-sa':'FITS1045','stretching-sa':'FITS1145','yoga-sm-lu':'YOGAL18','meditation-lu':'MEDL1930','yoga-mb-ma':'YOGAM11','stretching-yoga-je':'YOGAJ1615','yoga-sm-je1':'YOGAJ1835','yoga-sm-je2':'YOGAJ2005','pilates-lu1':'PILL11','pilates-lu2':'PILL12','pilates-lu3':'PILL14','pilates-flow-lu':'PILL1830','pilates-flow-ma':'PILM1830','pilates-me1':'PILME10','pilates-seniors-me':'PILME11','pilates-je1':'PILJ11','pilates-je2':'PILJ12','pilates-je3':'PILJ1515','pilates-ve':'PILV14','tt-comp-entrain':'PINGL1945/ME1945','tt-comp-entrain-me':'PINGL1945/ME1945','tt-comp-sans':'PINGM1930/ME21','tt-comp-sans-me':'PINGM1930/ME21','ping-bienetre':'PINGJ1530','sophro-ma':'SOPHM11','sophro-me':'SOPHM1830','marche-nordic':'MNOME/S10','apa-lu':'APAL15','apa-je':'APAJ14','apa-ve':'APAV1730','yoga-doux':'YOGAM1430','peinture-lu1':'PEINL1545','peinture-lu2':'PEINL1845','guitare-a':'GUITJ19','guitare-j':'GUITJ19','theatre-creation':'THEL2030','theatre-loisirs-a':'THEJ19','couture-je1':'COUTJ0930','couture-je2':'COUTJ13','couture-je3':'COUTJ1800','country-init-a':'COUNV1830','country-debu-a':'COUNV1930','country-novice':'COUNV2030','country-inter':'COUNV2130','country-init-j':'COUNV1830','country-debu-j':'COUNV1930','danse-moderne-av1':'JAZJ1845','danse-moderne-av2':'JAZJ2015','danse-classique-inter-a':'CLASSL1845','danse-classique-pointes-lu':'CLASSL21','danse-classique-barre':'CLASSJ1215','danse-classique-debu-je':'CLASSJ1315','danse-classique-pointes-je':'CLASSJ1430','tt-jeunes-comp':'PINGL18/J17','tt-jeunes-comp-je':'PINGL18/J17','tt-debu-1':'PINGME1730','tt-debu-2':'PINGME1830','tt-debu-2-me':'PINGME1830','baby-gym':'GYMME10','gym-parent-3-5':'GYMME1045','gym-3-5':'GYMME1130','gym-inter-av1':'GYMME1215','gym-debu-6-8-1':'GYMME1315','gym-debu-6-8-2':'GYMME1415','gym-inter-av2':'GYMME1515','danse-moderne-init1':'JAZME1215','danse-moderne-debu12':'JAZME1315','danse-moderne-debu23':'JAZME1415','danse-moderne-debu4':'JAZME1515','danse-moderne-inter23':'JAZME1615','danse-moderne-inter45':'JAZME1715','danse-eveil':'JAZJ1745','danse-classique-11-13':'CLASSL1745','danse-classique-4-5':'CLASSME0930','danse-classique-6-7':'CLASSME1015','danse-classique-8-10':'CLASSME11','peinture-ados':'PEINL1715','peinture-enfants1':'PEINME0930','peinture-enfants2':'PEINME11','theatre-4e3e':'THEJ19','theatre-cm1cm2':'THEV1630','theatre-6e5e':'THEV1730','theatre-lycee':'THEV1830'};
+
+function siteToPlacesId(actId) {
+  return SITE_TO_PLACESID[actId] || actId;
+}
+
+function placesIdToActId(placesId) {
+  for (const [k, v] of Object.entries(SITE_TO_PLACESID)) {
+    if (v === placesId) return k;
+  }
+  return placesId;
+}
+
 async function loadPlaces(force = false) {
   const now = Date.now();
   if (!force && state.placesLoaded && (now - state.placesLoadedAt) < PLACES_CACHE_TTL) return;
@@ -2821,45 +2836,33 @@ function memberHtml(m) {
 }
 
 // ============================================================
-// FFTT — Licence compétition
+// FFTT — Licence compétition (checkbox seulement, sans bordereau)
 // ============================================================
 
-// Vérifie si un membre a au moins une activité TT avec option fftt
-
-// ── Signature canvas FFTT ──────────────────────────────────────
-var _ffttCanvas = {}, _ffttCtx = {}, _ffttDrawing = {};
-
-
-
-function effacerSignatureFFTT(memId) {
-  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
-  if (!cv) return;
-  const ctx = _ffttCtx[memId] || cv.getContext('2d');
-  ctx.clearRect(0, 0, cv.width, cv.height);
-}
-
-
-
-function getSignatureFFTTBase64(memId) {
-  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
-  return cv ? cv.toDataURL('image/png') : '';
-}
-
-// ── Pré-remplissage des champs affichés ──────────────────────
-function preremplirBordereauFFTT(memId) {
+function toggleFfttCategory(memId) {
+  const cb = document.getElementById('fftt-want-' + memId);
+  const detail = document.getElementById('fftt-detail-' + memId);
+  if (!cb || !detail) return;
+  detail.style.display = cb.checked ? '' : 'none';
   const m = state.members.find(m => m.id === memId);
-  const r = state.responsable;
-  if (!m) return;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
-  set('fftt-nom-' + memId,     m.nom     || r.nom    || '');
-  set('fftt-prenom-' + memId,  m.prenom  || r.prenom || '');
-  set('fftt-ddn-' + memId,     m.ddn ? new Date(m.ddn).toLocaleDateString('fr-FR') : '');
-  set('fftt-sexe-' + memId,    m.sexe    || '');
-  set('fftt-adresse-' + memId, (r.adresse||'') + (r.cp?' '+r.cp:'') + (r.ville?' '+r.ville:''));
-  set('fftt-email-' + memId,   r.email   || '');
-  set('fftt-tel-' + memId,     r.tel     || '');
-  // Initialiser le canvas
+  if (m) {
+    m.ffttWant = cb.checked;
+    if (!cb.checked) { m.ffttPrice = 0; updateFfttPrice(memId); }
+  }
+  // Recalculer le total affiché
+  if (typeof updateMemberTotal === 'function') updateMemberTotal(memId);
+  if (typeof recalcSolde === 'function') recalcSolde();
+}
 
+function updateFfttPrice(memId) {
+  const selected = document.querySelector('input[name="fftt-cat-' + memId + '"]:checked');
+  const price = selected ? parseInt(selected.value) || 0 : 0;
+  const infoEl = document.getElementById('fftt-price-info-' + memId);
+  if (infoEl) infoEl.textContent = price > 0 ? '💳 Supplément licence FFTT : ' + price + ' €' : '';
+  const m = state.members.find(m => m.id === memId);
+  if (m) m.ffttPrice = price;
+  if (typeof updateMemberTotal === 'function') updateMemberTotal(memId);
+  if (typeof recalcSolde === 'function') recalcSolde();
 }
 
 
