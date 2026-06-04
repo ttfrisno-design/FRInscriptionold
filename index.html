@@ -805,17 +805,34 @@
     <div class="form-grid">
       <div class="field">
         <label>Pass'jeunes 76 / Handipass'sport 76</label>
-        <select id="pass-jeunes" onchange="autosave();recalcSolde()">
+        <select id="pass-jeunes" onchange="autosave();togglePassJeunes();recalcSolde()">
           <option value="non">Non concerné</option>
-          <option value="oui">Oui — joindre attestation</option>
+          <option value="30">1ère inscription — 30 € déduits — joindre justificatif</option>
+          <option value="20">2ème inscription — 20 € déduits — joindre justificatif</option>
         </select>
+        <div id="pass-jeunes-info" style="display:none;margin-top:6px;padding:8px 10px;background:#e3f2fd;border:1px solid #1565c0;border-radius:6px;font-size:12px;color:#1565c0;line-height:1.6;">
+          📎 Merci de joindre votre <strong>justificatif Pass'jeunes 76</strong> lors du dépôt de votre dossier aux permanences (mardi 16h30-18h30).
+        </div>
       </div>
       <div class="field">
-        <label>Atout Normandie</label>
-        <select id="atout-normandie" onchange="autosave();recalcSolde()">
+        <label>Atout Normandie <span style="font-size:11px;color:var(--gray);font-weight:400">(30 € de réduction)</span></label>
+        <select id="atout-normandie" onchange="autosave();toggleAtoutNormandie();recalcSolde()">
           <option value="non">Non concerné</option>
-          <option value="oui">Oui — joindre QR Code + code 4 chiffres</option>
+          <option value="oui">Oui — 30 € déduits — joindre QR Code + code 4 chiffres</option>
         </select>
+        <div id="atout-normandie-fields" style="display:none;margin-top:8px;">
+          <div style="padding:8px 10px;background:#e8f5e9;border:1px solid #2d6a4f;border-radius:6px;font-size:12px;color:#1b5e20;margin-bottom:8px;line-height:1.6;">
+            📱 Merci de présenter votre <strong>QR Code Atout Normandie</strong> et votre <strong>code à 4 chiffres</strong> lors du dépôt de votre dossier.
+          </div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;">
+              <label style="font-size:12px;color:var(--gray);">Code Atout Normandie (4 chiffres)</label>
+              <input type="text" id="atout-code" maxlength="4" pattern="[0-9]{4}"
+                placeholder="Ex: 1234" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;">
+            </div>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label>Pass'sport État <span style="font-size:11px;color:var(--gray);font-weight:400">(70 € de réduction)</span></label>
@@ -1636,23 +1653,41 @@ function toggleAvoirMontant() {
 }
 
 // ── Recalculer le solde après déductions ──
+
+function togglePassJeunes() {
+  const val = document.getElementById('pass-jeunes')?.value;
+  const info = document.getElementById('pass-jeunes-info');
+  if (info) info.style.display = (val && val !== 'non') ? '' : 'none';
+}
+
+function toggleAtoutNormandie() {
+  const val = document.getElementById('atout-normandie')?.value;
+  const fields = document.getElementById('atout-normandie-fields');
+  if (fields) fields.style.display = (val === 'oui') ? '' : 'none';
+}
+
 function recalcSolde() {
   const t = calcTotals();
   const total = t.grandTotal || 0;
 
   // Déductions
-  const passSport   = (document.getElementById('pass-sport')?.value   === 'oui') ? 70    : 0;
-  const ancvOui     = (document.getElementById('ancv-select')?.value  === 'oui');
-  const ancvMontant = ancvOui ? (parseFloat(document.getElementById('ancv-montant')?.value) || 0) : 0;
-  const avoirOui    = (document.getElementById('avoir-select')?.value === 'oui');
-  const avoirMontant= avoirOui ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
+  const passSport     = (document.getElementById('pass-sport')?.value   === 'oui') ? 70 : 0;
+  const ancvOui       = (document.getElementById('ancv-select')?.value  === 'oui');
+  const ancvMontant   = ancvOui ? (parseFloat(document.getElementById('ancv-montant')?.value) || 0) : 0;
+  const avoirOui      = (document.getElementById('avoir-select')?.value === 'oui');
+  const avoirMontant  = avoirOui ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
+  // Pass'jeunes 76 : 30€ (1ère inscription) ou 20€ (2ème)
+  const passJeunesVal = document.getElementById('pass-jeunes')?.value || 'non';
+  const passJeunesMontant = passJeunesVal !== 'non' ? (parseFloat(passJeunesVal) || 0) : 0;
+  // Atout Normandie : 30€ fixes
+  const atoutMontant  = (document.getElementById('atout-normandie')?.value === 'oui') ? 30 : 0;
 
-  const totalDeductions = passSport + ancvMontant + avoirMontant;
+  const totalDeductions = passSport + ancvMontant + avoirMontant + passJeunesMontant + atoutMontant;
   const solde = Math.max(0, Math.round((total - totalDeductions) * 100) / 100);
 
   // Sauvegarder dans state
   state.solde         = solde;
-  state.deductions    = { passSport, ancvMontant, avoirMontant, total: totalDeductions };
+  state.deductions    = { passSport, ancvMontant, avoirMontant, passJeunesMontant, atoutMontant, total: totalDeductions };
 
   // Afficher le détail
   const detailEl = document.getElementById('solde-detail');
@@ -1660,9 +1695,11 @@ function recalcSolde() {
   if (!detailEl || !totalEl) return;
 
   let detail = `Total activités : <strong>${total.toFixed(2)} €</strong><br>`;
-  if (passSport > 0)    detail += `Pass'sport État : <span style="color:var(--green)">- ${passSport.toFixed(2)} €</span><br>`;
-  if (ancvMontant > 0)  detail += `Coupon ANCV : <span style="color:var(--green)">- ${ancvMontant.toFixed(2)} €</span><br>`;
-  if (avoirMontant > 0) detail += `Avoir : <span style="color:var(--green)">- ${avoirMontant.toFixed(2)} €</span><br>`;
+  if (passSport > 0)        detail += `Pass'sport État : <span style="color:var(--green)">- ${passSport.toFixed(2)} €</span><br>`;
+  if (ancvMontant > 0)      detail += `Coupon ANCV : <span style="color:var(--green)">- ${ancvMontant.toFixed(2)} €</span><br>`;
+  if (avoirMontant > 0)     detail += `Avoir : <span style="color:var(--green)">- ${avoirMontant.toFixed(2)} €</span><br>`;
+  if (passJeunesMontant > 0) detail += `Pass'jeunes 76 (${passJeunesVal === '30' ? '1ère' : '2ème'} inscr.) : <span style="color:var(--green)">- ${passJeunesMontant.toFixed(2)} €</span><br>`;
+  if (atoutMontant > 0)     detail += `Atout Normandie : <span style="color:var(--green)">- ${atoutMontant.toFixed(2)} €</span><br>`;
   if (totalDeductions > 0) detail += `Total déductions : <span style="color:var(--green);font-weight:700">- ${totalDeductions.toFixed(2)} €</span>`;
 
   detailEl.innerHTML = detail;
@@ -1819,7 +1856,10 @@ function captureResponsable() {
     email1: g('rl-email1'),
     email2: g('rl-email2'),
     passJeunes:     g('pass-jeunes')     || 'non',
-    atoutNormandie: g('atout-normandie') || 'non',
+    atoutNormandie:     g('atout-normandie') || 'non',
+  atoutCode:          (document.getElementById('atout-code')?.value || '').trim(),
+  passJeunesMontant:  (function(){ const v = g('pass-jeunes')||'non'; return v!=='non' ? parseFloat(v)||0 : 0; })(),
+  passJeunesType:     (function(){ const v = g('pass-jeunes')||'non'; return v==='30'?'1ere':v==='20'?'2eme':'non'; })(),
     passSport:      g('pass-sport')      || 'non',
     ancv:           g('ancv-select')     || 'non',
     ancvMontant:    parseFloat(g('ancv-montant'))  || 0,
@@ -3752,11 +3792,24 @@ function buildRows(reg) {
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
           avoir_montant: reg.responsable.avoirMontant || 0,
           pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+          pass_jeunes_montant: reg.responsable.passJeunesMontant || 0,
+          pass_jeunes_type:    reg.responsable.passJeunesType || 'non',
+          atout_montant:       reg.responsable.atoutNormandie === 'oui' ? 30 : 0,
+          atout_code:          reg.responsable.atoutCode || '',
           ancv_montant: reg.responsable.ancvMontant || 0,
           fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
           qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                   : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-          pass_aide: passAide,
+          pass_aide: (function(){
+            const parts = [];
+            if (passAide) parts.push(passAide);
+            if (reg.responsable.passJeunesMontant > 0)
+              parts.push('PassJeunes:' + (reg.responsable.passJeunesMontant||0).toFixed(2)
+                + ':' + (reg.responsable.passJeunesType||'1ere'));
+            if (reg.responsable.atoutNormandie === 'oui')
+              parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
+            return parts.join('|');
+          })(),
           statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
         });
         return;
@@ -3803,7 +3856,16 @@ function buildRows(reg) {
         fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-        pass_aide: passAide,
+        pass_aide: (function(){
+            const parts = [];
+            if (passAide) parts.push(passAide);
+            if (reg.responsable.passJeunesMontant > 0)
+              parts.push('PassJeunes:' + (reg.responsable.passJeunesMontant||0).toFixed(2)
+                + ':' + (reg.responsable.passJeunesType||'1ere'));
+            if (reg.responsable.atoutNormandie === 'oui')
+              parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
+            return parts.join('|');
+          })(),
         statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
       });
     });
@@ -4820,7 +4882,8 @@ function renderPayment() {
     // attestation_ok → déjà signée électroniquement, rien à apporter
   });
   if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
-  if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
+  if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code à 4 chiffres — <strong>30 € déduits</strong></li>';
+    if (r.passJeunesMontant > 0) docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'jeunes 76 — <strong>' + r.passJeunesMontant + ' € déduits</strong> (' + (r.passJeunesType==='1ere'?'1ère inscription':'2ème inscription') + ')</li>';
   if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
   // Note FFTT pour les membres ayant demandé une licence
   state.members.forEach(m => {
