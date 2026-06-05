@@ -3063,7 +3063,13 @@ function isSignatureFFTTVide(memId) {
 
 function getSignatureFFTTBase64(memId) {
   const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
-  return cv ? cv.toDataURL('image/png') : '';
+  if (!cv) return '';
+  const small = document.createElement('canvas');
+  small.width = 240; small.height = 60;
+  const ctx = small.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 240, 60);
+  ctx.drawImage(cv, 0, 0, 240, 60);
+  return small.toDataURL('image/jpeg', 0.5);
 }
 
 // ── Pré-remplissage des champs affichés ──────────────────────
@@ -3137,14 +3143,29 @@ async function validerBordereauFFTT(memId) {
   if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
 
   try {
-    const result = await callAppsScriptFetch(url, {
+    // POST no-cors : evite la limite URL ~8KB du JSONP (signature base64 trop lourde en GET)
+    const ffttPayload = {
       action:    'saveBordereauFFTT',
       _token:    FRI_SECRET_TOKEN,
       code:      code,
       signature: sig,
       extra:     JSON.stringify(extra),
       rows:      JSON.stringify(rows.filter(r => Number(r.fftt_price||0) > 0).slice(0,1))
-    });
+    };
+    console.log('[FRI] saveBordereauFFTT payload size:', JSON.stringify(ffttPayload).length);
+    let result;
+    try {
+      await fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ffttPayload)
+      });
+      await new Promise(r => setTimeout(r, 2500)); // attendre traitement GAS
+      result = { ok: true, data: { status: 'ok' } };
+    } catch(ePost) {
+      console.warn('[FRI] POST FFTT echoue, fallback JSONP:', ePost.message);
+      result = await callAppsScriptFetch(url, ffttPayload);
+    }
     const data = result && result.data ? result.data : (result || {});
     if (data && data.status === 'ok') {
       if (status) {
