@@ -1301,34 +1301,9 @@ function formatDateFRI(d) {
 function getAppsScriptUrl() {
   return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
 }
-// Token secret — récupéré dynamiquement depuis le GAS au chargement de la page.
-// N'est plus stocké en dur dans ce fichier HTML (visible dans le source).
-let FRI_SECRET_TOKEN = '';
-let _tokenInitPromise = null;
-
-async function initToken() {
-  if (FRI_SECRET_TOKEN) return FRI_SECRET_TOKEN;
-  const url = getAppsScriptUrl();
-  if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') return '';
-  try {
-    const r = await fetch(url + '?payload=' + encodeURIComponent(JSON.stringify({ action: 'getToken' })));
-    const d = await r.json();
-    if (d && d.token) { FRI_SECRET_TOKEN = d.token; }
-  } catch(e) { console.warn('[FRI] initToken KO:', e); }
-  return FRI_SECRET_TOKEN;
-}
-
-// Lancer la récupération du token dès le chargement de la page
-_tokenInitPromise = (function() {
-  // Attendre que l'URL GAS soit disponible (peut être dans le localStorage)
-  return new Promise(resolve => {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => initToken().then(resolve));
-    } else {
-      initToken().then(resolve);
-    }
-  });
-})();
+// Token secret partagé avec le GAS — à changer après déploiement
+// Doit être identique à FRI_SECRET_TOKEN dans Code_GAS_FRI.js
+const FRI_SECRET_TOKEN = 'FRI2026_xK9mP3qZ';
 const SHEET_ID_PUBLIC  = '1H4KZMOtFNXZdNjXBr0LwhqcCHQa3WAzoIcrb812cdrk'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
@@ -4101,6 +4076,10 @@ function buildRows(reg) {
                 + ':' + (reg.responsable.passJeunesType||'1ere'));
             if (reg.responsable.atoutNormandie === 'oui')
               parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
+            if (reg.responsable.ancvMontant > 0)
+              parts.push('ANCV:' + (reg.responsable.ancvMontant||0).toFixed(2));
+            if (reg.responsable.passSport === 'oui')
+              parts.push('PASS:70.00');
             return parts.join('|');
           })(),
           statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
@@ -4149,9 +4128,13 @@ function buildRows(reg) {
           remise: (!_isWaiting2 && estElig2) ? 15 : 0,
         total_famille: reg.totals ? reg.totals.grandTotal : 0,
         mode_paiement: reg.responsable.modePaiement || 'helloasso',
-        avoir_montant: reg.responsable.avoirMontant || 0,
-        pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
-        ancv_montant: reg.responsable.ancvMontant || 0,
+        avoir_montant:       reg.responsable.avoirMontant || 0,
+        pass_sport_montant:  reg.responsable.passSport === 'oui' ? 70 : 0,
+        ancv_montant:        reg.responsable.ancvMontant || 0,
+        pass_jeunes_montant: reg.responsable.passJeunesMontant || 0,
+        pass_jeunes_type:    reg.responsable.passJeunesType || 'non',
+        atout_montant:       reg.responsable.atoutNormandie === 'oui' ? 30 : 0,
+        atout_code:          reg.responsable.atoutCode || '',
         fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
         qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
                 : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
@@ -4163,6 +4146,10 @@ function buildRows(reg) {
                 + ':' + (reg.responsable.passJeunesType||'1ere'));
             if (reg.responsable.atoutNormandie === 'oui')
               parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
+            if (reg.responsable.ancvMontant > 0)
+              parts.push('ANCV:' + (reg.responsable.ancvMontant||0).toFixed(2));
+            if (reg.responsable.passSport === 'oui')
+              parts.push('PASS:70.00');
             return parts.join('|');
           })(),
         statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
@@ -5595,8 +5582,6 @@ async function lireSheetPublic() {
 // Envoi vers Apps Script via fetch no-cors
 async function callAppsScriptFetch(url, payload) {
   const action = payload.action || '';
-  // Attendre que le token soit initialisé (chargé depuis le GAS au démarrage)
-  if (!FRI_SECRET_TOKEN && _tokenInitPromise) await _tokenInitPromise;
   payload._token = payload._token || FRI_SECRET_TOKEN;
 
   // Toutes les actions utilisent JSONP (balise <script> GET)
