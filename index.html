@@ -3138,7 +3138,11 @@ async function validerBordereauFFTT(memId) {
     totals:      calcTotals ? calcTotals() : {}
   };
   const rows = buildRows(_regForFFTT);
-  const code = state.codeDossier || state.codeDossierPreview || '';
+  // Lire le code dossier depuis plusieurs sources possibles
+  const _codeDOM = document.getElementById('dossier-code')?.textContent?.trim() || '';
+  const _codePending = Object.keys(JSON.parse(localStorage.getItem('fri_pending') || '{}')).pop() || '';
+  const code = _codeDOM || state.codeDossierPreview || _codePending || '';
+  console.log('[FRI] FFTT code dossier:', code, '(DOM:', _codeDOM, 'preview:', state.codeDossierPreview, ')');
   const url  = getAppsScriptUrl();
   if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
 
@@ -3160,7 +3164,7 @@ async function validerBordereauFFTT(memId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ffttPayload)
       });
-      await new Promise(r => setTimeout(r, 2500)); // attendre traitement GAS
+      await new Promise(r => setTimeout(r, 5000)); // attendre traitement GAS (PDF = ~3-4s)
       result = { ok: true, data: { status: 'ok' } };
     } catch(ePost) {
       console.warn('[FRI] POST FFTT echoue, fallback JSONP:', ePost.message);
