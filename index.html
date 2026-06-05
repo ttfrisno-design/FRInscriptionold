@@ -855,22 +855,23 @@
       </div>
     </div>
 
-    <!-- Avoir -->
-    <div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">💳 Avoir</div>
+    <!-- Avoir avec code 6 caractères -->
+    <div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">💳 Avoir FRI</div>
     <div class="form-grid">
       <div class="field">
-        <label>Avoir sur la saison</label>
-        <select id="avoir-select" onchange="autosave();toggleAvoirMontant();recalcSolde()">
-          <option value="non">Non concerné</option>
-          <option value="oui">Oui — préciser le montant</option>
-        </select>
+        <label>Code avoir <span style="font-size:11px;color:var(--gray);font-weight:400">(ex : AV3K9X)</span></label>
+        <input type="text" id="avoir-code" placeholder="Code avoir 6 caractères"
+               maxlength="8" style="text-transform:uppercase;font-family:monospace;font-size:16px;letter-spacing:3px;font-weight:700"
+               oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');autosave();onAvoirCodeChange()"
+               autocomplete="off">
       </div>
       <div class="field" id="avoir-montant-field" style="display:none">
-        <label>Montant de l'avoir (€)</label>
-        <input type="number" id="avoir-montant" min="0" step="0.01" placeholder="Ex: 50.00"
-               oninput="autosave();recalcSolde()" style="width:100%;box-sizing:border-box">
+        <label>Montant à déduire (€) <span id="avoir-solde-badge" style="font-size:11px;color:var(--green);font-weight:400"></span></label>
+        <input type="number" id="avoir-montant" min="0" step="0.01" placeholder="0.00"
+               oninput="autosave();onAvoirMontantChange()" style="width:100%;box-sizing:border-box">
       </div>
     </div>
+    <div id="avoir-feedback" style="display:none;margin-top:6px;padding:9px 12px;border-radius:8px;font-size:13px;line-height:1.6"></div>
 
     <!-- Note chèque de caution -->
     <div style="margin-top:10px;margin-bottom:12px;padding:10px 14px;background:#fff8e1;border:1px solid #e8c84a;border-radius:8px;font-size:13px;color:#856404;line-height:1.6;">
@@ -1646,10 +1647,70 @@ function toggleAncvMontant() {
   const field = document.getElementById('ancv-montant-field');
   if (ancv && field) field.style.display = ancv.value === 'oui' ? '' : 'none';
 }
-function toggleAvoirMontant() {
-  const avoir = document.getElementById('avoir-select');
+let _avoirVerifTimer = null;
+let _avoirVerifResult = null;
+
+function onAvoirCodeChange() {
+  clearTimeout(_avoirVerifTimer);
+  _avoirVerifResult = null;
+  const code = (document.getElementById('avoir-code')?.value || '').trim().toUpperCase();
   const field = document.getElementById('avoir-montant-field');
-  if (avoir && field) field.style.display = avoir.value === 'oui' ? '' : 'none';
+  const fb    = document.getElementById('avoir-feedback');
+  const badge = document.getElementById('avoir-solde-badge');
+  if (code.length === 0) {
+    if (field) field.style.display = 'none';
+    if (fb)    { fb.style.display = 'none'; fb.textContent = ''; }
+    recalcSolde(); return;
+  }
+  if (code.length < 6) {
+    if (fb) { fb.style.display = 'block'; fb.style.background = '#f5f5f5'; fb.style.color = '#888'; fb.textContent = '⌛ Saisissez les 6 caractÃ¨res du code avoir…'; }
+    if (field) field.style.display = 'none';
+    recalcSolde(); return;
+  }
+  if (fb) { fb.style.display = 'block'; fb.style.background = '#e8f4fd'; fb.style.color = '#1565c0'; fb.textContent = 'ð VÃ©rification du code…'; }
+  _avoirVerifTimer = setTimeout(async function() {
+    const url = getAppsScriptUrl();
+    if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') return;
+    try {
+      const res = await callAppsScriptFetch(url, { action: 'verifierCodeAvoir', codeAvoir: code, montant: 0 });
+      const d = res.data || res;
+      if (d && d.valide) {
+        _avoirVerifResult = d;
+        if (field) field.style.display = '';
+        if (badge) badge.textContent = '(disponible : ' + parseFloat(d.montantDisponible).toFixed(2) + ' €)';
+        const inp = document.getElementById('avoir-montant');
+        if (inp && (!inp.value || parseFloat(inp.value) === 0)) inp.value = parseFloat(d.montantDisponible).toFixed(2);
+        if (fb) { fb.style.display = 'block'; fb.style.background = '#d8f3dc'; fb.style.color = '#2d6a4f'; fb.innerHTML = '✅ Avoir valide — <strong>' + d.prenom + ' ' + d.nom + '</strong> — Solde : <strong>' + parseFloat(d.montantDisponible).toFixed(2) + ' €</strong>'; }
+        recalcSolde();
+      } else {
+        _avoirVerifResult = null;
+        if (field) field.style.display = 'none';
+        const inp2 = document.getElementById('avoir-montant');
+        if (inp2) inp2.value = '';
+        if (fb) { fb.style.display = 'block'; fb.style.background = '#ffeeed'; fb.style.color = '#c0392b'; fb.textContent = '❌ ' + (d ? d.message : 'Code invalide'); }
+        recalcSolde();
+      }
+    } catch(e) {
+      if (fb) { fb.style.display = 'block'; fb.style.background = '#ffeeed'; fb.style.color = '#c0392b'; fb.textContent = '❌ Erreur : ' + e.message; }
+    }
+  }, 600);
+}
+
+function onAvoirMontantChange() {
+  if (!_avoirVerifResult) return;
+  const montant = parseFloat(document.getElementById('avoir-montant')?.value || 0);
+  const dispo   = parseFloat(_avoirVerifResult.montantDisponible || 0);
+  const fb = document.getElementById('avoir-feedback');
+  if (montant > dispo + 0.005) {
+    if (fb) { fb.style.background = '#ffeeed'; fb.style.color = '#c0392b'; fb.innerHTML = '❌ Montant (' + montant.toFixed(2) + ' €) supÃ©rieur au solde disponible (' + dispo.toFixed(2) + ' €).'; }
+  } else {
+    if (fb) { fb.style.background = '#d8f3dc'; fb.style.color = '#2d6a4f'; fb.innerHTML = '✅ Avoir valide — Solde disponible : <strong>' + dispo.toFixed(2) + ' €</strong>'; }
+  }
+  recalcSolde();
+}
+
+function toggleAvoirMontant() {
+  // CompatibilitÃ© ascendante
 }
 
 // ── Recalculer le solde après déductions ──
@@ -1674,8 +1735,9 @@ function recalcSolde() {
   const passSport     = (document.getElementById('pass-sport')?.value   === 'oui') ? 70 : 0;
   const ancvOui       = (document.getElementById('ancv-select')?.value  === 'oui');
   const ancvMontant   = ancvOui ? (parseFloat(document.getElementById('ancv-montant')?.value) || 0) : 0;
-  const avoirOui      = (document.getElementById('avoir-select')?.value === 'oui');
-  const avoirMontant  = avoirOui ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
+  const avoirCode    = (document.getElementById('avoir-code')?.value || '').trim();
+  const avoirValide  = _avoirVerifResult && _avoirVerifResult.valide && avoirCode.length >= 6;
+  const avoirMontant = avoirValide ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
   // Pass'jeunes 76 : 30€ (1ère inscription) ou 20€ (2ème)
   const passJeunesVal = document.getElementById('pass-jeunes')?.value || 'non';
   const passJeunesMontant = passJeunesVal !== 'non' ? (parseFloat(passJeunesVal) || 0) : 0;
@@ -1863,8 +1925,9 @@ function captureResponsable() {
     passSport:      g('pass-sport')      || 'non',
     ancv:           g('ancv-select')     || 'non',
     ancvMontant:    parseFloat(g('ancv-montant'))  || 0,
-    avoir:          g('avoir-select')    || 'non',
-    avoirMontant:   parseFloat(g('avoir-montant')) || 0,
+    avoir:          (_avoirVerifResult && _avoirVerifResult.valide && (document.getElementById('avoir-code')?.value||'').trim().length >= 6) ? 'oui' : 'non',
+    avoirMontant:   (_avoirVerifResult && _avoirVerifResult.valide) ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0,
+    avoirCode:      (document.getElementById('avoir-code')?.value || '').trim().toUpperCase(),
     solde:          state.solde || calcTotals().grandTotal,
     modePaiement:   g('mode-paiement')   || 'helloasso'
   };
@@ -4059,6 +4122,7 @@ function buildRows(reg) {
           total_famille: reg.totals ? reg.totals.grandTotal : 0,
           mode_paiement: reg.responsable.modePaiement || 'helloasso',
           avoir_montant: reg.responsable.avoirMontant || 0,
+          avoir_code:   reg.responsable.avoirCode || '',
           pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
           pass_jeunes_montant: reg.responsable.passJeunesMontant || 0,
           pass_jeunes_type:    reg.responsable.passJeunesType || 'non',
