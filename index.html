@@ -416,8 +416,8 @@
   }
   .sem-slot:hover { filter:brightness(0.94); transform:scale(1.01); }
   .sem-slot.selected { border-color:var(--dark) !important; box-shadow:0 0 0 2px var(--dark); }
-  .sem-slot.slot-full { opacity:0.5; cursor:not-allowed; }
-  .sem-slot.slot-full:hover { filter:none; transform:none; }
+  .sem-slot.slot-full { opacity:0.85; cursor:pointer; border:2px dashed #e65100 !important; }
+  .sem-slot.slot-full:hover { filter:brightness(0.96); transform:scale(1.01); }
   .sem-slot-name { font-weight:700; font-size:11px; line-height:1.3; margin-bottom:2px; }
   .sem-slot-time { font-size:10px; opacity:0.8; }
   .sem-slot-info { font-size:10px; opacity:0.7; margin-top:2px; }
@@ -437,12 +437,12 @@
   .places-few   { background: #ffe5d0; color: #c0560a; }
   .places-full  { background: #f8d7da; color: #842029; }
   .act-card.full {
-    opacity: 0.55; cursor: not-allowed;
-    border-color: #f5c6cb !important;
-    background: #fff5f5 !important;
+    opacity: 0.9; cursor: pointer;
+    border: 2px dashed #e65100 !important;
+    background: #fff8f5 !important;
   }
-  .act-card.full:hover { border-color: #f5c6cb !important; background: #fff5f5 !important; }
-  .act-card.full::after { display: none !important; }
+  .act-card.full:hover { border-color: #e65100 !important; background: #fff3ee !important; filter:brightness(0.97); }
+  .act-card.full .places-badge::before { content: '⏳ '; }
   .places-loading { color: var(--gray); font-size: 11px; }
 
   /* SEMAINIER SALLE ADMIN */
@@ -579,7 +579,9 @@
       </div>
       <div class="field">
         <label>Ville <span class="req">*</span></label>
-        <input type="text" id="rl-ville" placeholder="ISNEAUVILLE" oninput="detectCommune()" onchange="detectCommune()" onblur="detectCommune()">
+        <input type="text" id="rl-ville" placeholder="ISNEAUVILLE"
+          oninput="detectCommune()" onchange="detectCommune()" onblur="detectCommune()"
+          onfocus="setTimeout(detectCommune,100)" autocomplete="address-level2">
       </div>
       <div class="field">
         <label>Tarif applicable</label>
@@ -714,10 +716,87 @@
     </button>
   </div>
 
-  <!-- ÉTAPE B : Aides & Pass + Avoirs + Coupon ANCV + Mode de règlement -->
-  <div class="card" id="card-step-b2" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
+  
+  <!-- ÉTAPE B : Règlement intérieur -->
+  <div class="card" id="card-step-b" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
     <div class="card-title">
-      <span id="step-b2-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
+      <span id="step-b-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">2</span>
+      Règlement intérieur
+    </div>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:14px;">Veuillez lire et accepter le règlement intérieur du Foyer Rural d'Isneauville avant de procéder au paiement.</p>
+
+    <!-- Contenu règlement intérieur -->
+    <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:10px;padding:16px;max-height:360px;overflow-y:auto;font-size:12px;line-height:1.7;color:#333;margin-bottom:16px">
+      <h3 style="font-size:13px;font-weight:700;color:#1a2e22;margin-bottom:10px;text-align:center">RÈGLEMENT INTÉRIEUR — Foyer Rural d'Isneauville</h3>
+
+      <p><strong>STATUTS</strong><br>
+      Par l'apposition de sa signature sur la fiche d'inscription l'adhérent reconnaît avoir pris connaissance des statuts de l'association et des règles mises en place et déclare y adhérer sans réserve (disponibles sur demande).
+      L'adhésion donne le droit d'expression et de vote lors des assemblées générales (adhérents depuis plus de trois mois et âgés de plus de 16 ans).</p>
+
+      <p><strong>ACTIVITÉS</strong><br>
+      Les activités et les horaires indiqués ne sont pas contractuels ; les cours peuvent être supprimés en raison d'un nombre insuffisant d'adhérents et/ou les horaires modifiés en fonction de l'âge, du nombre des participants.
+      Un questionnaire de santé est à remplir. Si vous répondez non à toutes les questions cela suffit, sinon un certificat médical sera exigé pour : pratique du Tennis de table en compétition avec licence FFTT, adhérent mineur ou majeur avec au moins une réponse "OUI" au QS SPORT.</p>
+
+      <p><strong>INSCRIPTIONS, ADMISSION, EXCLUSION</strong><br>
+      Les places sont réservées par priorité aux anciens adhérents à jour de cotisation. L'inscription n'est validée qu'après versement de la cotisation annuelle. Une activité payée et interrompue avant la fin de la saison ne sera partiellement remboursée que pour cause de maladie grave ou d'accident (sur présentation d'un certificat médical) et après avis favorable du CA. Un forfait de 30 € pour frais de secrétariat sera prélevé sur tout remboursement, principalement sous forme d'avoir. Il est conseillé de faire un essai avant de s'engager.</p>
+
+      <p><strong>ÉLÉMENTS DE CALCUL DE LA COTISATION</strong><br>
+      Si vous pratiquez au moins trois activités dans la même famille (même adresse) vous bénéficiez d'une réduction de 15 % sur l'ensemble des cotisations (hors forfait Country et Marche Nordique, droit adhésion, assurance).
+      En cas de suspension ou annulation suite à une crise sanitaire (type COVID-19), la cotisation payée ne donne pas droit à un remboursement automatique.</p>
+
+      <p><strong>ACCOMPAGNEMENT DES MINEURS</strong><br>
+      Les élèves sont sous la responsabilité de l'animateur pendant les cours. Avant et après les cours, les parents des élèves mineurs en ont la pleine responsabilité. Les élèves mineurs doivent être accompagnés d'un adulte jusqu'à la porte du cours et récupérés à la fin. Les parents ne sont pas autorisés à assister aux cours.</p>
+
+      <p><strong>ASSIDUITÉ</strong><br>
+      Les élèves doivent arriver à l'heure (idéalement 5 minutes avant). En cas d'absence, prévenir l'animateur ou l'association : frisneauville@orange.fr. L'assiduité est primordiale pour ne pas gêner la progression du groupe.</p>
+
+      <p><strong>TENUE</strong><br>
+      Une tenue adaptée est obligatoire. Des baskets propres sont exigées dans le complexe sportif. Pour les activités sur tapis, une serviette de protection est obligatoire. Pour la danse country, des chaussures propres (pas de chaussures de l'extérieur) sont requises.</p>
+
+      <p><strong>COMPORTEMENT</strong><br>
+      Le comportement doit être correct et respectueux envers tous (élèves, animateurs, locaux). Tout manquement peut entraîner une exclusion temporaire ou définitive décidée par le CA.</p>
+
+      <p><strong>SPECTACLES</strong><br>
+      Des spectacles sont organisés en fin d'année. La présence aux répétitions générales est obligatoire pour y participer.</p>
+
+      <p><strong>DROIT À L'IMAGE</strong><br>
+      Par la validation de cette inscription, l'adhérent autorise le Foyer Rural d'Isneauville à publier des photographies dans un but d'information ou de publicité de l'activité uniquement. Les photos ne seront ni vendues, ni utilisées à d'autres usages. Supports : Site internet FRI, mailing, réseaux sociaux FRI, YouTube, journal municipal.</p>
+
+      <p><strong>RGPD</strong><br>
+      Le FRI se conforme au règlement RGPD. Les données personnelles des adhérents ne sont ni partagées ni vendues. Vous pouvez à tout moment vérifier l'usage qui en est fait et disposer du droit de retrait.</p>
+
+      <p style="margin-top:12px;font-style:italic;color:#2d6a4f;font-weight:700;text-align:center">
+        Je reconnais avoir pris connaissance des statuts et des dispositions du règlement intérieur et déclare les accepter.
+      </p>
+    </div>
+
+    <!-- Signature -->
+    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:#1b5e20;margin-bottom:10px">✍️ Signature électronique</div>
+      <canvas id="ri-signature-canvas" width="520" height="120"
+        style="border:2px solid #2d6a4f;border-radius:8px;background:white;cursor:crosshair;touch-action:none;width:100%;max-width:520px;display:block;margin-bottom:8px">
+      </canvas>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button onclick="effacerSignatureRI()" style="font-size:12px;padding:5px 12px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer">🗑️ Effacer</button>
+        <span id="sig-status" style="font-size:12px;color:#999;padding:5px 0">Signez dans le cadre ci-dessus</span>
+      </div>
+    </div>
+
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:var(--dark);margin-bottom:14px">
+      <input type="checkbox" id="cb-reglement" onchange="checkReglementValid()" style="margin-top:3px;width:18px;height:18px;flex-shrink:0">
+      <span>J'ai lu et j'accepte le règlement intérieur du Foyer Rural d'Isneauville. Je reconnais avoir pris connaissance des statuts et m'engage à les respecter.</span>
+    </label>
+
+    <button id="btn-valider-reglement" class="btn btn-primary" onclick="validerReglementInterieur()"
+      style="width:100%;justify-content:center;opacity:0.5;pointer-events:none">
+      ✅ Valider et continuer
+    </button>
+  </div>
+
+<!-- ÉTAPE B3 : Aides & Pass + Avoirs + Coupon ANCV + Mode de règlement -->
+  <div class="card" id="card-step-b3" style="border-left:4px solid #ccc;opacity:0.4;pointer-events:none;margin-top:12px">
+    <div class="card-title">
+      <span id="step-b3-num" style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px">3</span>
       Aides, Avoirs &amp; Mode de règlement
     </div>
 
@@ -822,7 +901,7 @@
         <div style="font-size:26px;flex-shrink:0">💚</div>
         <div style="font-size:13px;color:#1b5e20;line-height:1.6;">
           <strong>Le Foyer Rural vous remercie de privilégier le règlement en ligne</strong><br>
-          <a href="https://www.helloasso.com/associations/foyer-rural-d-isneauville/paiements/reglement-adhesion-fri"
+          <a href="https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville-2"
             target="_blank" style="color:#2e7d32;font-weight:700;text-decoration:none;">
             💳 Payer via HelloAsso →
           </a>
@@ -839,7 +918,7 @@
   </div>
 
   <!-- ÉTAPE C : Paiement (HelloAsso ou autre) -->
-  <div class="card" id="card-step-b" style="border-left:4px solid #ccc;opacity:0.5;pointer-events:none">
+  <div class="card" id="card-step-pay" style="border-left:4px solid #ccc;opacity:0.5;pointer-events:none">
     <div class="card-title">
       <span style="background:#ccc;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:8px" id="step-b-num">3</span>
       <span id="step-b-title">Paiement</span>
@@ -987,13 +1066,13 @@
       <button onclick="chargerDossiersDepuisSheet()" style="background:rgba(82,183,136,0.2);color:var(--green-light);border:1px solid rgba(82,183,136,0.4);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">
         🔄 Rafraîchir
       </button>
-      <button class="btn btn-export" onclick="exportAllExcel()" style="font-size:13px;padding:9px 18px;">
+      <button id="btn-export-gestaffil" class="btn btn-export" onclick="exportAllExcel()" style="font-size:13px;padding:9px 18px;">
         📊 Exporter Gestaffil (Excel)
       </button>
       <button class="btn" onclick="exportAllExcel('csv')" style="background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);font-size:13px;padding:9px 18px;border-radius:8px;">
         📋 Exporter CSV
       </button>
-      <button class="btn" style="background:rgba(192,57,43,0.7);color:white;border:none;font-size:13px;padding:9px 14px;border-radius:8px;cursor:pointer;" 
+      <button id="btn-effacer-tout" class="btn" style="background:rgba(192,57,43,0.7);color:white;border:none;font-size:13px;padding:9px 14px;border-radius:8px;cursor:pointer;" 
         onclick="if(confirm('Effacer TOUTES les inscriptions ? Cette action est irréversible.')){localStorage.removeItem('fri_registrations');renderAdmin();renderAdminStats();}">
         🗑 Effacer tout
       </button>
@@ -1004,7 +1083,7 @@
     </div>
 
     <!-- SEMAINIER PAR SALLE -->
-    <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.1)">
+    <div id="admin-semainier-bloc" style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.1)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--white);">📅 Semainier par salle</div>
@@ -1044,11 +1123,184 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+// ── Forfait country ≥2 créneaux (hors Initiation) ──
+// Déclarée en tête pour être disponible partout (calcTotals, buildRows, renderSummary)
+function calcCountryForfait(membre, isno) {
+  const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+  const sel = (membre.activities || []).filter(id => CFIDS.includes(id));
+  if (sel.length >= 2) return { forfait: true, prix: isno ? 190 : 220, ids: sel };
+  return { forfait: false, ids: [] };
+}
+
 
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4kE7ZDafewgD18B_PFKJkT4448mzbukec0e6Hc6soPoyysNCy_T-A/exec';
+
+
+// ══════════════════════════════════════════════════════════════
+// RÈGLEMENT INTÉRIEUR — Signature + Validation
+// ══════════════════════════════════════════════════════════════
+// ── Signature Règlement Intérieur — variables globales ──
+var _riCanvas = null, _riCtx = null, _riDrawing = false;
+
+function _riInitCanvas() {
+  _riCanvas = document.getElementById('ri-signature-canvas');
+  if (!_riCanvas) return;
+  _riCtx = _riCanvas.getContext('2d', { willReadFrequently: true });
+  _riCtx.strokeStyle = '#1a2e22';
+  _riCtx.lineWidth = 2;
+  _riCtx.lineCap = 'round';
+  _riCtx.lineJoin = 'round';
+
+  function _riPos(e) {
+    var r = _riCanvas.getBoundingClientRect();
+    var scaleX = _riCanvas.width / r.width;
+    var scaleY = _riCanvas.height / r.height;
+    var src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * scaleX, y: (src.clientY - r.top) * scaleY };
+  }
+  _riCanvas.addEventListener('mousedown',  function(e) { _riDrawing=true; _riCtx.beginPath(); var p=_riPos(e); _riCtx.moveTo(p.x,p.y); });
+  _riCanvas.addEventListener('mousemove',  function(e) { if(!_riDrawing) return; var p=_riPos(e); _riCtx.lineTo(p.x,p.y); _riCtx.stroke(); _riUpdateStatus(); });
+  _riCanvas.addEventListener('mouseup',    function() { _riDrawing=false; });
+  _riCanvas.addEventListener('mouseleave', function() { _riDrawing=false; });
+  _riCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); _riDrawing=true; _riCtx.beginPath(); var p=_riPos(e); _riCtx.moveTo(p.x,p.y); }, {passive:false});
+  _riCanvas.addEventListener('touchmove',  function(e) { e.preventDefault(); if(!_riDrawing) return; var p=_riPos(e); _riCtx.lineTo(p.x,p.y); _riCtx.stroke(); _riUpdateStatus(); }, {passive:false});
+  _riCanvas.addEventListener('touchend',   function() { _riDrawing=false; });
+}
+
+function _riUpdateStatus() {
+  var el = document.getElementById('sig-status');
+  if (el) { el.textContent = '✅ Signature apposée'; el.style.color = '#2d6a4f'; }
+  checkReglementValid();
+}
+
+function effacerSignatureRI() {
+  if (!_riCanvas) _riInitCanvas();
+  if (_riCtx) _riCtx.clearRect(0, 0, _riCanvas.width, _riCanvas.height);
+  var el = document.getElementById('sig-status');
+  if (el) { el.textContent = 'Signez dans le cadre ci-dessus'; el.style.color = '#999'; }
+  checkReglementValid();
+}
+
+function isSignatureRIVide() {
+  if (!_riCanvas) {
+    _riCanvas = document.getElementById('ri-signature-canvas');
+    if (!_riCanvas) return true;
+    _riCtx = _riCanvas.getContext('2d', { willReadFrequently: true });
+  }
+  try {
+    var data = _riCtx.getImageData(0, 0, _riCanvas.width, _riCanvas.height).data;
+    for (var i = 3; i < data.length; i += 4) { if (data[i] > 10) return false; }
+  } catch(e) { return true; }
+  return true;
+}
+
+function getSignatureRIBase64() {
+  if (!_riCanvas) _riInitCanvas();
+  return _riCanvas ? _riCanvas.toDataURL('image/png') : '';
+}
+
+window._riCanvasInit = function() { _riInitCanvas(); };
+window.isSignatureVide = function() { return isSignatureRIVide(); };
+window.getSignatureBase64 = function() { return getSignatureRIBase64(); };
+window.effacerSignatureRI = effacerSignatureRI;
+
+
+window.checkReglementValid = function() {
+  // S'assurer que le canvas est initialisé
+  if (!_riCanvas) _riInitCanvas();
+  var cb  = document.getElementById('cb-reglement');
+  var btn = document.getElementById('btn-valider-reglement');
+  if (!cb || !btn) return;
+  var ok = cb.checked && !window.isSignatureVide();
+  btn.style.opacity       = ok ? '1' : '0.5';
+  btn.style.pointerEvents = ok ? 'auto' : 'none';
+};
+
+window.validerReglementInterieur = async function() {
+  // S'assurer que le canvas est initialisé
+  if (!_riCanvas) _riInitCanvas();
+  var cb = document.getElementById('cb-reglement');
+  var sigVide = window.isSignatureVide();
+  if (!cb || !cb.checked) {
+    alert('Veuillez cocher la case pour accepter le règlement intérieur.');
+    return;
+  }
+  if (sigVide) {
+    alert('Veuillez apposer votre signature dans le cadre prévu.');
+    document.getElementById('ri-signature-canvas') && document.getElementById('ri-signature-canvas').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
+  var btn = document.getElementById('btn-valider-reglement');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement...'; }
+
+  try {
+    // Récupérer les infos du responsable
+    const reg = state.responsable || {};
+    const code = document.getElementById('dossier-code') ? document.getElementById('dossier-code').textContent.trim() : '';
+    const sigBase64 = window.getSignatureBase64();
+    const dateStr   = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+    // Envoyer au GAS pour sauvegarde sur Drive
+    const url = getAppsScriptUrl();
+    // saveReglement : POST no-cors (Apps Script redirect) — on ne lit pas la réponse
+    // La signature base64 est trop grande pour JSONP GET
+    try {
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action:    'saveReglement',
+          _token:    FRI_SECRET_TOKEN,
+          code:      code,
+          nom:       (reg.nom  || '').toUpperCase(),
+          prenom:    reg.prenom || '',
+          email:     reg.email1 || '',
+          date:      dateStr,
+          signature: sigBase64
+        })
+      });
+      console.log('[FRI] saveReglement envoyé (no-cors)');
+    } catch(fetchErr) {
+      console.warn('saveReglement fetch KO (non bloquant):', fetchErr);
+    }
+    const result = { status: 'ok' }; // continuer dans tous les cas
+
+    // Activer l'étape suivante
+    activerEtapeB3();
+    if (btn) { btn.textContent = '✅ Règlement accepté'; btn.style.background = '#2d6a4f'; }
+
+  } catch(e) {
+    console.error('saveReglement KO:', e);
+    // Continuer quand même
+    activerEtapeB3();
+    if (btn) { btn.textContent = '✅ Règlement accepté'; btn.style.background = '#2d6a4f'; }
+  }
+};
+
+function activerEtapeB3() {
+  var card = document.getElementById('card-step-b3');
+  var num  = document.getElementById('step-b3-num');
+  if (card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; card.style.borderLeftColor = 'var(--green)'; }
+  if (num)  { num.style.background = 'var(--green)'; }
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function formatDateFRI(d) {
+  var dt = d ? new Date(d) : new Date();
+  if (isNaN(dt.getTime())) dt = new Date();
+  return dt.toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric'})
+       + ' à ' + dt.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+}
+
+function getAppsScriptUrl() {
+  return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
+}
 // Token secret partagé avec le GAS — à changer après déploiement
 // Doit être identique à FRI_SECRET_TOKEN dans Code_GAS_FRI.js
 const FRI_SECRET_TOKEN = 'FRI2026_xK9mP3qZ';
@@ -1057,7 +1309,7 @@ const SHEET_ID_PUBLIC  = '1H4KZMOtFNXZdNjXBr0LwhqcCHQa3WAzoIcrb812cdrk'; // ID d
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
 
 // URL HelloAsso de l'association
-const HELLOASSO_URL = 'https://www.helloasso.com/associations/foyer-rural-d-isneauville/paiements/reglement-adhesion-fri';
+const HELLOASSO_URL = 'https://www.helloasso.com/associations/foyer-rural-d-isneauville/adhesions/paiement-de-l-adhesion-au-foyer-rural-isneauville-2';
 
 // URL de retour après paiement HelloAsso (sera remplacée par l'URL de votre site GitHub Pages)
 // Exemple : 'https://frisneauville.github.io/inscriptions-fri'
@@ -1122,8 +1374,8 @@ const ACTIVITIES = {
         acts: [
           { id:"tt-comp-entrain",    name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Lundi",    heure:"19h45/21h00", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain-me", fftt:70, note:"2 séances : Lu 19h45-21h + Me 19h45-21h" },
           { id:"tt-comp-entrain-me", name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Mercredi", heure:"19h45/21h00", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain",    fftt:70, note:"2 séances : Lu 19h45-21h + Me 19h45-21h" },
-          { id:"tt-comp-sans",       name:"Tennis de table\nlibre", lieu:"CM", jour:"Mardi",    heure:"19h30/21h30", isno:120, hc:120, animateur:"C. MAURICE", linkedWith:"tt-comp-sans-me", note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
-          { id:"tt-comp-sans-me",    name:"Tennis de table\nlibre", lieu:"CM", jour:"Mercredi", heure:"21h15/22h45", isno:120, hc:120, animateur:"C. MAURICE", linkedWith:"tt-comp-sans",    note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
+          { id:"tt-comp-sans",       name:"Tennis de table\nlibre", lieu:"CM", jour:"Mardi",    heure:"19h30/21h30", isno:120, hc:120, animateur:"C. MAURICE", fftt:70, linkedWith:"tt-comp-sans-me", note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
+          { id:"tt-comp-sans-me",    name:"Tennis de table\nlibre", lieu:"CM", jour:"Mercredi", heure:"21h15/22h45", isno:120, hc:120, animateur:"C. MAURICE", fftt:70, linkedWith:"tt-comp-sans",    note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
           { id:"ping-bienetre", name:"Ping bien-être / Pong santé ✨", lieu:"CM", jour:"Jeudi", heure:"15h30/17h00", isno:130, hc:130, animateur:"Y. LAROCHELLE / C. MAURICE" },
         ]
       },
@@ -1162,9 +1414,9 @@ const ACTIVITIES = {
           { id:"couture-je2", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"13h00/15h30", isno:340, hc:380, animateur:"A. STEFANI" },
           { id:"couture-je3", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"18h00/20h30", isno:340, hc:380, animateur:"A. STEFANI" },
           { id:"country-init-a", name:"Country Initiation ✨", lieu:"MB", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Non éligible remise 15%" },
-          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Forfait 2-3 séances: 190€/220€" },
+          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€" },
+          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€" },
+          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€" },
           { id:"danse-moderne-av1", name:"Danse Moderne Avancés 1 (≥18 ans, né 2007)", lieu:"CM", jour:"Jeudi", heure:"18h45/20h15", isno:165, hc:195, animateur:"F. CHARROIS" },
           { id:"danse-moderne-av2", name:"Danse Moderne Avancés 2", lieu:"CM", jour:"Jeudi", heure:"20h15/21h45", isno:165, hc:195, animateur:"F. CHARROIS" },
           { id:"danse-classique-inter-a", name:"Danse Classique Inter Ados/Adultes ✨", lieu:"GSF", jour:"Lundi", heure:"18h45/20h00", isno:205, hc:235, animateur:"M. RABAEY" },
@@ -1261,7 +1513,16 @@ function goStep(n) {
   window.scrollTo({top:0, behavior:'smooth'});
   if (n === 1) setTimeout(detectCommune, 300); // détecter autofill navigateur
   if (n === 3) renderHealth();
-  if (n === 4) renderSummary();
+  if (n === 4) {
+    try {
+      renderSummary();
+    } catch(e) {
+      console.error('[FRI] renderSummary ERREUR:', e);
+      document.getElementById('summary-container').innerHTML =
+        '<div style="color:red;padding:16px;background:#fff0f0;border-radius:8px;font-size:13px;">'
+        + '⚠️ Erreur chargement récapitulatif : ' + e.message + '</div>';
+    }
+  }
   if (n === 5) { renderPayment(); recalcSolde(); }
 }
 
@@ -1410,21 +1671,23 @@ function recalcSolde() {
   const total = t.grandTotal || 0;
 
   // Déductions
-  const passSport   = (document.getElementById('pass-sport')?.value   === 'oui') ? 70    : 0;
-  const ancvOui     = (document.getElementById('ancv-select')?.value  === 'oui');
-  const ancvMontant = ancvOui ? (parseFloat(document.getElementById('ancv-montant')?.value) || 0) : 0;
-  const avoirOui    = (document.getElementById('avoir-select')?.value === 'oui');
-  const avoirMontant= avoirOui ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
-
+  const passSport     = (document.getElementById('pass-sport')?.value   === 'oui') ? 70 : 0;
+  const ancvOui       = (document.getElementById('ancv-select')?.value  === 'oui');
+  const ancvMontant   = ancvOui ? (parseFloat(document.getElementById('ancv-montant')?.value) || 0) : 0;
+  const avoirOui      = (document.getElementById('avoir-select')?.value === 'oui');
+  const avoirMontant  = avoirOui ? (parseFloat(document.getElementById('avoir-montant')?.value) || 0) : 0;
+  // Pass'jeunes 76 : 30€ (1ère inscription) ou 20€ (2ème)
   const passJeunesVal = document.getElementById('pass-jeunes')?.value || 'non';
   const passJeunesMontant = passJeunesVal !== 'non' ? (parseFloat(passJeunesVal) || 0) : 0;
-  const atoutMontant = (document.getElementById('atout-normandie')?.value === 'oui') ? 30 : 0;
+  // Atout Normandie : 30€ fixes
+  const atoutMontant  = (document.getElementById('atout-normandie')?.value === 'oui') ? 30 : 0;
+
   const totalDeductions = passSport + ancvMontant + avoirMontant + passJeunesMontant + atoutMontant;
   const solde = Math.max(0, Math.round((total - totalDeductions) * 100) / 100);
 
   // Sauvegarder dans state
   state.solde         = solde;
-  state.deductions    = { passSport, ancvMontant, avoirMontant, total: totalDeductions };
+  state.deductions    = { passSport, ancvMontant, avoirMontant, passJeunesMontant, atoutMontant, total: totalDeductions };
 
   // Afficher le détail
   const detailEl = document.getElementById('solde-detail');
@@ -1432,11 +1695,11 @@ function recalcSolde() {
   if (!detailEl || !totalEl) return;
 
   let detail = `Total activités : <strong>${total.toFixed(2)} €</strong><br>`;
-  if (passSport > 0)         detail += `Pass'sport État : <span style="color:var(--green)">- ${passSport.toFixed(2)} €</span><br>`;
-  if (ancvMontant > 0)       detail += `Coupon ANCV : <span style="color:var(--green)">- ${ancvMontant.toFixed(2)} €</span><br>`;
-  if (avoirMontant > 0)      detail += `Avoir : <span style="color:var(--green)">- ${avoirMontant.toFixed(2)} €</span><br>`;
+  if (passSport > 0)        detail += `Pass'sport État : <span style="color:var(--green)">- ${passSport.toFixed(2)} €</span><br>`;
+  if (ancvMontant > 0)      detail += `Coupon ANCV : <span style="color:var(--green)">- ${ancvMontant.toFixed(2)} €</span><br>`;
+  if (avoirMontant > 0)     detail += `Avoir : <span style="color:var(--green)">- ${avoirMontant.toFixed(2)} €</span><br>`;
   if (passJeunesMontant > 0) detail += `Pass'jeunes 76 (${passJeunesVal === '30' ? '1ère' : '2ème'} inscr.) : <span style="color:var(--green)">- ${passJeunesMontant.toFixed(2)} €</span><br>`;
-  if (atoutMontant > 0)      detail += `Atout Normandie : <span style="color:var(--green)">- ${atoutMontant.toFixed(2)} €</span><br>`;
+  if (atoutMontant > 0)     detail += `Atout Normandie : <span style="color:var(--green)">- ${atoutMontant.toFixed(2)} €</span><br>`;
   if (totalDeductions > 0) detail += `Total déductions : <span style="color:var(--green);font-weight:700">- ${totalDeductions.toFixed(2)} €</span>`;
 
   detailEl.innerHTML = detail;
@@ -1476,16 +1739,16 @@ function validerAidesEtProceder() {
       localStorage.setItem('fri_pending', JSON.stringify(pending));
 
       // Marquer l'étape 2 comme validée (vert)
-      const cardB2 = document.getElementById('card-step-b2');
+      const cardB2 = document.getElementById('card-step-b3');
       if (cardB2) { cardB2.style.borderLeftColor = 'var(--green)'; }
-      const numB2 = document.getElementById('step-b2-num');
+      const numB2 = document.getElementById('step-b3-num');
       if (numB2) { numB2.style.background = 'var(--green)'; numB2.style.color = 'white'; numB2.textContent = '✓'; }
 
       setupPaymentStep(code);
-      // Scroller vers rubrique 3
+      // Scroller vers rubrique 3 (paiement)
       setTimeout(() => {
-        const cardB = document.getElementById('card-step-b');
-        if (cardB) cardB.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const cardPay = document.getElementById('card-step-pay');
+        if (cardPay) cardPay.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
     }
   }
@@ -1497,6 +1760,22 @@ function isValidEmail(email) {
 }
 
 // Met à jour un champ d'un membre dans state en temps réel
+
+function validateDDNLive(el) {
+  if (!el || !el.value) return;
+  const v    = new Date(el.value);
+  const vMin = new Date('1910-01-01');
+  const vMax = new Date('2025-12-31');
+  const ok   = v >= vMin && v <= vMax;
+  el.style.borderColor = ok ? '' : 'red';
+  el.style.background  = ok ? '' : '#fff0f0';
+  if (!ok) {
+    el.title = 'Date invalide — doit être entre le 01/01/1910 et le 31/12/2025';
+  } else {
+    el.title = '';
+  }
+}
+
 function captureMemberField(memberId, field, value) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return;
@@ -1509,12 +1788,17 @@ function captureMemberField(memberId, field, value) {
 // Lit tous les champs membres depuis le DOM avant validation
 function captureTousMembres() {
   state.members.forEach(m => {
-    const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const g = id => {
+      const el = document.getElementById(id);
+      if (!el) console.warn('[FRI] captureTousMembres — élément introuvable:', id);
+      return el ? el.value.trim() : '';
+    };
     const nom    = g(`m-${m.id}-nom`).toUpperCase();
     const prenom = g(`m-${m.id}-prenom`);
     const ddn    = g(`m-${m.id}-ddn`);
     const sexe   = g(`m-${m.id}-sexe`);
     const email  = g(`m-${m.id}-email`);
+    console.log('[FRI] captureTousMembres — id:', m.id, 'nom:', nom, 'prenom:', prenom, 'ddn:', ddn, 'sexe:', sexe);
     if (nom)    m.nom    = nom;
     if (prenom) m.prenom = prenom;
     if (ddn)    m.ddn    = ddn;
@@ -1531,6 +1815,16 @@ function validateStep2() {
   for (let m of state.members) {
     if (!m.nom || !m.prenom || !m.ddn || !m.sexe) {
       showToast(`Veuillez compléter toutes les informations de ${m.prenom || 'ce membre'} (nom, prénom, date de naissance, sexe).`, 'red'); return false;
+    }
+    // Valider la plage de la date de naissance
+    const ddnDate = new Date(m.ddn);
+    const ddnMin  = new Date('1910-01-01');
+    const ddnMax  = new Date('2025-12-31');
+    if (ddnDate < ddnMin || ddnDate > ddnMax) {
+      showToast(`Date de naissance de ${m.prenom} invalide — doit être entre le 01/01/1910 et le 31/12/2025.`, 'red');
+      const ddnEl = document.getElementById('m-'+m.id+'-ddn');
+      if (ddnEl) { ddnEl.style.borderColor = 'red'; ddnEl.scrollIntoView({behavior:'smooth', block:'center'}); }
+      return false;
     }
     if (m.email && !isValidEmail(m.email)) {
       const emailEl = document.getElementById('m-' + m.id + '-email');
@@ -1577,9 +1871,11 @@ function captureResponsable() {
 }
 
 function detectCommune() {
-  const ville = (document.getElementById('rl-ville')?.value || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // supprimer accents
-  const isno = ['isneauville', '76230'].some(v => ville.includes(v));
+  const villeRaw = (document.getElementById('rl-ville')?.value || '').trim();
+  const cpRaw    = (document.getElementById('rl-cp')?.value || '').trim();
+  const ville = villeRaw.toLowerCase().replace(/[àâäéèêëîïôöùûüç]/g, function(c){return{à:'a',â:'a',ä:'a',é:'e',è:'e',ê:'e',ë:'e',î:'i',ï:'i',ô:'o',ö:'o',ù:'u',û:'u',ü:'u',ç:'c'}[c]||c;});
+  const cp    = cpRaw.trim();
+  const isno = ['isneauville', '76230'].some(v => ville.includes(v)) || cp === '76230';
   const badge = document.getElementById('commune-badge');
   const input = document.getElementById('rl-commune');
   if (badge && input) {
@@ -1643,7 +1939,7 @@ function getActById(id) {
 function placeBadgeHtml(actId) {
   const p = state.places[actId];
   if (!p) return '<span class="places-badge places-ok" style="opacity:0.4">⏳ chargement</span>';
-  if (p.available <= 0)  return '<span class="places-badge places-full">🔴 Complet</span>';
+  if (p.available <= 0)  return '<span class="places-badge places-waiting">⏳ Complet — liste d\'attente</span>';
   if (p.available <= 3)  return `<span class="places-badge places-few">🟠 ${p.available} place${p.available > 1 ? 's' : ''}</span>`;
   if (p.available <= 7)  return `<span class="places-badge places-warn">🟡 ${p.available} places</span>`;
   return `<span class="places-badge places-ok">🟢 ${p.available} places</span>`;
@@ -1651,13 +1947,6 @@ function placeBadgeHtml(actId) {
 
 // Charger les places depuis l'onglet Places du Sheet via gviz (même méthode que les dossiers)
 // Structure de l'onglet Places : col A=ID Activite, col B=Nom, col C=Capacite, col D=Inscrits, col E=Places restantes
-function placesIdToActId(placesId) {
-  for (const [k, v] of Object.entries(SITE_TO_PLACESID || {})) {
-    if (v === placesId) return k;
-  }
-  return placesId;
-}
-
 async function loadPlaces(force = false) {
   const now = Date.now();
   if (!force && state.placesLoaded && (now - state.placesLoadedAt) < PLACES_CACHE_TTL) return;
@@ -1758,7 +2047,7 @@ function showPlacesFullToast(actId, p) {
     toast.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#842029;color:white;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:opacity 0.4s';
     document.body.appendChild(toast);
   }
-  toast.textContent = `🔴 "${name}" est complet (0 place disponible)`;
+  toast.textContent = `⏳ "${name}" est complet — cliquez pour rejoindre la liste d'attente`;
   toast.style.opacity = '1';
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
@@ -1814,9 +2103,9 @@ function inscrireListeAttente(memberId, primaryId, primaryLink) {
   document.getElementById('modal-liste-attente')?.remove();
 
   // Initialiser le set de liste d'attente
-  if (!m.waitingList) m.waitingList = new Set();
-  m.waitingList.add(primaryId);
-  if (primaryLink) m.waitingList.add(primaryLink);
+  if (!m.waitingList) m.waitingList = [];
+  if (!m.waitingList.includes(primaryId)) m.waitingList.push(primaryId);
+  if (primaryLink && !m.waitingList.includes(primaryLink)) m.waitingList.push(primaryLink);
 
   // Ajouter aux activités sélectionnées (comme une inscription normale)
   if (!m.activities.includes(primaryId))    m.activities.push(primaryId);
@@ -2059,7 +2348,7 @@ function slotHtml(act, memberId, color, isno) {
 
   if (isFull) {
     slotBg = '#f8d7da'; slotBorder = '#f5c6cb';
-    placesLabel = '<div class="sem-slot-places" style="color:#842029">🔴 Complet</div>';
+    placesLabel = '<div class="sem-slot-places" style="color:#e65100;font-weight:700;">⏳ Complet — liste d\'attente</div>';
   } else if (placeInfo && placeInfo.available <= 3) {
     slotBg = '#ffe5d0'; slotBorder = '#ffb380';
     placesLabel = `<div class="sem-slot-places" style="color:#c0560a">🟠 ${placeInfo.available} place${placeInfo.available>1?'s':''}</div>`;
@@ -2525,20 +2814,131 @@ function memberHtml(m) {
           </label>
         </div>
         <div id="fftt-price-info-${m.id}" style="font-size:13px;color:#e65100;font-weight:700;margin-bottom:10px;"></div>
-        <div style="padding:12px 14px;background:white;border:1px solid #FFCCBC;border-radius:8px;font-size:13px;color:#4E342E;line-height:1.7;">
-          📋 <strong>Comment demander votre licence ?</strong><br>
-          1. Rendez-vous sur le site FFTT du club :<br>
-          &nbsp;&nbsp;&nbsp;<a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:700;text-decoration:none;">🔗 https://carte.fftt.com/club/09760374</a><br>
-          2. Remplissez le formulaire de demande de licence en ligne.<br>
-          3. Réglez le montant de la licence selon votre catégorie lors de votre passage en permanence.
-        </div>
-        <div style="margin-top:12px;padding:10px 14px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:8px;">
-          <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:8px;">🏓 Questionnaire de Santé FFTT obligatoire</div>
-          <div style="font-size:12px;color:#555;margin-bottom:10px;">Vous devez remplir et signer le QS Santé FFTT (N°25-10-1 pour majeurs / N°25-10-2 pour mineurs) et l'apporter lors de votre passage en permanence.</div>
-          <button onclick="genererQSFFTT(${m.id})"
-            style="background:#e65100;color:white;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
-            📄 Remplir &amp; télécharger mon QS Santé FFTT
+        <!-- Formulaire complet bordereau FFTT -->
+        <div style="margin-top:12px;padding:14px 16px;background:#fff8f3;border:1.5px solid #e65100;border-radius:10px;">
+          <div style="font-size:14px;font-weight:700;color:#bf360c;margin-bottom:6px;">📋 Bordereau de demande de licence FFTT</div>
+          <p style="font-size:12px;color:#5D4037;line-height:1.6;margin:0 0 10px;">Les informations connues sont pré-remplies. Complétez les champs en rouge puis signez.</p>
+
+          <!-- Données pré-remplies -->
+          <div style="font-size:11.5px;font-weight:700;color:#1a2e22;background:#d8f3dc;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✅ Données du dossier (pré-remplies)</div>
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:8px;padding:10px;font-size:12px;color:#333;margin-bottom:10px;line-height:1.9;">
+            <b>Nom :</b> <span id="fftt-nom-${m.id}">—</span> &nbsp; <b>Prénom :</b> <span id="fftt-prenom-${m.id}">—</span><br>
+            <b>Date de naissance :</b> <span id="fftt-ddn-${m.id}">—</span> &nbsp; <b>Sexe :</b> <span id="fftt-sexe-${m.id}">—</span><br>
+            <b>Adresse :</b> <span id="fftt-adresse-${m.id}">—</span><br>
+            <b>Email :</b> <span id="fftt-email-${m.id}">—</span> &nbsp; <b>Tél. :</b> <span id="fftt-tel-${m.id}">—</span>
+          </div>
+
+          <!-- Données complémentaires -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✏️ À compléter</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Nom de naissance *</label>
+              <input type="text" id="fftt-nom-naiss-${m.id}" placeholder="Nom de naissance" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Nationalité *</label>
+              <input type="text" id="fftt-nationalite-${m.id}" placeholder="Ex: Française" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Pays de naissance **</label>
+              <input type="text" id="fftt-pays-naiss-${m.id}" placeholder="Ex: France" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">Ville de naissance **</label>
+              <input type="text" id="fftt-ville-naiss-${m.id}" placeholder="Ex: Rouen" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">CP de naissance **</label>
+              <input type="text" id="fftt-cp-naiss-${m.id}" placeholder="Ex: 76000" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;color:#555;display:block;margin-bottom:2px;">N° licence (renouvellement)</label>
+              <input type="text" id="fftt-num-lic-${m.id}" placeholder="Vide si 1ère demande" oninput="autosave()"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;"></div>
+          </div>
+
+          <!-- Catégorie d'âge -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">👤 Catégorie d'âge *</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="veteran" style="accent-color:#e65100;"> Vétéran (≤1986)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="senior" style="accent-color:#e65100;"> Sénior (87–07)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="junior" style="accent-color:#e65100;"> Junior (08–11)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="cadet" style="accent-color:#e65100;"> Cadet (12–13)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="minime" style="accent-color:#e65100;"> Minime (14–15)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="benjamin" style="accent-color:#e65100;"> Benjamin (16–17)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="poussin" style="accent-color:#e65100;"> Poussin (≥2018)</label>
+          </div>
+
+          <!-- Certification médicale -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🏥 Certification médicale — cocher UNE case *</div>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="certif" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je joins un <b>certificat médical de pratique sportive</b> de moins d'un an (formulaire 26-9)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="attestMaj" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je joins l'<b>attestation NON</b> à toutes les questions — <b>majeurs &lt; 40 ans</b> (formulaire 26-10-1)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="attestMin" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je joins l'<b>attestation NON</b> — <b>mineurs</b> (formulaire 26-10-2)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-med-${m.id}" value="sansCertif" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je ne joins <b>pas de certificat médical</b> — licence sans pratique sportive
+            </label>
+          </div>
+
+          <!-- Assurances -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🛡 Assurances — cocher UNE case *</div>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-ass-${m.id}" value="souscrit" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je <b>souscris</b> à la garantie dommage corporel de base (inclus dans le tarif de la licence)
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+              <input type="radio" name="fftt-ass-${m.id}" value="renonce" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              Je <b>ne souhaite pas souscrire</b> — je renonce à toute indemnité dommage corporel
+            </label>
+          </div>
+
+          <!-- RGPD / Opt-in -->
+          <div style="font-size:11.5px;font-weight:700;color:#1565c0;background:#e3f2fd;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🔒 Protection des données (cocher vos choix)</div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:white;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-optin-assoc-${m.id}" style="accent-color:#1565c0;">
+              J'accepte l'utilisation de mes coordonnées par la FFTT à des <b>fins associatives</b>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:white;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-optin-partenaires-${m.id}" style="accent-color:#1565c0;">
+              J'accepte l'utilisation de mes coordonnées à des <b>fins commerciales</b>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-refus-honor-${m.id}" style="accent-color:#e65100;">
+              Je <b>refuse le contrôle d'honorabilité</b> (fonctions dirigeantes, encadrement ou arbitrage)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;cursor:pointer;font-size:11.5px;">
+              <input type="checkbox" id="fftt-refus-photo-${m.id}" style="accent-color:#e65100;">
+              Je <b>refuse la prise de vues</b> et son utilisation dans les publications fédérales
+            </label>
+          </div>
+
+          <!-- Signature -->
+          <div style="font-size:11.5px;font-weight:700;color:#1a2e22;background:#d8f3dc;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✍️ Signature du licencié (ou représentant légal pour les mineurs)</div>
+          <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px;margin-bottom:10px;">
+            <canvas id="fftt-sig-${m.id}"
+              style="width:100%;max-width:480px;height:90px;border:2px solid #2d6a4f;border-radius:6px;background:white;display:block;touch-action:none;cursor:crosshair;"
+              width="480" height="90"></canvas>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+              <button onclick="effacerSignatureFFTT(${m.id})"
+                style="background:#e0e0e0;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">🗑 Effacer</button>
+              <span style="font-size:11px;color:#666;">Signez dans le cadre vert</span>
+            </div>
+          </div>
+
+          <!-- Bouton -->
+          <button onclick="validerBordereauFFTT(${m.id})"
+            id="btn-bordereau-fftt-${m.id}"
+            style="background:#e65100;color:white;border:none;border-radius:8px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;">
+            📄 Générer et envoyer le bordereau de licence FFTT
           </button>
+          <div id="fftt-bordereau-status-${m.id}" style="display:none;margin-top:8px;padding:8px 12px;border-radius:6px;font-size:12px;"></div>
+          <p style="font-size:11px;color:#888;margin-top:8px;line-height:1.6;">* Obligatoire pour tous les licenciés &nbsp; ** Obligatoire pour dirigeants/éducateurs<br>Le bordereau sera envoyé par email à votre adresse et au Foyer Rural.</p>
         </div>
       </div>
     </div>
@@ -2551,6 +2951,150 @@ function memberHtml(m) {
 // ============================================================
 
 // Vérifie si un membre a au moins une activité TT avec option fftt
+
+// ── Signature canvas FFTT ──────────────────────────────────────
+var _ffttCanvas = {}, _ffttCtx = {}, _ffttDrawing = {};
+
+function initSignatureFFTT(memId) {
+  const cv = document.getElementById('fftt-sig-' + memId);
+  if (!cv || _ffttCanvas[memId]) return;
+  _ffttCanvas[memId] = cv;
+  _ffttCtx[memId]    = cv.getContext('2d', { willReadFrequently: true });
+  _ffttDrawing[memId] = false;
+
+  const getPos = (e) => {
+    const r = cv.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * cv.width / r.width,
+             y: (src.clientY - r.top)  * cv.height / r.height };
+  };
+  const start = (e) => { e.preventDefault(); _ffttDrawing[memId]=true;
+    _ffttCtx[memId].beginPath(); const p=getPos(e);
+    _ffttCtx[memId].moveTo(p.x,p.y); };
+  const move  = (e) => { e.preventDefault(); if(!_ffttDrawing[memId])return;
+    const p=getPos(e); _ffttCtx[memId].lineWidth=2.2; _ffttCtx[memId].strokeStyle='#1a2e22';
+    _ffttCtx[memId].lineCap='round'; _ffttCtx[memId].lineTo(p.x,p.y);
+    _ffttCtx[memId].stroke(); };
+  const stop  = () => { _ffttDrawing[memId]=false; };
+
+  cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move);
+  cv.addEventListener('mouseup', stop);   cv.addEventListener('touchstart', start, { passive:false });
+  cv.addEventListener('touchmove', move, { passive:false }); cv.addEventListener('touchend', stop);
+}
+
+function effacerSignatureFFTT(memId) {
+  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
+  if (!cv) return;
+  const ctx = _ffttCtx[memId] || cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+}
+
+function isSignatureFFTTVide(memId) {
+  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
+  if (!cv) return true;
+  const ctx = cv.getContext('2d');
+  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return false;
+  return true;
+}
+
+function getSignatureFFTTBase64(memId) {
+  const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
+  return cv ? cv.toDataURL('image/png') : '';
+}
+
+// ── Pré-remplissage des champs affichés ──────────────────────
+function preremplirBordereauFFTT(memId) {
+  const m = state.members.find(m => m.id === memId);
+  const r = state.responsable;
+  if (!m) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+  set('fftt-nom-' + memId,     m.nom     || r.nom    || '');
+  set('fftt-prenom-' + memId,  m.prenom  || r.prenom || '');
+  set('fftt-ddn-' + memId,     m.ddn ? new Date(m.ddn).toLocaleDateString('fr-FR') : '');
+  set('fftt-sexe-' + memId,    m.sexe    || '');
+  set('fftt-adresse-' + memId, (r.adresse||'') + (r.cp?' '+r.cp:'') + (r.ville?' '+r.ville:''));
+  set('fftt-email-' + memId,   r.email   || '');
+  set('fftt-tel-' + memId,     r.tel     || '');
+  // Initialiser le canvas
+  setTimeout(() => initSignatureFFTT(memId), 100);
+}
+
+// ── Envoi bordereau FFTT ──────────────────────────────────────
+async function validerBordereauFFTT(memId) {
+  // Validation des champs obligatoires
+  const g = id => document.getElementById(id);
+  const nomNaiss  = g('fftt-nom-naiss-'   + memId)?.value.trim() || '';
+  const national  = g('fftt-nationalite-' + memId)?.value.trim() || '';
+  const paysNaiss = g('fftt-pays-naiss-'  + memId)?.value.trim() || '';
+  const age    = document.querySelector(`input[name="fftt-age-${memId}"]:checked`)?.value || '';
+  const med    = document.querySelector(`input[name="fftt-med-${memId}"]:checked`)?.value || '';
+  const ass    = document.querySelector(`input[name="fftt-ass-${memId}"]:checked`)?.value || '';
+
+  if (!nomNaiss)  { showToast('Nom de naissance obligatoire.', 'red'); return; }
+  if (!national)  { showToast('Nationalité obligatoire.', 'red'); return; }
+  if (!paysNaiss) { showToast('Pays de naissance obligatoire.', 'red'); return; }
+  if (!age)       { showToast('Veuillez selectionner votre categorie d\'age.', 'red'); return; }
+  if (!med)       { showToast('Veuillez cocher une option de certification médicale.', 'red'); return; }
+  if (!ass)       { showToast('Veuillez cocher une option d\'assurance.', 'red'); return; }
+  if (isSignatureFFTTVide(memId)) { showToast('Veuillez signer le bordereau.', 'red'); return; }
+
+  const btn = document.getElementById('btn-bordereau-fftt-' + memId);
+  const status = document.getElementById('fftt-bordereau-status-' + memId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours...'; }
+
+  // Collecter tous les champs
+  const extra = {
+    nomNaissance:   nomNaiss,
+    nationalite:    national,
+    paysNaissance:  paysNaiss,
+    villeNaissance: g('fftt-ville-naiss-' + memId)?.value.trim() || '',
+    cpNaissance:    g('fftt-cp-naiss-'    + memId)?.value.trim() || '',
+    numLicence:     g('fftt-num-lic-'     + memId)?.value.trim() || '',
+    categAge:       age,
+    certifMed:      med,
+    assurance:      ass,
+    optinAssoc:     g('fftt-optin-assoc-'       + memId)?.checked ? '1' : '0',
+    optinPart:      g('fftt-optin-partenaires-' + memId)?.checked ? '1' : '0',
+    refusHonor:     g('fftt-refus-honor-'       + memId)?.checked ? '1' : '0',
+    refusPhoto:     g('fftt-refus-photo-'       + memId)?.checked ? '1' : '0',
+  };
+
+  const sig  = getSignatureFFTTBase64(memId);
+  const rows = buildRows();
+  const code = state.codeDossier || '';
+  const url  = getAppsScriptUrl();
+  if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
+
+  try {
+    const result = await callAppsScriptFetch(url, {
+      action:    'saveBordereauFFTT',
+      _token:    FRI_SECRET_TOKEN,
+      code:      code,
+      signature: sig,
+      extra:     JSON.stringify(extra),
+      rows:      JSON.stringify(rows.filter(r => Number(r.fftt_price||0) > 0).slice(0,1))
+    });
+    const data = result && result.data ? result.data : (result || {});
+    if (data && data.status === 'ok') {
+      if (status) {
+        status.style.display = '';
+        status.style.background = '#e8f5e9';
+        status.style.border = '1px solid #a5d6a7';
+        status.style.color = '#1b5e20';
+        status.textContent = '✅ Bordereau généré et envoyé par email ! Complétez les champs manquants et apportez-le aux permanences.';
+      }
+      if (btn) { btn.textContent = '✅ Bordereau envoyé'; }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '📄 Générer et envoyer le bordereau'; }
+      showToast('⚠️ Erreur : ' + (data.message || 'inconnue'), 'red');
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Générer et envoyer le bordereau'; }
+    showToast('⚠️ Erreur : ' + e.message, 'red');
+  }
+}
+
 function memberHasTTWithFftt(memberId) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return false;
@@ -2583,6 +3127,7 @@ function toggleFfttCategory(memberId) {
   const cb = document.getElementById(`fftt-want-${memberId}`);
   const detail = document.getElementById(`fftt-detail-${memberId}`);
   if (!cb || !detail) return;
+  if (cb.checked) setTimeout(() => preremplirBordereauFFTT(memberId), 200);;
   detail.style.display = cb.checked ? 'block' : 'none';
   const m = state.members.find(m => m.id === memberId);
   if (m) {
@@ -2614,7 +3159,7 @@ function genererQSFFTT(memberId) {
   const age = getAge(m.ddn);
   const isMineur = age < 18;
   const r = state.responsable;
-  const today = new Date().toLocaleDateString('fr-FR');
+  const today = formatDateFRI();
 
   // Lire nom/prénom depuis le DOM
   const elNom    = document.getElementById('m-' + memberId + '-nom');
@@ -2721,7 +3266,7 @@ async function validerEtGenererQSFFTT(memberId) {
   const age = getAge(m.ddn);
   const isMineur = age < 18;
   const r = state.responsable;
-  const today = new Date().toLocaleDateString('fr-FR');
+  const today = formatDateFRI();
 
   // Lire les réponses du modal
   const modalId = 'modal-qs-fftt-' + memberId;
@@ -2760,7 +3305,7 @@ async function _genererPDFQSFFTT(memberId, reponses, hasOui, signatureDataUrl) {
     const age = getAge(m.ddn);
     const isMineur = age < 18;
     const r = state.responsable;
-    const today = new Date().toLocaleDateString('fr-FR');
+    const today = formatDateFRI();
     const numRef = isMineur ? 'N° 25-10-2' : 'N° 25-10-1';
 
     // Charger jsPDF
@@ -3063,7 +3608,7 @@ function updateMemberTotal(memberId) {
       if (counted.has(pairKey)) return;
       counted.add(pairKey);
     }
-    if (waiting.has(actId)) { waitingCount++; return; } // liste d'attente : pas compté
+    if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) { waitingCount++; return; } // liste d'attente : pas compté
     let price = isno ? act.isno : act.hc;
     // Réduction femmes TT : -30€ (Isneauville ET hors commune)
     if (isTTActivity(actId) && m.sexe === 'F') { price = Math.max(0, price - 30); ttReduction += 30; }
@@ -3235,7 +3780,7 @@ async function chargerDossierExistant() {
   }
 
   // Construire la liste des activités existantes
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
   activitesExistantes = [];
   let totalExistant = 0;
   let countEligibles = 0;
@@ -3257,7 +3802,10 @@ async function chargerDossierExistant() {
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
         activitesExistantes.push({ actId, tarif: price, nom: act.name.replace(/\n/g,' — ') });
         totalExistant += price;
-        if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) countEligibles++;
+        // Ne compter dans les éligibles que si NON en liste d'attente
+        const wl = m.waitingList || [];
+        const isWaitingExist = Array.isArray(wl) ? wl.includes(actId) : (wl.has ? wl.has(actId) : false);
+        if (!isWaitingExist && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) countEligibles++;
       });
     });
   } else {
@@ -3270,6 +3818,7 @@ async function chargerDossierExistant() {
       const price = Number(d.tarif) || 0;
       activitesExistantes.push({ actId: id, tarif: price, nom: d.activite });
       totalExistant += price;
+      // Ne compter que si statut != liste attente
       const statutExist = String(d.statut_inscription || '').toLowerCase();
       if (!statutExist.includes('attente') && !NON_DISCOUNTABLE.includes(id) && !id.startsWith('tt-')) countEligibles++;
     });
@@ -3303,6 +3852,21 @@ function isTTActivity(actId) {
 }
 
 // Mapping IDs site → IDs onglet Places (identique à getPlacesId dans Code.gs)
+function placesIdToActId(placesId) {
+  // Inverse de siteToPlacesId — trouve l'actId frontend depuis un placesId Sheet
+  if (!placesId) return null;
+  // Parcourir toutes les activités
+  for (const section of Object.values(ACTIVITIES || {})) {
+    for (const cat of Object.values(section.cats || {})) {
+      for (const act of (cat.acts || [])) {
+        if (!act) continue;
+        if (siteToPlacesId(act.id) === placesId || act.id === placesId) return act.id;
+      }
+    }
+  }
+  return null;
+}
+
 function siteToPlacesId(actId) {
   const m = {
     'body-sculpt-lu':'FITL1730','zumba-lu':'FITL2030','body-sculpt-ma':'FITM10',
@@ -3354,6 +3918,7 @@ function siteToPlacesId(actId) {
 // ============================================================
 // CALC TOTALS
 // ============================================================
+
 function calcTotals() {
   const isno = state.responsable.commune === 'isno';
   let totalBeforeDiscount = 0;
@@ -3361,7 +3926,7 @@ function calcTotals() {
   let totalActivities = 0;
   let totalFNSMR = state.members.length * 15;
 
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
   const allMemberActivities = state.members.flatMap(m => m.activities);
   totalActivities = new Set(allMemberActivities).size;
 
@@ -3377,13 +3942,15 @@ function calcTotals() {
         counted.add(pairKey);
       }
       // Activité en liste d'attente : ne pas comptabiliser dans le total à payer
-      if (waiting.has(actId)) return;
+      if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return;
       let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      const cF = calcCountryForfait(m, isno);
+      const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cF.forfait && CFIDS.includes(actId)) price = (cF.ids[0] === actId) ? cF.prix : 0;
       totalBeforeDiscount += price;
-      // Liste d'attente : non éligible à la remise 15%
-      if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) discountableTotal += price;
+      const isCountryForfaitActive = cF.forfait && CFIDS.includes(actId);
+      if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) discountableTotal += price;
     });
   });
 
@@ -3392,14 +3959,14 @@ function calcTotals() {
     const counted = new Set();
     const waiting = m.waitingList || new Set();
     m.activities.forEach(actId => {
-      if (waiting.has(actId)) return; // liste d'attente exclue
+      if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return; // liste d'attente exclue
       const act = getActById(actId);
       if (act && act.linkedWith) {
         const pk = [actId, act.linkedWith].sort().join('|');
         if (counted.has(pk)) return;
         counted.add(pk);
       }
-      if (!NON_DISCOUNTABLE.includes(actId) && !actId.startsWith('tt-')) acc++;
+      if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) acc++;
     });
     return acc;
   }, 0);
@@ -3421,10 +3988,177 @@ function calcTotals() {
 // ============================================================
 // SUMMARY
 // ============================================================
+function buildRows(reg) {
+  const isno = reg.responsable.commune === 'isno';
+  const rows = [];
+  const passAide = [
+    reg.responsable.passJeunes === 'oui' ? "Pass jeunes 76" : '',
+    reg.responsable.atoutNormandie === 'oui' ? 'Atout Normandie' : '',
+    reg.responsable.passSport === 'oui' ? "Pass sport Etat" : ''
+  ].filter(Boolean).join(', ');
+
+  reg.members.forEach(m => {
+    const counted = new Set();
+    m.activities.forEach(actId => {
+      const act = getActById(actId);
+      if (!act) return;
+
+      // For linked pairs, emit only ONE row with combined schedule info
+      if (act.linkedWith) {
+        const pairKey = [actId, act.linkedWith].sort().join('|');
+        if (counted.has(pairKey)) return; // skip 2nd slot
+        counted.add(pairKey);
+
+        const linked = getActById(act.linkedWith);
+        // Combine jour and heure from both slots
+        const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
+        const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
+        // Clean the name (remove \n line breaks for sheet)
+        const nomClean = act.name.replace(/\n/g, ' — ');
+        let price = isno ? act.isno : act.hc;
+        if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+        const _wl = m.waitingList;
+        const _isWaiting = (_wl||[]).includes(actId);
+        if (_isWaiting) price = 0;
+        const cFl = calcCountryForfait(m, isno);
+        const CFIDSl = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+        if (cFl.forfait && CFIDSl.includes(actId)) price = (cFl.ids[0] === actId) ? cFl.prix : 0;
+
+        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
+        const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
+        const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
+        const estElig = !_isWaiting && aRemise15 && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+        const tarifBrut = price;
+        if (estElig) price = Math.round(price * 0.85 * 100) / 100;
+
+        rows.push({
+          date: formatDateFRI(reg.date), id: String(reg.id), code_dossier: reg.code || '',
+          responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
+          adresse: reg.responsable.adresse, cp: reg.responsable.cp,
+          ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
+          tel1: reg.responsable.tel1, tel2: '',
+          email1: reg.responsable.email1, email2: (m.email || reg.responsable.email2 || ''),
+          membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
+          ddn: m.ddn, sexe: m.sexe,
+          activite: nomClean, jour: joursCombi, heure: heuresCombi,
+          lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
+          tarif: price,
+          tarif_brut: tarifBrut,
+          statut_inscription: _isWaiting ? 'Liste attente' : '',
+          note_tarif: (cFl.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
+            ? (cFl.ids[0] === actId ? 'Forfait country ' + cFl.ids.length + ' séances' : 'Inclus forfait') : '',
+          fnsmr: (function(){
+            // FNSMR 0 si activité en attente ET le membre a d'autres activités payantes
+            if (!_isWaiting) return 15;
+            const autresPayantes = (m.activities||[]).filter(function(aid){
+              return aid !== actId && !(_wl||[]).includes(aid);
+            });
+            return autresPayantes.length > 0 ? 0 : 15; // 15 si TOUTES en attente
+          })(),
+          remise: (!_isWaiting && estElig) ? 15 : 0,
+          total_famille: reg.totals ? reg.totals.grandTotal : 0,
+          mode_paiement: reg.responsable.modePaiement || 'helloasso',
+          avoir_montant: reg.responsable.avoirMontant || 0,
+          pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+          pass_jeunes_montant: reg.responsable.passJeunesMontant || 0,
+          pass_jeunes_type:    reg.responsable.passJeunesType || 'non',
+          atout_montant:       reg.responsable.atoutNormandie === 'oui' ? 30 : 0,
+          atout_code:          reg.responsable.atoutCode || '',
+          ancv_montant: reg.responsable.ancvMontant || 0,
+          fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
+          qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
+                  : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
+          pass_aide: (function(){
+            const parts = [];
+            if (passAide) parts.push(passAide);
+            if (reg.responsable.passJeunesMontant > 0)
+              parts.push('PassJeunes:' + (reg.responsable.passJeunesMontant||0).toFixed(2)
+                + ':' + (reg.responsable.passJeunesType||'1ere'));
+            if (reg.responsable.atoutNormandie === 'oui')
+              parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
+            return parts.join('|');
+          })(),
+          statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
+        });
+        return;
+      }
+
+      // Non-linked activity — standard row
+      const nomClean = act.name.replace(/\n/g, ' — ');
+      let price = isno ? act.isno : act.hc;
+      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      const _wl2 = m.waitingList;
+      const _isWaiting2 = (_wl2||[]).includes(actId);
+      if (_isWaiting2) price = 0;
+      const cFl2 = calcCountryForfait(m, isno);
+      const CFIDSl2 = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cFl2.forfait && CFIDSl2.includes(actId)) price = (cFl2.ids[0] === actId) ? cFl2.prix : 0;
+      const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
+      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
+      const estElig2 = !_isWaiting2 && aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+      const tarifBrut2 = price; // après forfait country
+      if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
+      rows.push({
+        date: formatDateFRI(reg.date), id: String(reg.id), code_dossier: reg.code || '',
+        responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
+        adresse: reg.responsable.adresse, cp: reg.responsable.cp,
+        ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
+        tel1: reg.responsable.tel1, tel2: '',
+        email1: reg.responsable.email1, email2: '',
+        membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
+        ddn: m.ddn, sexe: m.sexe,
+        activite: nomClean, jour: act.jour, heure: act.heure,
+        lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
+        tarif: price,
+        tarif_brut: tarifBrut2,
+        statut_inscription: _isWaiting2 ? 'Liste attente' : '',
+        note_tarif: (cFl2.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
+          ? (cFl2.ids[0] === actId ? 'Forfait country ' + cFl2.ids.length + ' séances' : 'Inclus forfait') : '',
+        fnsmr: (function(){
+            if (!_isWaiting2) return 15;
+            const autresPayantes2 = (m.activities||[]).filter(function(aid){
+              return aid !== actId && !(_wl2||[]).includes(aid);
+            });
+            return autresPayantes2.length > 0 ? 0 : 15;
+          })(),
+          remise: (!_isWaiting2 && estElig2) ? 15 : 0,
+        total_famille: reg.totals ? reg.totals.grandTotal : 0,
+        mode_paiement: reg.responsable.modePaiement || 'helloasso',
+        avoir_montant: reg.responsable.avoirMontant || 0,
+        pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
+        ancv_montant: reg.responsable.ancvMontant || 0,
+        fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
+        qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
+                : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
+        pass_aide: (function(){
+            const parts = [];
+            if (passAide) parts.push(passAide);
+            if (reg.responsable.passJeunesMontant > 0)
+              parts.push('PassJeunes:' + (reg.responsable.passJeunesMontant||0).toFixed(2)
+                + ':' + (reg.responsable.passJeunesType||'1ere'));
+            if (reg.responsable.atoutNormandie === 'oui')
+              parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
+            return parts.join('|');
+          })(),
+        statut_inscription: (m.waitingList && (m.waitingList||[]).includes(actId)) ? 'Liste attente' : ''
+      });
+    });
+  });
+  return rows;
+}
+
+// ============================================================
+// ENVOI VERS APPS SCRIPT — fetch avec CORS activé côté Apps Script
+// Apps Script renvoie Access-Control-Allow-Origin: * dans ses headers
+// ce qui permet un fetch standard depuis n'importe quel domaine.
+// ============================================================
+
+
 function renderSummary() {
   const isno = state.responsable.commune === 'isno';
   const t = calcTotals();
   const r = state.responsable;
+  console.log('[FRI] renderSummary — membres:', state.members.length, state.members.map(m => ({id:m.id, nom:m.nom, prenom:m.prenom, acts:m.activities})));
 
   let membersHtml = state.members.map(m => {
     const counted = new Set();
@@ -3451,7 +4185,15 @@ function renderSummary() {
         </tr>`;
       }
       const nomClean = act.name.replace(/\n/g, ' — ');
-      const price = isno ? act.isno : act.hc;
+      let price = isno ? act.isno : act.hc;
+      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
+      const cFrs = calcCountryForfait(m, isno);
+      const CFIDSrs = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      let prixLabel = price + '€';
+      if (cFrs.forfait && CFIDSrs.includes(actId)) {
+        price = (cFrs.ids[0] === actId) ? cFrs.prix : 0;
+        prixLabel = (cFrs.ids[0] === actId) ? price + '€ <small style="color:#1b5e20">(forfait)</small>' : '<span style="color:#999">inclus</span>';
+      }
       return `<tr>
         <td>${m.prenom} ${m.nom}</td>
         <td>${nomClean}</td>
@@ -3549,7 +4291,7 @@ function saveDossier() {
   // Réutiliser le code généré lors du QS Santé si disponible
   const code = state.codeDossierPreview || generateDossierCode();
   const reg = {
-    date: new Date().toLocaleDateString('fr-FR'),
+    date: formatDateFRI(),
     id: Date.now(),
     code: code,
     status: 'pending_payment',
@@ -3567,26 +4309,27 @@ function saveDossier() {
   document.getElementById('dossier-code').textContent = code;
   document.getElementById('dossier-box').style.display = 'block';
 
-  // Activer l'étape 2 (Aides & Pass) et scroller dessus
-  const cardB2 = document.getElementById('card-step-b2');
-  if (cardB2) {
-    cardB2.style.opacity = '1';
-    cardB2.style.pointerEvents = '';
-    cardB2.style.borderLeftColor = 'var(--gold)';
-    const numB2 = document.getElementById('step-b2-num');
-    if (numB2) { numB2.style.background = 'var(--gold)'; numB2.style.color = 'var(--dark)'; }
+  // Activer l'étape 2 (Règlement intérieur) et scroller dessus
+  const cardBRI2 = document.getElementById('card-step-b');
+  if (cardBRI2) {
+    cardBRI2.style.opacity = '1';
+    cardBRI2.style.pointerEvents = 'auto';
+    cardBRI2.style.borderLeftColor = 'var(--green)';
+    cardBRI2.removeAttribute('disabled');
+    const numBRI2 = document.getElementById('step-b-num');
+    if (numBRI2) { numBRI2.style.background = 'var(--green)'; numBRI2.style.color = 'white'; }
+    // Initialiser le canvas signature règlement intérieur
+    setTimeout(() => {
+      cardBRI2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Forcer l'init du canvas RI maintenant qu'il est visible
+      if (window._riCanvasInit) window._riCanvasInit();
+    }, 300);
   }
 
-  // Désactiver card-step-b et card-step-c jusqu'à validation des aides
-  const cardB = document.getElementById('card-step-b');
-  if (cardB) { cardB.style.opacity = '0.4'; cardB.style.pointerEvents = 'none'; cardB.style.borderLeftColor = '#ccc'; }
-  const cardC = document.getElementById('card-step-c');
-  if (cardC) { cardC.style.display = 'none'; }
-
-  // Scroller vers l'étape 2
-  setTimeout(() => {
-    if (cardB2) cardB2.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 200);
+  // card-step-b3 (Aides & règlement) reste désactivé jusqu'à validation du règlement
+  // card-step-c reste caché
+  const cardPay = document.getElementById('card-step-pay');
+  if (cardPay) { cardPay.style.opacity = '0.5'; cardPay.style.pointerEvents = 'none'; }
 }
 
 function buildChequeRow(n, label, montant, readonly, suffix) {
@@ -3732,7 +4475,7 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   const r = state.responsable;
   const age = getAge(m.ddn);
   const isMineur = age < 18;
-  const today = new Date().toLocaleDateString('fr-FR');
+  const today = formatDateFRI();
 
   // Charger jsPDF dynamiquement si pas encore disponible
   async function getJsPDF() {
@@ -4251,6 +4994,188 @@ function openHelloAsso() {
   }
 }
 
+
+async function lancerCheckoutHA(code, total, echelonne) {
+  const btn = document.getElementById('btn-ha-checkout');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Préparation du paiement...'; }
+  const btn3x = document.getElementById('btn-ha-checkout-3x');
+  if (btn3x) btn3x.disabled = true;
+
+  try {
+    const url = getAppsScriptUrl();
+    const pending = JSON.parse(localStorage.getItem('fri_pending') || '{}');
+    const reg = pending[code] || {};
+    const resp = reg.responsable || {};
+
+    const currentUrl = window.location.href.split('#')[0];
+
+    const result = await callAppsScriptFetch(url, {
+      action:      'createCheckoutIntent',
+      _token:      FRI_SECRET_TOKEN,
+      totalAmount: total,
+      itemName:    'Adhésion FRI 2026-2027 — ' + code,
+      prenom:      resp.prenom || '',
+      nom:         resp.nom    || '',
+      email:       resp.email1 || resp.email || '',
+      codeDossier: code,
+      returnUrl:   currentUrl + '#paiement-valide?code=' + code,
+      backUrl:     currentUrl,
+      errorUrl:    currentUrl + '#paiement-erreur?code=' + code,
+      echelonne:   !!echelonne
+    });
+
+    // callAppsScriptFetch retourne { ok, data } — extraire data
+    const data = (result && result.data) ? result.data : result;
+    if (data && data.redirectUrl) {
+      // Sauvegarder le dossier complet pour le retrouver au retour de HA
+      const pendingHA = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
+      pendingHA[code] = { total, timestamp: Date.now(), echelonne: !!echelonne, reg: reg };
+      localStorage.setItem('fri_pending_ha', JSON.stringify(pendingHA));
+      // Rediriger vers HA — l'inscription sera enregistrée AU RETOUR
+      window.location.href = data.redirectUrl;
+    } else {
+      const errMsg = (data && data.message) ? data.message : 'Réponse inattendue du serveur';
+      throw new Error(errMsg);
+    }
+  } catch(e) {
+    console.error('lancerCheckoutHA KO:', e);
+    if (btn) { btn.disabled = false; btn.textContent = '💳 Réessayer le paiement HelloAsso'; }
+    const errDetail = (e && e.message) ? e.message : String(e);
+    const zone = document.getElementById('ha-checkout-zone');
+    if (zone) {
+      const isCreds = errDetail.toLowerCase().includes('credential') || errDetail.toLowerCase().includes('ha_client');
+      zone.innerHTML = '<div style="background:#fff3e0;border:1px solid #e65100;border-radius:8px;padding:12px;font-size:13px;color:#e65100;margin-bottom:12px;">'
+        + (isCreds
+          ? '⚙️ <strong>Configuration requise :</strong> Les credentials HelloAsso ne sont pas encore configurés dans le GAS.<br>Ajoutez <code>HA_CLIENT_ID</code> et <code>HA_CLIENT_SECRET</code> dans les propriétés du script Apps Script.'
+          : '⚠️ Connexion HelloAsso impossible : ' + errDetail)
+        + '</div>'
+        + '<a href="' + HELLOASSO_URL + '" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;text-decoration:none;display:flex;">'
+        + '💳 Payer sur HelloAsso (lien direct)</a>';
+    }
+  }
+}
+
+// Gérer le retour depuis HelloAsso
+async function handleReturnFromHelloAsso() {
+  const hash = window.location.hash;
+  if (!hash.includes('paiement-valide')) return;
+  const codeMatch = hash.match(/code=(FRI-[A-Z0-9]{4})/);
+  if (!codeMatch) return;
+  const code = codeMatch[1];
+  console.log('[FRI] Retour HA — enregistrement + validation dossier:', code);
+
+  // Afficher un écran de traitement
+  document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f7f3;font-family:Arial,sans-serif;">'
+    + '<div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">'
+    + '<div style="font-size:48px;margin-bottom:16px;">⏳</div>'
+    + '<h2 style="color:#2d6a4f;margin-bottom:8px;">Validation en cours...</h2>'
+    + '<p style="color:#666;font-size:14px;">Enregistrement de votre inscription et confirmation de paiement.</p>'
+    + '</div></div>';
+
+  try {
+    const url = getAppsScriptUrl();
+
+    // Étape 1 : récupérer le dossier depuis fri_pending_ha ou fri_pending
+    const pendingHA2 = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
+    const haEntry = pendingHA2[code];
+    const reg = (haEntry && haEntry.reg) ? haEntry.reg
+              : (JSON.parse(localStorage.getItem('fri_pending') || '{}'))[code];
+
+    if (!reg) {
+      console.warn('[FRI] Dossier introuvable pour code:', code);
+    } else {
+      reg.status = 'paid';
+      reg.responsable = reg.responsable || {};
+      reg.responsable.modePaiement = haEntry && haEntry.echelonne ? 'helloasso3x' : 'helloasso';
+      await sendToGoogleSheets(reg);
+      console.log('[FRI] Dossier enregistré dans le Sheet');
+      // Petite pause pour laisser Apps Script finir l'écriture
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    // Étape 2 : le webhook HA valide automatiquement via validerPaiementSheet
+    // On ne rappelle pas callAppsScriptValidate pour éviter les doublons de mails
+    console.log('[FRI] Validation gérée par le webhook HelloAsso');
+
+    // Nettoyer
+    const pendingHA = JSON.parse(localStorage.getItem('fri_pending_ha') || '{}');
+    delete pendingHA[code];
+    localStorage.setItem('fri_pending_ha', JSON.stringify(pendingHA));
+
+    // Afficher confirmation
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f7f3;font-family:Arial,sans-serif;">'
+      + '<div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">'
+      + '<div style="font-size:56px;margin-bottom:16px;">✅</div>'
+      + '<h2 style="color:#2d6a4f;margin-bottom:12px;">Paiement et inscription confirmés !</h2>'
+      + '<p style="color:#444;font-size:14px;margin-bottom:8px;">Votre dossier <strong style="color:#1565c0">' + code + '</strong> est enregistré.</p>'
+      + '<p style="color:#666;font-size:13px;margin-bottom:24px;">Un email de confirmation avec votre facture vous a été envoyé.</p>'
+      + '<a href="' + window.location.pathname + '" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:12px 24px;border-radius:10px;background:#2d6a4f;color:white;font-weight:700;">'
+      + '🏠 Retour accueil</a>'
+      + '</div></div>';
+
+  } catch(e) {
+    console.error('Retour HA KO:', e);
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff8f0;font-family:Arial,sans-serif;">'
+      + '<div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">'
+      + '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>'
+      + '<h2 style="color:#e65100;margin-bottom:12px;">Paiement reçu — confirmation en attente</h2>'
+      + '<p style="color:#555;font-size:14px;margin-bottom:8px;">Votre paiement HelloAsso a bien été effectué mais la confirmation automatique n&rsquo;a pas pu se terminer.</p>'
+      + '<p style="color:#555;font-size:14px;margin-bottom:16px;">Contactez-nous avec votre code dossier <strong>' + code + '</strong> :</p>'
+      + '<a href="mailto:frisneauville@orange.fr" style="color:#2d6a4f;font-weight:700;">frisneauville@orange.fr</a><br><br>'
+      + '<a href="' + window.location.pathname + '" style="font-size:13px;color:#999;">Retour accueil</a>'
+      + '</div></div>';
+  }
+}
+
+function renderPayment() {
+  const t = calcTotals();
+  const r = state.responsable;
+
+  // Rubrique 1 : afficher le TOTAL ACTIVITÉS (avant déductions)
+  document.getElementById('amount-display').innerHTML =
+    'Total activités : <strong>' + t.grandTotal.toFixed(2) + ' €</strong>';
+
+  // Members summary
+  const membersLine = state.members.map(m => m.prenom + ' ' + m.nom).join(', ');
+  const actsCount   = state.members.reduce((a,m) => a + m.activities.length, 0);
+  document.getElementById('payment-members-summary').innerHTML =
+    '<strong>' + membersLine + '</strong> — ' + actsCount + ' activité' + (actsCount > 1 ? 's' : '')
+    + (t.discount > 0 ? ' (remise 15% : -' + t.discount.toFixed(2) + '€)' : '')
+    + ' + adhésion FNSMR ' + (state.members.length * 15) + '€';
+
+  // Docs list
+  let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
+  state.members.forEach(m => {
+    if (m.qsResult === 'certificat_requis') {
+      docsList += '<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">'
+        + '⚠️ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire</li>';
+    } else if (m.qsResult !== 'attestation_ok') {
+      docsList += '<li style="padding:6px 0;border-bottom:1px solid var(--border);">'
+        + '❓ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Questionnaire santé non complété</li>';
+    }
+    // attestation_ok → déjà signée électroniquement, rien à apporter
+  });
+  if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
+  if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code à 4 chiffres — <strong>30 € déduits</strong></li>';
+    if (r.passJeunesMontant > 0) docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'jeunes 76 — <strong>' + r.passJeunesMontant + ' € déduits</strong> (' + (r.passJeunesType==='1ere'?'1ère inscription':'2ème inscription') + ')</li>';
+  if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
+  // Note FFTT pour les membres ayant demandé une licence
+  state.members.forEach(m => {
+    if (m.ffttWant && m.ffttPrice) {
+      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
+        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
+        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
+        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
+        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
+        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
+        + '</ul>'
+        + '</li>';
+    }
+  });
+  docsList += '</ul>';
+  document.getElementById('docs-list').innerHTML = docsList;
+}
+
 async function finaliserInscription(code) {
   const btns = document.querySelectorAll('[onclick*="finaliserInscription"],[onclick*="validerFormulaireCheques"]');
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
@@ -4277,7 +5202,7 @@ async function finaliserInscription(code) {
 
   try {
     reg.status = 'pending_manual';
-    reg.dateDossier = new Date().toLocaleDateString('fr-FR');
+    reg.dateDossier = formatDateFRI();
 
     delete pending[code];
     localStorage.setItem('fri_pending', JSON.stringify(pending));
@@ -4377,7 +5302,7 @@ async function confirmPayment() {
 
   // Mark as paid immediately
   reg.status = 'paid';
-  reg.datePaiement = new Date().toLocaleDateString('fr-FR');
+  reg.datePaiement = formatDateFRI();
 
   // Remove from pending
   delete pending[code];
@@ -4426,204 +5351,8 @@ function showConfirmError(msg) {
 }
 
 // Legacy — kept for URL param compatibility (unused now)
-async function handleReturnFromHelloAsso() {
-  return false;
-}
 
-function renderPayment() {
-  const t = calcTotals();
-  const r = state.responsable;
-
-  // Rubrique 1 : afficher le TOTAL ACTIVITÉS (avant déductions)
-  document.getElementById('amount-display').innerHTML =
-    'Total activités : <strong>' + t.grandTotal.toFixed(2) + ' €</strong>';
-
-  // Members summary
-  const membersLine = state.members.map(m => m.prenom + ' ' + m.nom).join(', ');
-  const actsCount   = state.members.reduce((a,m) => a + m.activities.length, 0);
-  document.getElementById('payment-members-summary').innerHTML =
-    '<strong>' + membersLine + '</strong> — ' + actsCount + ' activité' + (actsCount > 1 ? 's' : '')
-    + (t.discount > 0 ? ' (remise 15% : -' + t.discount.toFixed(2) + '€)' : '')
-    + ' + adhésion FNSMR ' + (state.members.length * 15) + '€';
-
-  // Docs list
-  let docsList = '<ul style="list-style:none;padding:0;font-size:14px;">';
-  state.members.forEach(m => {
-    if (m.qsResult === 'certificat_requis') {
-      docsList += '<li style="padding:8px 12px;margin-bottom:4px;background:#ffeeed;border:1.5px solid #c0392b;border-radius:8px;">'
-        + '⚠️ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Certificat médical de non contre-indication à la pratique sportive obligatoire</li>';
-    } else if (m.qsResult !== 'attestation_ok') {
-      docsList += '<li style="padding:6px 0;border-bottom:1px solid var(--border);">'
-        + '❓ <strong>' + m.prenom + ' ' + m.nom + '</strong> — Questionnaire santé non complété</li>';
-    }
-    // attestation_ok → déjà signée électroniquement, rien à apporter
-  });
-  if (r.passJeunes === 'oui')       docsList += '<li style="padding:6px 0">📎 Attestation Pass\'jeunes 76 / Handipass\'sport 76</li>';
-  if (r.atoutNormandie === 'oui')   docsList += '<li style="padding:6px 0">📎 QR Code Atout Normandie + code 4 chiffres</li>';
-  if (r.passSport === 'oui')        docsList += '<li style="padding:6px 0">📎 Justificatif Pass\'sport État + code</li>';
-  // Note FFTT pour les membres ayant demandé une licence
-  state.members.forEach(m => {
-    if (m.ffttWant && m.ffttPrice) {
-      docsList += '<li style="padding:10px 14px;margin-top:8px;background:#FFF3E0;border:1.5px solid #e65100;border-radius:8px;list-style:none;font-size:13px;line-height:1.7;color:#4E342E;">'
-        + '<div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:#bf360c;">🏓 Licence FFTT — ' + (m.prenom || 'Membre') + ' (' + m.ffttPrice + ' €)</div>'
-        + '<div>Pour participer aux compétitions FFTT, vous devez :</div>'
-        + '<ul style="margin:6px 0 4px 16px;padding:0;">'
-        + '<li>Faire votre <strong>demande de licence en ligne</strong> sur : <a href="https://carte.fftt.com/club/09760374" target="_blank" style="color:#e65100;font-weight:600;">carte.fftt.com/club/09760374</a></li>'
-        + '<li>Apporter le <strong>formulaire de licence FFTT</strong> complété lors de votre passage en permanence (le montant de la licence est distinct de l\'adhésion FRI).</li>'
-        + '</ul>'
-        + '</li>';
-    }
-  });
-  docsList += '</ul>';
-  document.getElementById('docs-list').innerHTML = docsList;
-}
-
-function buildRows(reg) {
-  const isno = reg.responsable.commune === 'isno';
-  const rows = [];
-  const passAide = [
-    reg.responsable.passJeunes === 'oui' ? "Pass jeunes 76" : '',
-    reg.responsable.atoutNormandie === 'oui' ? 'Atout Normandie' : '',
-    reg.responsable.passSport === 'oui' ? "Pass sport Etat" : ''
-  ].filter(Boolean).join(', ');
-
-  reg.members.forEach(m => {
-    const counted = new Set();
-    m.activities.forEach(actId => {
-      const act = getActById(actId);
-      if (!act) return;
-
-      // For linked pairs, emit only ONE row with combined schedule info
-      if (act.linkedWith) {
-        const pairKey = [actId, act.linkedWith].sort().join('|');
-        if (counted.has(pairKey)) return; // skip 2nd slot
-        counted.add(pairKey);
-
-        const linked = getActById(act.linkedWith);
-        // Combine jour and heure from both slots
-        const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
-        const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
-        // Clean the name (remove \n line breaks for sheet)
-        const nomClean = act.name.replace(/\n/g, ' — ');
-        let price = isno ? act.isno : act.hc;
-        // Réduction femmes TT : -30€ (Isneauville ET hors commune)
-        if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-
-        // Appliquer remise 15% si éligible — tarif = montant réellement réglé
-        const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
-        const NON_REMISABLE = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
-        const estElig = aRemise15 && !NON_REMISABLE.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
-        const tarifBrut = price;
-        if (estElig) price = Math.round(price * 0.85 * 100) / 100;
-
-        rows.push({
-          date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
-          responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
-          adresse: reg.responsable.adresse, cp: reg.responsable.cp,
-          ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
-          tel1: reg.responsable.tel1, tel2: '',
-          email1: reg.responsable.email1, email2: (m.email || reg.responsable.email2 || ''),
-          membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
-          ddn: m.ddn, sexe: m.sexe,
-          activite: nomClean, jour: joursCombi, heure: heuresCombi,
-          lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-          tarif: price,          // tarif réellement réglé (après -15% si éligible)
-          tarif_brut: tarifBrut, // tarif avant remise (pour affichage facture)
-          fnsmr: 15,
-          remise: estElig ? 15 : 0,
-          total_famille: reg.totals ? reg.totals.grandTotal : 0,
-          mode_paiement: reg.responsable.modePaiement || 'helloasso',
-          avoir_montant: reg.responsable.avoirMontant || 0,
-          pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
-          ancv_montant: reg.responsable.ancvMontant || 0,
-          fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
-          qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
-                  : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-          pass_aide: (function(){
-            const parts = [];
-            if (passAide) parts.push(passAide);
-            if (reg.responsable.passJeunesMontant > 0)
-              parts.push('PassJeunes:' + (reg.responsable.passJeunesMontant||0).toFixed(2)
-                + ':' + (reg.responsable.passJeunesType||'1ere'));
-            if (reg.responsable.atoutNormandie === 'oui')
-              parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
-            return parts.join('|');
-          })(),
-          statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
-        });
-        return;
-      }
-
-      // Non-linked activity — standard row
-      const nomClean = act.name.replace(/\n/g, ' — ');
-      let price = isno ? act.isno : act.hc;
-      // Réduction femmes TT : -30€ (Isneauville ET hors commune)
-      if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
-      // Remise 15% si éligible
-      const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
-      const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'];
-      const estElig2 = aRemise15b && !NON_REMISABLE2.includes(actId) && !actId.startsWith('tt-') && !actId.startsWith('ping');
-      const tarifBrut2 = price;
-      if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
-      rows.push({
-        date: reg.date, id: String(reg.id), code_dossier: reg.code || '',
-        responsable_nom: reg.responsable.nom, responsable_prenom: reg.responsable.prenom,
-        adresse: reg.responsable.adresse, cp: reg.responsable.cp,
-        ville: reg.responsable.ville, commune: isno ? 'Isneauville' : 'Hors commune',
-        tel1: reg.responsable.tel1, tel2: '',
-        email1: reg.responsable.email1, email2: '',
-        membre_nom: m.nom || reg.responsable.nom, membre_prenom: m.prenom,
-        ddn: m.ddn, sexe: m.sexe,
-        activite: nomClean, jour: act.jour, heure: act.heure,
-        lieu: act.lieu || '', animateur: act.animateur, activite_id: siteToPlacesId(actId),
-        tarif: price,           // tarif réellement réglé (après -15% si éligible)
-        tarif_brut: tarifBrut2, // tarif avant remise
-        fnsmr: 15,
-        remise: estElig2 ? 15 : 0,
-        total_famille: reg.totals ? reg.totals.grandTotal : 0,
-        mode_paiement: reg.responsable.modePaiement || 'helloasso',
-        avoir_montant: reg.responsable.avoirMontant || 0,
-        pass_sport_montant: reg.responsable.passSport === 'oui' ? 70 : 0,
-        ancv_montant: reg.responsable.ancvMontant || 0,
-        fftt_price: (m.ffttWant && m.ffttPrice) ? Number(m.ffttPrice) : 0,
-        qs_sante: m.qsResult === 'attestation_ok' ? 'Attestation OK'
-                : m.qsResult === 'certificat_requis' ? 'Certificat requis' : 'Non rempli',
-        pass_aide: (function(){
-            const parts = [];
-            if (passAide) parts.push(passAide);
-            if (reg.responsable.passJeunesMontant > 0)
-              parts.push('PassJeunes:' + (reg.responsable.passJeunesMontant||0).toFixed(2)
-                + ':' + (reg.responsable.passJeunesType||'1ere'));
-            if (reg.responsable.atoutNormandie === 'oui')
-              parts.push('Atout:30.00:' + (reg.responsable.atoutCode||''));
-            return parts.join('|');
-          })(),
-        statut_inscription: (m.waitingList && m.waitingList.has(actId)) ? 'Liste attente' : ''
-      });
-    });
-  });
-  return rows;
-}
-
-// ============================================================
-// ENVOI VERS APPS SCRIPT — fetch avec CORS activé côté Apps Script
-// Apps Script renvoie Access-Control-Allow-Origin: * dans ses headers
-// ce qui permet un fetch standard depuis n'importe quel domaine.
-// ============================================================
-
-function getAppsScriptUrl() {
-  return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
-}
-
-// ──────────────────────────────────────────────────────────────
-// callAppsScript — double stratégie selon le besoin :
-//   • Actions écriture (addRegistration, validerPaiement) :
-//     fetch GET fire-and-forget — on n'a pas besoin de la réponse
-//   • Actions lecture (getDossiers, ping) :
-//     JSONP — seule méthode fiable pour récupérer des données
-//     depuis Apps Script cross-origin
-// ──────────────────────────────────────────────────────────────
-const READ_ACTIONS = ['getDossiers', 'ping', 'getPlaces'];
+const READ_ACTIONS = ['getDossiers', 'ping', 'getPlaces', 'getPlacesRestantes'];
 
 async function callAppsScript(payload) {
   const url = getAppsScriptUrl();
@@ -4957,9 +5686,16 @@ async function sendToGoogleSheets(reg) {
     return false;
   }
   try {
-    const rows = buildRows(reg);
+    let rows = [];
+    try {
+      rows = buildRows(reg);
+    } catch(eBR) {
+      console.error('[FRI] buildRows EXCEPTION:', eBR);
+      return false;
+    }
+    console.log('[FRI] buildRows — lignes:', rows.length, 'membres:', reg.members ? reg.members.map(m => m.prenom + '(' + (m.activities||[]).length + ' acts)') : 'AUCUN');
     if (rows.length === 0) {
-      console.error('buildRows a retourné 0 lignes — inscription non envoyée');
+      console.error('[FRI] buildRows retourne 0 lignes — reg.members:', JSON.stringify((reg.members||[]).map(m => ({prenom:m.prenom, acts:m.activities}))));
       return false;
     }
     // Vérifier la taille du payload
@@ -5154,15 +5890,15 @@ function buildExcelData(registrations) {
 }
 
 function exportExcel() {
-  const regs = [{ date: new Date().toLocaleDateString('fr-FR'), id: Date.now(), responsable: state.responsable, members: state.members, totals: calcTotals() }];
-  doExport(regs, `inscription_${state.responsable.nom}_${state.responsable.prenom}_${new Date().toLocaleDateString('fr-FR').replace(/\//g,'-')}.xlsx`);
+  const regs = [{ date: formatDateFRI(), id: Date.now(), responsable: state.responsable, members: state.members, totals: calcTotals() }];
+  doExport(regs, `inscription_${state.responsable.nom}_${state.responsable.prenom}_${formatDateFRI().replace(/\//g,'-')}.xlsx`);
 }
 
 function exportAllExcel(format) {
   if (!requireAdmin()) return;
   const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
   if (!regs.length) { alert('Aucune inscription enregistrée.'); return; }
-  const filename = `inscriptions_gestaffil_${new Date().toLocaleDateString('fr-FR').replace(/\//g,'-')}`;
+  const filename = `inscriptions_gestaffil_${formatDateFRI().replace(/\//g,'-')}`;
   if (format === 'csv') {
     const data = buildExcelData(regs);
     const csv = data.map(row => row.map(cell => `"${String(cell||'').replace(/"/g,'""')}"`).join(';')).join('\n');
@@ -5194,7 +5930,7 @@ function doExport(regs, filename) {
   const totalsData = [
     ['RÉCAPITULATIF DES INSCRIPTIONS — FOYER RURAL D\'ISNEAUVILLE — SAISON 2026/2027'],
     [],
-    ['Date export', new Date().toLocaleDateString('fr-FR')],
+    ['Date export', formatDateFRI()],
     ['Nombre d\'inscriptions', regs.length],
     ['Nombre de membres', regs.reduce((a,r) => a + r.members.length, 0)],
     ['Nombre d\'activités enregistrées', regs.reduce((a,r) => a + r.members.reduce((b,m) => b + m.activities.length, 0), 0)],
@@ -5229,9 +5965,16 @@ function doExport(regs, filename) {
 // Default: admin / FRI-Isneauville2025
 // To change: update ADMIN_CREDENTIALS below with new hash
 const ADMIN_CREDENTIALS = {
-  'admin': hashSimple('admin:FRI-Isneauville2025'),
-  'secretariat': hashSimple('secretariat:FRI2025!')
+  'admin':        hashSimple('admin:FRI-Isneauville2025'),
+  'secretariat':  hashSimple('secretariat:FRI2025!')
 };
+// Rôles : 'admin' = accès complet | 'secretariat' = dossiers uniquement
+const ADMIN_ROLES = {
+  'admin':       'admin',
+  'secretariat': 'secretariat'
+};
+function isSecretariat() { return adminSession && ADMIN_ROLES[adminSession] === 'secretariat'; }
+function isFullAdmin()   { return adminSession && ADMIN_ROLES[adminSession] === 'admin'; }
 
 function hashSimple(str) {
   // Simple deterministic hash for client-side (not cryptographic, but obfuscated)
@@ -5275,11 +6018,20 @@ function doAdminLogin() {
     adminSession = user;
     hideAdminLogin();
     document.getElementById('admin-panel').style.display = 'block';
-    document.getElementById('admin-logged-as').textContent = '🔓 Connecte : ' + user;
-    try { showAdminConfigBanner(); } catch(e) {}
+    const roleLabel = ADMIN_ROLES[user] === 'secretariat' ? '📋 Secrétariat' : '🔑 Admin';
+    document.getElementById('admin-logged-as').textContent = roleLabel + ' : ' + user;
+    // Changer la couleur du bandeau de connexion selon le rôle
+    const loggedEl = document.getElementById('admin-logged-as');
+    if (loggedEl && isSecretariat()) {
+      loggedEl.style.background = 'rgba(21,101,192,0.8)';
+      loggedEl.style.borderColor = 'rgba(21,101,192,0.5)';
+    }
+    // Appliquer les restrictions de rôle
+    appliquerRestrictionsProfil();
+    try { if (isFullAdmin()) showAdminConfigBanner(); } catch(e) {}
     try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
     try { renderAdminStats(); } catch(e) {}
-    try { renderSemainierSalle(); } catch(e) {}
+    try { if (isFullAdmin()) renderSemainierSalle(); } catch(e) {}
     document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth' });
     try { chargerDossiersDepuisSheet(); } catch(e) {}
   } else {
@@ -5526,8 +6278,31 @@ document.getElementById('admin-modal').addEventListener('click', function(e) {
 // ADMIN TABLE
 // ============================================================
 
-function isFullAdmin() {
-  return (typeof adminSession !== 'undefined') && adminSession && adminSession.role === 'admin';
+// ── Restrictions profil Secrétariat ────────────────────────────
+function appliquerRestrictionsProfil() {
+  if (isFullAdmin()) return; // admin : tout visible
+
+  // Masquer le bloc de configuration (GAS URL, Sheet ID)
+  const configBanner = document.getElementById('apps-script-config-banner');
+  if (configBanner) configBanner.style.display = 'none';
+
+  // Masquer les boutons réservés admin dans la barre d'actions
+  // (Effacer tout, Exporter Gestaffil — on garde Exporter CSV et Rafraîchir)
+  setTimeout(function() {
+    // Masquer "Effacer tout"
+    ['btn-export-gestaffil', 'btn-effacer-tout'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    // Masquer le semainier par salle
+    const semainierBloc = document.getElementById('admin-semainier-bloc');
+    if (semainierBloc) semainierBloc.style.display = 'none';
+    // Masquer les stats détaillées (garder les stats de base)
+    // Masquer les boutons de modification de script dans les outils
+    document.querySelectorAll('[onclick*="corrigerEnTetes"], [onclick*="remiseAZero"], [onclick*="viderSheet"]').forEach(function(el) {
+      el.style.display = 'none';
+    });
+  }, 300);
 }
 
 function requireAdmin() {
@@ -5592,6 +6367,84 @@ function formatDateAdmin(d) {
   // Déjà au format dd/mm/yyyy → retourner tel quel
   return s;
 }
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN — Basculer une activité de liste d'attente → inscrit
+// ══════════════════════════════════════════════════════════════
+async function basculerListeAttente(code, actId, actNom, prenomMembre, nomMembre, tarifBrut) {
+  if (!requireAdmin()) return;
+
+  const confirm = window.confirm(
+    `Basculer "${actNom}" de ${prenomMembre} ${nomMembre}\n`
+    + `de la liste d'attente vers les inscrits ?\n\n`
+    + `Cela va :\n`
+    + `• Mettre à jour le Sheet (statut + tarif ${tarifBrut} €)\n`
+    + `• Déplacer la ligne de l'onglet LA vers les inscrits\n`
+    + `• Envoyer un email à l'adhérent et au FRI`
+  );
+  if (!confirm) return;
+
+  showAdminToast('⏳ Bascule en cours...', 'orange');
+
+  try {
+    const url = getAppsScriptUrl();
+    const result = await callAppsScriptFetch(url, {
+      action:       'basculerListeAttente',
+      _token:       FRI_SECRET_TOKEN,
+      code:         code,
+      actId:        actId,
+      actNom:       actNom,
+      prenomMembre: prenomMembre,
+      nomMembre:    nomMembre,
+      tarifBrut:    tarifBrut
+    });
+
+    const data = result && result.data ? result.data : (result || {});
+    if (data && data.status === 'ok') {
+      showAdminToast('✅ Basculé — email envoyé', 'green');
+      await chargerDossiersDepuisSheet();
+      renderAdmin();
+    } else if (!data || !data.status) {
+      // Pas de réponse du GAS — probablement traité mais timeout JSONP
+      showAdminToast('⚠️ Pas de réponse du GAS — vérifiez que le script est bien déployé (v8.8)', 'orange');
+    } else {
+      showAdminToast('⚠️ Erreur : ' + (data.message || 'inconnue'), 'red');
+    }
+  } catch(e) {
+    console.error('basculerListeAttente KO:', e);
+    showAdminToast('⚠️ Erreur : ' + e.message, 'red');
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN — Envoi manuel du rappel de règlement
+// ══════════════════════════════════════════════════════════════
+async function envoyerRappelManuel(code) {
+  if (!requireAdmin()) return;
+  if (!confirm('Envoyer un rappel de règlement avec facture PDF à l\'adhérent du dossier ' + code + ' ?')) return;
+
+  showAdminToast('⏳ Envoi du rappel...', 'orange');
+
+  try {
+    const url = getAppsScriptUrl();
+    const result = await callAppsScriptFetch(url, {
+      action:  'envoyerRappelManuel',
+      _token:  FRI_SECRET_TOKEN,
+      code:    code
+    });
+    const data = result && result.data ? result.data : result;
+    if (data && data.status === 'ok') {
+      showAdminToast('✅ Rappel envoyé à ' + (data.email || 'l\'adhérent'), 'green');
+    } else {
+      showAdminToast('⚠️ ' + (data && data.message ? data.message : 'Erreur inconnue'), 'red');
+    }
+  } catch(e) {
+    console.error('envoyerRappelManuel KO:', e);
+    showAdminToast('⚠️ Erreur : ' + e.message, 'red');
+  }
+}
+
 function renderAdmin() {
   if (!adminSession) return;
   const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
@@ -5696,6 +6549,12 @@ function renderAdmin() {
         const validateBtn = isPending
           ? docsCheckboxes + `<button onclick="validerPaiement('${reg.code}', '${reg.id}')" style="background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:block;width:100%;margin-bottom:4px;" title="Valider le paiement et envoyer l'email de confirmation">✅ Valider paiement</button>`
           : '';
+        // Bouton rappel règlement — visible pour tous les dossiers non payés
+        const rappelBtn = (!reg.status || reg.status === 'pending_manual')
+          ? `<button onclick="envoyerRappelManuel('${reg.code || reg.id}')"
+              style="background:rgba(230,81,0,0.8);border:none;color:white;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;display:block;width:100%;margin-bottom:4px;"
+              title="Envoyer un rappel de règlement avec facture PDF">📨 Rappel règlement</button>`
+          : '';
         return `<tr style="${rowBg}">
           <td style="padding:10px 12px;white-space:nowrap;font-size:12px">${formatDateAdmin(reg.date)}</td>
           <td style="padding:10px 12px;font-family:monospace;font-weight:700;color:var(--green-light);font-size:13px">${reg.code || '—'}</td>
@@ -5708,10 +6567,16 @@ function renderAdmin() {
             // Afficher les activités : depuis _rows Sheet (fiable) ou depuis activities (localStorage)
             let actsStr = '';
             const memNomComplet = (m.prenom + ' ' + m.nom).trim();
+            console.log('[FRI] _rows pour', reg.code, ':', (reg._rows||[]).map(r=>({act:r.activite_id, statut:r.statut_inscription, mem:r.prenom_membre+' '+r.nom_membre})));
             const sheetRows = (reg._rows || []).filter(r =>
               r.activite && (r.prenom_membre + ' ' + r.nom_membre).trim() === memNomComplet
               && !(r.statut_inscription || '').toLowerCase().includes('supprim')
-            );
+            ).sort((a, b) => {
+              // Mettre les lignes 'attente' en premier pour que le badge soit visible
+              const aW = (a.statut_inscription || '').toLowerCase().includes('attente') ? 0 : 1;
+              const bW = (b.statut_inscription || '').toLowerCase().includes('attente') ? 0 : 1;
+              return aW - bW;
+            });
             if (sheetRows.length > 0) {
               // Source Sheet — noms exacts, activités réelles
               const seenActs = new Set();
@@ -5720,6 +6585,20 @@ function renderAdmin() {
                 if (seenActs.has(key)) return '';
                 seenActs.add(key);
                 const nom = r.activite || r.activite_id || '?';
+                const isWait = (r.statut_inscription || '').toLowerCase().includes('attente');
+                if (isWait) {
+                  // Calculer le tarif depuis la définition de l'activité
+                  // r.activite_id = placesId (ex: PINGL18/J17) → convertir en actId frontend
+                  const actIdFront = placesIdToActId(r.activite_id || '') || r.activite_id;
+                  const actDef = getActById(actIdFront);
+                  const isnoMem = (reg.responsable && reg.responsable.commune === 'isno') ||
+                                  (reg.responsable && (reg.responsable.ville||'').toUpperCase().indexOf('ISNEAUVILLE') >= 0);
+                  const tarifReel = actDef ? (isnoMem ? actDef.isno : actDef.hc) : (Number(r.tarif_brut) || 0);
+                  return `<span style="font-size:10px;color:#ffb74d;">⏳ ${nom} (${tarifReel} €)</span>`
+                    + `<button onclick="basculerListeAttente('${reg.code || reg.id}','${(r.activite_id||'').replace(/'/g,"\'")}','${(r.activite||'').replace(/'/g,"\'")}','${(r.prenom_membre||'').replace(/'/g,"\'")}','${(r.nom_membre||'').replace(/'/g,"\'")}','${tarifReel}')"
+                      style="background:#ff9800;border:none;color:white;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;"
+                      title="Basculer en liste des inscrits — ${tarifReel} €">↑ Inscrire</button>`;
+                }
                 return `<span style="font-size:10px;color:rgba(255,255,255,0.75);">· ${nom}</span>`;
               }).filter(Boolean).join('<br>') || '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
             } else {
@@ -5744,6 +6623,7 @@ function renderAdmin() {
           <td style="padding:10px 12px;text-align:center;font-size:13px">${reg.members.map(m => `${m.qsResult==='attestation_ok'?'✅':m.qsResult==='certificat_requis'?'⚠️':'❓'}`).join(' ')}</td>
           <td style="padding:10px 12px;text-align:center;min-width:110px">
             ${validateBtn}
+            ${rappelBtn}
             <button onclick="exportSingleExcel(${reg.id})" style="background:var(--green);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" title="Exporter">📊</button>
             <button onclick="ouvrirAjoutActivite('${reg.code || reg.id}')" style="background:rgba(21,101,192,0.85);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Ajouter une activité">➕</button>
             <button onclick="ouvrirSupprActivite('${reg.code || reg.id}')" style="background:rgba(230,81,0,0.8);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer une activité">➖</button>
@@ -5786,7 +6666,7 @@ async function validerPaiement(code, regId) {
   const regLocal = regsLocal.find(r => r.code === code || String(r.id) === code);
   if (regLocal) {
     regLocal.status         = 'paid';
-    regLocal.dateValidation = new Date().toLocaleDateString('fr-FR');
+    regLocal.dateValidation = formatDateFRI();
     regLocal.validePar      = adminSession;
     localStorage.setItem('fri_registrations', JSON.stringify(regsLocal));
   }
@@ -5923,9 +6803,10 @@ function mergerDossiersSheet(dossiers) {
 
     const reg = byCode[d.code];
 
-    // Mettre à jour le total si plus grand (dernière ligne)
-    if (Number(d.total) > reg.totals.grandTotal) {
+    // Toujours prendre le total du Sheet (col AF fait foi)
+    if (Number(d.total) > 0) {
       reg.totals.grandTotal = Number(d.total);
+      reg._sheetTotal = Number(d.total);
     }
 
     // Ajouter le membre si pas déjà présent
@@ -5938,16 +6819,10 @@ function mergerDossiersSheet(dossiers) {
         qsResult:  d.qs_sante === 'Certificat requis' ? 'certificat_requis'
                  : d.qs_sante === 'Attestation OK'    ? 'attestation_ok' : null
       });
-      // Conserver les données Sheet dans _rows pour accès aux champs pass_aide et qs_sante
-      if (!reg._rows) reg._rows = [];
-      reg._rows.push({
-        qs_sante:   d.qs_sante   || '',
-        pass_aide:  d.pass_aide  || '',
-        activite:   d.activite   || '',
-        activite_id:d.activite_id|| ''
-      });
     }
 
+    // Push de d complet — contient statut_inscription, tarif_brut, prenom_membre, nom_membre, etc.
+    if (!reg._rows) reg._rows = [];
     reg._rows.push(d);
 
     // Reconstruire les activités du membre depuis activite_id (col 36)
@@ -6004,9 +6879,13 @@ function mergerDossiersSheet(dossiers) {
       local[idx]._fromSheet  = true;
       local[idx]._sheetTotal = sheetReg._sheetTotal || sheetReg.totals.grandTotal;
       local[idx].totals.grandTotal = local[idx]._sheetTotal;
-      // Toujours remplacer les membres depuis le Sheet (source fiable)
+      // Toujours remplacer les membres, _rows et responsable depuis le Sheet (source fiable)
       if (sheetReg.members && sheetReg.members.length > 0) {
         local[idx].members = sheetReg.members;
+      }
+      // _rows contient statut_inscription, activite_id, tarif_brut — essentiels pour renderAdmin
+      if (sheetReg._rows && sheetReg._rows.length > 0) {
+        local[idx]._rows = sheetReg._rows;
       }
       // Mettre à jour le responsable depuis le Sheet
       if (sheetReg.responsable.email1) {
@@ -6053,7 +6932,7 @@ async function testInscriptionDirecte() {
     action: 'addRegistration',
     status: 'paid',
     rows: [{
-      date: new Date().toLocaleDateString('fr-FR'),
+      date: formatDateFRI(),
       id: 'TEST-' + Date.now(),
       code_dossier: 'FRI-TEST',
       membre_nom: 'TEST', membre_prenom: 'Admin',
@@ -6144,6 +7023,8 @@ function ouvrirAjoutActivite(code) {
   const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
   const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
   if (!reg) { showToast('Dossier introuvable', 'red'); return; }
+  // Charger les places pour détecter les activités complètes
+  loadPlaces(true).catch(e => console.warn('loadPlaces admin KO:', e));
 
   const estRegle = reg.status && reg.status !== 'pending_manual';
   const isno     = reg.responsable.commune === 'isno';
@@ -6379,7 +7260,7 @@ async function selectionnerActiviteAjout(code, actId) {
 
   const totalActsApres = existingActCount + 1;
   const aRemiseApres   = totalActsApres >= 3;
-  const eligibleRemise = !['marche-nordic','country-init-a','country-debu-a','country-novice','country-inter','country-init-j','country-debu-j'].includes(actId) && !actId.startsWith('tt-');
+  const eligibleRemise = !['marche-nordic','country-init-a','country-init-j'].includes(actId) && !actId.startsWith('tt-');
   let prixApresRemise  = prix;
   if (aRemiseApres && eligibleRemise) prixApresRemise = Math.round(prix * 0.85 * 100) / 100;
 
@@ -6414,7 +7295,9 @@ async function selectionnerActiviteAjout(code, actId) {
           : ''}
         <div style="background:#f0f7f3;border-radius:8px;padding:12px;text-align:center;">
           <div style="font-size:11px;color:#666;margin-bottom:2px;">${estRegle ? 'TARIF À RÉGLER IMMÉDIATEMENT' : 'TARIF (montant dossier mis à jour)'}</div>
-          <div style="font-size:24px;font-weight:900;color:#1a2e22;">${prixApresRemise.toFixed(2)} €</div>
+          <div style="font-size:24px;font-weight:900;color:${isFull ? '#e65100' : '#1a2e22'};">
+            ${isFull ? '⏳ Liste d\'attente — 0 €' : prixApresRemise.toFixed(2) + ' €'}
+          </div>
         </div>
       </div>
       <div style="padding:0 20px 20px;display:flex;gap:10px;">
@@ -6424,7 +7307,7 @@ async function selectionnerActiviteAjout(code, actId) {
         </button>
         <button id="btn-valider-ajout"
           style="flex:2;padding:11px;border:none;border-radius:10px;background:#1565c0;color:white;font-size:13px;cursor:pointer;font-weight:700;">
-          ✅ Valider l'ajout
+          ${isFull ? '⏳ Inscrire en liste d\'attente' : '✅ Valider l\'ajout'}
         </button>
       </div>
     </div>`;
@@ -6598,28 +7481,29 @@ function ouvrirSupprActivite(code) {
         </div>
         <div id="liste-activites-suppr">
           ${lignes.map((l, i) => {
-            // Calcul avoir : tenir compte de la remise 15% et TT femme -30€
+            // Détecter si l'activité est en liste d'attente
+            const membreObj  = reg.members.find(m => m.id === l.membreId);
+            const isWaitingL = membreObj && (membreObj.waitingList||[]).includes(l.actId);
+            // Calcul avoir : 0 si liste d'attente
             const actObj = getActById(l.actId) || {};
-            const estTTFemme = (actObj.isTT && reg.members.find(m => m.id === l.membreId)?.sexe === 'F');
-            let avoir = l.prix;
-            // Si remise 15% active et cette activité est éligible
-            if (aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
+            let avoir = isWaitingL ? 0 : l.prix;
+            if (!isWaitingL && aRemise && actObj.remiseEligible !== false && !actObj.isTT) {
               avoir = Math.round(avoir * 0.85 * 100) / 100;
             }
-            // TT femme : -30€ déjà appliqué sur le prix
-            return `<div style="border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s"
+            const borderColor = isWaitingL ? '#e65100' : '#ddd';
+            const avoirHtml = isWaitingL
+              ? '<div style="font-size:13px;color:#e65100;font-weight:700">⏳ Liste d\'attente</div><div style="font-size:10px;color:#888">0 € — aucun avoir</div>'
+              : '<div style="font-size:13px;color:#e65100;font-weight:700">Avoir : ' + avoir.toFixed(2) + ' €</div>' + (aRemise ? '<div style="font-size:10px;color:#888">remise 15% appliquée</div>' : '');
+            return `<div style="border:1px solid ${borderColor};border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;background:${isWaitingL ? '#fff3e0' : 'white'}"
                       onmouseenter="this.style.background='#fff3e0'"
-                      onmouseleave="this.style.background='white'"
+                      onmouseleave="this.style.background='${isWaitingL ? '#fff3e0' : 'white'}'"
                       onclick="confirmerSupprActivite('${code}',${i})">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div>
-                  <div style="font-weight:700;color:#1a2e22;font-size:13px">${l.actNom}</div>
+                  <div style="font-weight:700;color:#1a2e22;font-size:13px">${l.actNom}${isWaitingL ? ' <span style="font-size:10px;background:#e65100;color:white;border-radius:4px;padding:1px 5px;">⏳ Attente</span>' : ''}</div>
                   <div style="font-size:12px;color:#888">${l.membreNom} · ${l.jour} ${l.heure}</div>
                 </div>
-                <div style="text-align:right">
-                  <div style="font-size:13px;color:#e65100;font-weight:700">Avoir : ${avoir.toFixed(2)} €</div>
-                  ${aRemise ? '<div style="font-size:10px;color:#888">remise 15% appliquée</div>' : ''}
-                </div>
+                <div style="text-align:right">${avoirHtml}</div>
               </div>
             </div>`;
           }).join('')}
@@ -6716,17 +7600,13 @@ async function confirmerSupprActivite(code, ligneIdx) {
           nouveauTotal: allRegs.find(r => r.code === code)?.totals?.grandTotal || 0
         });
         // ── Mettre à jour grandTotal depuis le vrai total retourné par le GAS ──
-        if (gasResultSuppr && gasResultSuppr.nouveauTotal && gasResultSuppr.nouveauTotal > 0) {
-          const allRegsUpd2 = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-          const regUpd2 = allRegsUpd2.find(r => r.code === code || String(r.id) === String(code));
-          if (regUpd2) {
-            if (!regUpd2.totals) regUpd2.totals = {};
-            regUpd2.totals.grandTotal = gasResultSuppr.nouveauTotal;
-            localStorage.setItem('fri_registrations', JSON.stringify(allRegsUpd2));
-            console.log('[FRI] grandTotal suppression mis à jour depuis GAS :', gasResultSuppr.nouveauTotal);
-          }
-        }
-      } catch(e) { console.warn('Suppression non-réglé GAS KO:', e); }
+        await chargerDossiersDepuisSheet();
+        try { renderAdmin(); } catch(e) {}
+        try { renderAdminStats(); } catch(e) {}
+      } catch(e) {
+        console.warn('Suppression non-réglé GAS KO:', e);
+        try { renderAdmin(); } catch(e2) {}
+      }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — montant mis à jour`, 'green');
@@ -6757,14 +7637,22 @@ async function confirmerSupprActivite(code, ligneIdx) {
           membreNom:  l.membreNom,
           avoir:      avoir
         });
-      } catch(e) { console.warn('Suppression activité GAS KO:', e); }
+        // Recharger depuis le Sheet — le total AF fait foi
+        await chargerDossiersDepuisSheet();
+        try { renderAdmin(); } catch(e) {}
+        try { renderAdminStats(); } catch(e) {}
+      } catch(e) {
+        console.warn('Suppression activité GAS KO:', e);
+        try { renderAdmin(); } catch(e2) {}
+      }
     }
 
     showToast(`✅ "${l.actNom}" supprimée — avoir ${avoir.toFixed(2)} €`, 'green');
+    return;
   }
 
-  renderAdmin();
-  renderAdminStats();
+  try { renderAdmin(); } catch(e) {}
+  try { renderAdminStats(); } catch(e) {}
 }
 
 async function deleteRegistration(id) {
@@ -6944,20 +7832,20 @@ function setupPaymentStep(code) {
 
   var mode  = reg.responsable.modePaiement || 'helloasso';
   var total = (state.solde !== undefined ? state.solde : calcTotals().grandTotal) || 0;
-  var cardB = document.getElementById('card-step-b');
-  cardB.style.opacity = '1'; cardB.style.pointerEvents = '';
-  cardB.style.borderLeftColor = 'var(--green)';
-  document.getElementById('step-b-num').style.background = 'var(--green)';
+  var cardB = document.getElementById('card-step-pay');
+  if (cardB) { cardB.style.opacity = '1'; cardB.style.pointerEvents = 'auto'; cardB.style.borderLeftColor = 'var(--green)'; }
+  var stepBNum = document.getElementById('step-b-num');
+  if (stepBNum) stepBNum.style.background = 'var(--green)';
 
-  // Activer aussi la rubrique 2 (Aides & Pass)
-  var cardB2 = document.getElementById('card-step-b2');
+  // Activer aussi la rubrique 3 (Aides & Pass + Paiement)
+  var cardB2 = document.getElementById('card-step-b3');
   if (cardB2) {
     cardB2.style.opacity = '1';
-    cardB2.style.pointerEvents = '';
+    cardB2.style.pointerEvents = 'auto';
     cardB2.style.borderLeftColor = 'var(--gold)';
   }
 
-  document.getElementById('card-step-c').style.display = 'none';
+
 
   // Afficher l'étape de confirmation uniquement pour HelloAsso
   if (mode === 'helloasso') {
@@ -7017,10 +7905,7 @@ function setupPaymentStep(code) {
   if (mode === 'helloasso') {
     document.getElementById('step-b-title').textContent = 'Paiement en ligne — HelloAsso';
     document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
-      + '<p style="font-size:14px;color:var(--gray);margin-bottom:12px;">Paiement s&eacute;curis&eacute; sans commission pour l\'association.</p>'
-      + '<iframe id="haWidget" allowtransparency="true" scrolling="auto"'
-      + ' src="https://www.helloasso.com/associations/foyer-rural-d-isneauville/paiements/reglement-adhesion-fri/widget"'
-      + ' style="width:100%;height:750px;border:none;border-radius:10px;"></iframe>'
+      + '<div style="background:#e8f5e9;border:2px solid #2d6a4f;border-radius:10px;padding:16px;margin-bottom:16px;">'      + '<div style="font-size:15px;font-weight:700;color:#1b5e20;margin-bottom:8px;">💳 Récapitulatif de votre paiement</div>'      + '<table style="width:100%;font-size:14px;">'      + '<tr><td style="padding:4px 0;color:#555">Montant à régler :</td><td style="text-align:right;font-weight:700;font-size:18px;color:#2d6a4f">' + total.toFixed(2) + ' €</td></tr>'      + '<tr><td style="padding:4px 0;color:#555">Votre code dossier :</td><td style="text-align:right;font-weight:700;color:#1565c0">' + code + '</td></tr>'      + '</table></div>'      + '<div id="ha-checkout-zone">'      + '<div style="display:flex;flex-direction:column;gap:10px;">'      + '<button id="btn-ha-checkout" class="btn btn-primary" style="width:100%;font-size:16px;padding:16px;justify-content:center;" '      + 'onclick="lancerCheckoutHA(\'' + code + '\',' + total.toFixed(2) + ', false)">'      + '💳 Payer ' + total.toFixed(2) + ' € en 1 fois via HelloAsso</button>'      + '<button id="btn-ha-checkout-3x" class="btn" style="width:100%;font-size:15px;padding:14px;justify-content:center;background:#1565c0;color:white;border:none;border-radius:10px;cursor:pointer;" '      + 'onclick="lancerCheckoutHA(\'' + code + '\',' + total.toFixed(2) + ', true)">'      + '📅 Payer en 3 fois via HelloAsso</button>'      + '<div style="font-size:11px;color:#555;text-align:center;margin-top:-4px;">'      + '40% aujourd\'hui (' + (total*0.40).toFixed(2) + ' €)'      + ' · 30% dans 3 mois (' + (total*0.30).toFixed(2) + ' €)'      + ' · solde dans 6 mois (' + (total - Math.round(total*0.40*100)/100 - Math.round(total*0.30*100)/100).toFixed(2) + ' €)'      + '</div>'      + '<p style="font-size:11px;color:var(--gray);text-align:center;margin-top:4px;">Paiement sécurisé — sans commission pour l\'association</p>'      + '</div>'      + '</div>'
       + '<div style="border:2px solid #e8c84a;border-radius:10px;background:#fffdf0;padding:16px;margin-top:12px;">'
       + '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">&#x1F4BE; Enregistrez votre dossier avant de payer</div>'
       + '<div style="font-size:13px;color:var(--dark);margin-bottom:12px;">Cliquez ci-dessous pour enregistrer votre dossier, <strong>puis</strong> effectuez votre paiement sur HelloAsso.</div>'
@@ -7267,16 +8152,27 @@ async function validerFormulaireCheques(code, total, showTrois) {
 // Surveillance autofill — vérifie le champ ville toutes les 500ms
 // car l'autofill navigateur ne déclenche pas oninput/onchange
 (function() {
-  var lastVille = '';
+  var lastVille = '', lastCp = '';
   setInterval(function() {
-    var el = document.getElementById('rl-ville');
-    if (!el) return;
-    var v = el.value;
-    if (v !== lastVille) {
+    var elV = document.getElementById('rl-ville');
+    var elC = document.getElementById('rl-cp');
+    var v = elV ? elV.value : '';
+    var c = elC ? elC.value : '';
+    if (v !== lastVille || c !== lastCp) {
       lastVille = v;
+      lastCp = c;
       detectCommune();
     }
-  }, 500);
+  }, 300);
+})();
+
+// ── Gérer le retour depuis HelloAsso au chargement de la page ──
+(function() {
+  if (window.location.hash && window.location.hash.includes('paiement-valide')) {
+    handleReturnFromHelloAsso().catch(function(e) {
+      console.error('handleReturnFromHelloAsso KO:', e);
+    });
+  }
 })();
 
 </script>
