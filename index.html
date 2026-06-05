@@ -3124,8 +3124,15 @@ async function validerBordereauFFTT(memId) {
   };
 
   const sig  = getSignatureFFTTBase64(memId);
-  const rows = buildRows();
-  const code = state.codeDossier || '';
+  // Construire reg depuis state pour passer a buildRows
+  captureResponsable();
+  const _regForFFTT = {
+    responsable: { ...state.responsable },
+    members:     state.members.map(m => ({...m, activities:[...m.activities]})),
+    totals:      calcTotals ? calcTotals() : {}
+  };
+  const rows = buildRows(_regForFFTT);
+  const code = state.codeDossier || state.codeDossierPreview || '';
   const url  = getAppsScriptUrl();
   if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
 
