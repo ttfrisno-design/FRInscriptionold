@@ -3113,7 +3113,24 @@ async function validerBordereauFFTT(memId) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours...'; }
 
   // Collecter tous les champs
+  // Inclure les donnees du responsable et du membre directement dans extra
+  const _resp  = state.responsable || {};
+  const _memb  = state.members.find(m => m.id === memId) || state.members[0] || {};
   const extra = {
+    // Donnees responsable
+    nom:     _resp.nom    || '',
+    prenom:  _resp.prenom || '',
+    email:   _resp.email  || _resp.email1 || '',
+    tel:     _resp.tel    || _resp.tel1   || '',
+    adresse: _resp.adresse || '',
+    cp:      _resp.cp     || '',
+    ville:   _resp.ville  || _resp.commune || '',
+    // Donnees membre
+    memNom:    _memb.nom    || _resp.nom    || '',
+    memPrenom: _memb.prenom || _resp.prenom || '',
+    ddn:       _memb.ddn    || _resp.ddn    || '',
+    sexe:      _memb.sexe   || _resp.sexe   || '',
+    // Champs bordereau
     nomNaissance:   nomNaiss,
     nationalite:    national,
     paysNaissance:  paysNaiss,
