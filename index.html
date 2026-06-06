@@ -7214,7 +7214,7 @@ function mergerDossiersSheet(dossiers) {
             || d.statut.toLowerCase().includes('pending')
           )) ? 'pending_manual'
            : (d.statut && d.statut.toLowerCase().includes('pay')) ? 'paid'
-           : 'pending_manual'  // par défaut non réglé si statut inconnu
+           : 'pending_manual',  // par défaut non réglé si statut inconnu
         responsable: {
           nom:          d.nom_responsable   || d.nom_membre || '',
           prenom:       d.prenom_responsable || d.prenom_membre || '',
