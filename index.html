@@ -3238,6 +3238,11 @@ async function validerBordereauFFTT(memId) {
   const status = document.getElementById('fftt-bordereau-status-' + memId);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours...'; }
 
+  // Lire le code dossier en premier (utilise dans extra et dans le payload)
+  const _codeDOM0    = document.getElementById('dossier-code')?.textContent?.trim() || '';
+  const _codePend0   = Object.keys(JSON.parse(localStorage.getItem('fri_pending') || '{}')).pop() || '';
+  const code         = _codeDOM0 || state.codeDossierPreview || _codePend0 || '';
+
   // Collecter tous les champs
   // Inclure les donnees du responsable et du membre directement dans extra
   const _resp  = state.responsable || {};
@@ -3283,11 +3288,7 @@ async function validerBordereauFFTT(memId) {
     totals:      calcTotals ? calcTotals() : {}
   };
   const rows = buildRows(_regForFFTT);
-  // Lire le code dossier depuis plusieurs sources possibles
-  const _codeDOM = document.getElementById('dossier-code')?.textContent?.trim() || '';
-  const _codePending = Object.keys(JSON.parse(localStorage.getItem('fri_pending') || '{}')).pop() || '';
-  const code = _codeDOM || state.codeDossierPreview || _codePending || '';
-  console.log('[FRI] FFTT code dossier:', code, '(DOM:', _codeDOM, 'preview:', state.codeDossierPreview, ')');
+  console.log('[FRI] FFTT code dossier:', code);
   const url  = getAppsScriptUrl();
   if (!url) { showToast('URL Apps Script non configurée.', 'red'); return; }
 
