@@ -3131,7 +3131,7 @@ function preremplirBordereauFFTT(memId, licData) {
   set('fftt-points-'  + memId, lic.points ? lic.points + ' pts' : '');
   // Champs a completer : pre-remplir depuis licData
   fill('fftt-nom-naiss-'   + memId, lic.nomNaissance   || '');
-  fill('fftt-nationalite-' + memId, lic.nationalite    || 'Fran\u00e7aise');
+  fill('fftt-nationalite-' + memId, lic.nationalite    || 'Française');
   fill('fftt-pays-naiss-'  + memId, lic.paysNaissance  || 'France');
   fill('fftt-ville-naiss-' + memId, lic.villeNaissance || '');
   fill('fftt-cp-naiss-'    + memId, lic.cpNaissance    || '');
@@ -3166,7 +3166,7 @@ async function onCertifFileSelected(memId) {
   const r    = state.responsable || {};
   const nom    = (m && m.nom)    || r.nom    || '';
   const prenom = (m && m.prenom) || r.prenom || '';
-  if (status) { status.style.color = '#1565c0'; status.textContent = '\u23f3 Envoi du certificat en cours...'; }
+  if (status) { status.style.color = '#1565c0'; status.textContent = '⏳ Envoi du certificat en cours...'; }
   await envoyerCertificatMedical(memId, code, nom, prenom);
 }
 
@@ -3181,7 +3181,7 @@ async function envoyerCertificatMedical(memId, code, nom, prenom) {
     if (status) { status.style.color = '#c0392b'; status.textContent = 'Fichier trop volumineux (max 5 Mo).'; }
     return;
   }
-  if (status) { status.style.color = '#1565c0'; status.textContent = '\u23f3 Envoi en cours...'; }
+  if (status) { status.style.color = '#1565c0'; status.textContent = '⏳ Envoi en cours...'; }
   try {
     const arrayBuffer = await file.arrayBuffer();
     const uint8 = new Uint8Array(arrayBuffer);
@@ -3208,10 +3208,10 @@ async function envoyerCertificatMedical(memId, code, nom, prenom) {
       body: formBody1
     });
     await new Promise(r => setTimeout(r, 3000));
-    if (status) { status.style.color = '#2d6a4f'; status.textContent = '\u2705 Certificat envoy\u00e9 au FRI'; }
+    if (status) { status.style.color = '#2d6a4f'; status.textContent = '✅ Certificat envoyé au FRI'; }
     console.log('[FRI] Certificat medical envoye :', fname);
   } catch(e) {
-    if (status) { status.style.color = '#c0392b'; status.textContent = '\u26a0\ufe0f Erreur envoi : ' + e.message; }
+    if (status) { status.style.color = '#c0392b'; status.textContent = '⚠️ Erreur envoi : ' + e.message; }
     console.warn('[FRI] Erreur upload certificat:', e);
   }
 }
@@ -3391,10 +3391,10 @@ async function rechercherLicenceFFTT(memberId) {
   const nom    = (m && m.nom)    || (state.responsable && state.responsable.nom)    || '';
   const prenom = (m && m.prenom) || (state.responsable && state.responsable.prenom) || '';
   if (!numLic && !nom) {
-    if (fb) { fb.textContent = 'Entrez un N\u00b0 de licence ou compl\u00e9tez le nom du membre.'; fb.style.color = '#e65100'; }
+    if (fb) { fb.textContent = 'Entrez un N° de licence ou complétez le nom du membre.'; fb.style.color = '#e65100'; }
     return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = '\u23f3 Recherche...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Recherche...'; }
   try {
     const res = await callAppsScriptFetch(url, { action: 'getLicenceFFTT', nom: nom, prenom: prenom, numLicence: numLic });
     const d = res.data || res;
@@ -3402,9 +3402,9 @@ async function rechercherLicenceFFTT(memberId) {
       if (m) m.ffttLicData = d;
       if (fb) {
         fb.style.cssText = 'background:#d8f3dc;color:#2d6a4f;padding:8px 12px;border-radius:6px;font-size:12px;margin-top:4px;';
-        fb.innerHTML = '\u2705 Licenci\u00e9 trouv\u00e9\u00a0: <strong>' + d.nom + ' ' + d.prenom + '</strong>'
-          + ' \u2014 N\u00b0' + (d.numLicence||'nouveau') + ' \u2014 N\u00e9(e) le ' + (d.ddn||'?')
-          + '<br><span style="font-size:11px;">\u2139\ufe0f V\u00e9rifiez les informations avant de valider</span>';
+        fb.innerHTML = '✅ Licencié trouvé : <strong>' + d.nom + ' ' + d.prenom + '</strong>'
+          + ' — N°' + (d.numLicence||'nouveau') + ' — Né(e) le ' + (d.ddn||'?')
+          + '<br><span style="font-size:11px;">ℹ️ Vérifiez les informations avant de valider</span>';
       }
       if (btnOpen) btnOpen.style.display = 'inline-block';
       preremplirBordereauFFTT(memberId, d);
@@ -3412,14 +3412,14 @@ async function rechercherLicenceFFTT(memberId) {
       if (m) m.ffttLicData = null;
       if (fb) {
         fb.style.cssText = 'background:#fff3e0;color:#e65100;padding:8px 12px;border-radius:6px;font-size:12px;margin-top:4px;';
-        fb.innerHTML = '\u2139\ufe0f ' + (d ? d.message : 'Introuvable')
-          + '<br><span style="font-size:11px;">Compl\u00e9tez le bordereau manuellement.</span>';
+        fb.innerHTML = 'ℹ️ ' + (d ? d.message : 'Introuvable')
+          + '<br><span style="font-size:11px;">Complétez le bordereau manuellement.</span>';
       }
       if (btnOpen) btnOpen.style.display = 'inline-block';
       preremplirBordereauFFTT(memberId, null);
     }
   } catch(e) {
-    if (fb) { fb.style.color = '#c0392b'; fb.textContent = '\u26a0\ufe0f Erreur : ' + e.message; }
+    if (fb) { fb.style.color = '#c0392b'; fb.textContent = '⚠️ Erreur : ' + e.message; }
     if (btnOpen) btnOpen.style.display = 'inline-block';
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '\ud83d\udd0d Rechercher dans la base 25-26'; }
