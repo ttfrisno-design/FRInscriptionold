@@ -1990,6 +1990,8 @@ function addMember() {
   const m = { id, nom:'', prenom:'', ddn:'', sexe:'', email:'', activities:[], qs:{}, qsResult:null, ffttWant:false, ffttPrice:0 };
   state.members.push(m);
   renderMembers();
+  // Charger les effectifs si pas encore fait
+  if (!state.placesLoaded) loadPlaces().then(() => renderMembers()).catch(() => {});
 }
 
 function removeMember(id) {
@@ -2294,7 +2296,7 @@ function semainierHtml(memberId) {
 }
 
 function buildGrid(memberId, tabDef) {
-  const isno = (state.responsable.commune || 'isno') === 'isno';
+  const isno = ((state.responsable && state.responsable.commune) || 'isno') === 'isno';
   const { catKey, acts, key } = tabDef.key ? tabDef : { key: tabDef.key, acts: tabDef.acts, catKey: tabDef.key };
   const color = catColor(tabDef.key);
 
@@ -6994,7 +6996,7 @@ function renderAdmin() {
   </table>
   <div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.3);text-align:right">${filtered.length} dossier${filtered.length>1?'s':''} affiché${filtered.length>1?'s':''}</div>`;
   }
-  _renderBasculesPending(c);
+  _renderBasculesPending(document.getElementById('admin-table-container'));
 
 // ── Valider paiement manuel (admin) ──
 async function validerPaiement(code, regId) {
