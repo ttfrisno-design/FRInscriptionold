@@ -2897,7 +2897,7 @@ function memberHtml(m) {
       </div>
       <div id="fftt-detail-${m.id}" style="display:none;margin-top:12px;">
         <div style="font-size:13px;color:#5D4037;margin-bottom:8px;line-height:1.6;">
-          Sélectionnez la catégorie du licencié pour connaître le tarif :
+          Sélectionnez la catégorie du licencié pour connaître le tarif <span style="color:#c62828;font-weight:700;">* obligatoire</span> :
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid #e65100;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;color:#bf360c;background:white;">
@@ -2952,21 +2952,7 @@ function memberHtml(m) {
                 style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;background:#f9f9f9;color:#555;"></div>
           </div>
 
-          <!-- Catégorie du licencié obligatoire -->
-          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:4px;">&#x1F464; Catégorie du licencié <span style="font-weight:400;color:#e65100">* obligatoire</span></div>
-          <div style="font-size:10.5px;color:#555;margin-bottom:8px;line-height:1.5;">Sélectionnez la catégorie pour connaître le tarif de la licence :</div>
-          <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;line-height:1.9;"><span style="font-weight:700;color:#e65100">Poussin / Benjamin / Minime</span> — 37 €  &bull;  <span style="font-weight:700;color:#e65100">Cadet</span> — 52 €  &bull;  <span style="font-weight:700;color:#e65100">Junior / Sénior / Vétéran</span> — 70 €</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="veteran" style="accent-color:#e65100;" onchange="autosave()"> Vétéran (≤1986) — 70 €</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="senior" style="accent-color:#e65100;" onchange="autosave()"> Sénior (87–07) — 70 €</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="junior" style="accent-color:#e65100;" onchange="autosave()"> Junior (08–11) — 70 €</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="cadet" style="accent-color:#e65100;" onchange="autosave()"> Cadet (12–13) — 52 €</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="minime" style="accent-color:#e65100;" onchange="autosave()"> Minime (14–15) — 37 €</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="benjamin" style="accent-color:#e65100;" onchange="autosave()"> Benjamin (16–17) — 37 €</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="poussin" style="accent-color:#e65100;" onchange="autosave()"> Poussin (≥2018) — 37 €</label>
-          </div>
-
-          <!-- Certification médicale officielle FFTT (5 cases) -->
+          <!--           <!-- Certification médicale officielle FFTT (5 cases) -->
           <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:6px 10px;border-radius:6px;margin-bottom:4px;">🏥 Certification médicale — cocher UNE case obligatoirement *</div>
           <div style="font-size:10.5px;color:#555;margin-bottom:8px;padding:0 2px;line-height:1.5;">Vous devez cocher obligatoirement une de ces cinq cases et une seule.</div>
           <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
@@ -3180,8 +3166,10 @@ function preremplirBordereauFFTT(memId, licData) {
   fill('fftt-num-lic-'     + memId, lic.numLicence     || '');
   // Categorie — cocher automatiquement
   if (lic.categAge) {
-    const radio = document.querySelector(`input[name="fftt-age-${memId}"][value="${lic.categAge}"]`);
-    if (radio) radio.checked = true;
+    const catTarif = ['poussin','benjamin','minime'].includes(lic.categAge) ? '37'
+      : lic.categAge === 'cadet' ? '52' : '70';
+    const radio = document.querySelector(`input[name="fftt-cat-${memId}"][value="${catTarif}"]`);
+    if (radio) { radio.checked = true; updateFfttPrice(memId); }
   }
   setTimeout(() => initSignatureFFTT(memId), 100);
 }
@@ -3338,7 +3326,7 @@ async function validerBordereauFFTT(memId) {
   const nomNaiss  = g('fftt-nom-naiss-'   + memId)?.value.trim() || '';
   const national  = g('fftt-nationalite-' + memId)?.value.trim() || '';
   const paysNaiss = g('fftt-pays-naiss-'  + memId)?.value.trim() || '';
-  const age    = document.querySelector(`input[name="fftt-age-${memId}"]:checked`)?.value || '';
+  const age    = document.querySelector(`input[name="fftt-cat-${memId}"]:checked`)?.value || '';
   const med    = document.querySelector(`input[name="fftt-med-${memId}"]:checked`)?.value || '';
   const ass    = document.querySelector(`input[name="fftt-ass-${memId}"]:checked`)?.value || '';
 
