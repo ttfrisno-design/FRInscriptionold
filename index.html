@@ -2964,54 +2964,73 @@ function memberHtml(m) {
             <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="poussin" style="accent-color:#e65100;"> Poussin (≥2018)</label>
           </div>
 
-          <!-- Certification médicale -->
-          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🏥 Certification médicale — cocher UNE case *</div>
+          <!-- Certification médicale officielle FFTT (5 cases) -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:6px 10px;border-radius:6px;margin-bottom:4px;">🏥 Certification médicale — cocher UNE case obligatoirement *</div>
+          <div style="font-size:10.5px;color:#555;margin-bottom:8px;padding:0 2px;line-height:1.5;">Vous devez cocher obligatoirement une de ces cinq cases et une seule.</div>
           <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
-            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+
+            <!-- Case 1 -->
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
               <input type="radio" name="fftt-med-${m.id}" value="certif"
                 onchange="toggleUploadCertif(${m.id})"
-                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
-              Je joins un <b>certificat médical de pratique sportive</b> de moins d'un an (formulaire 26-9)
+                style="accent-color:#e65100;margin-top:3px;flex-shrink:0;">
+              <span><b>1.</b> Je joins un <b>certificat médical de pratique sportive</b> de moins d'un an à la date de cette demande, établi par le médecin sur papier libre ou sur l'imprimé <b>(formulaire 26-9)</b></span>
             </label>
-            <!-- Zone upload certificat medical -->
-            <div id="certif-upload-zone-${m.id}" style="display:none;margin-top:4px;padding:10px 12px;background:#e8f4fd;border:1.5px solid #2980b9;border-radius:8px;">
+            <!-- Zone upload certificat medical (case 1) -->
+            <div id="certif-upload-zone-${m.id}" style="display:none;margin:0 0 4px 28px;padding:10px 12px;background:#e8f4fd;border:1.5px solid #2980b9;border-radius:8px;">
               <div style="font-size:12px;font-weight:700;color:#1565c0;margin-bottom:6px;">📄 Envoyer votre certificat au FRI</div>
-              <div style="font-size:11px;color:#555;margin-bottom:8px;">Formats acceptés : PDF, JPG, PNG — max 5 Mo</div>
+              <div style="font-size:11px;color:#555;margin-bottom:8px;">Formats acceptés : PDF, JPG, PNG — max 5 Mo</div>
               <input type="file" id="certif-file-${m.id}" accept=".pdf,.jpg,.jpeg,.png,image/*"
                 onchange="onCertifFileSelected(${m.id})"
                 style="font-size:12px;width:100%;box-sizing:border-box;">
               <div id="certif-upload-status-${m.id}" style="margin-top:6px;font-size:12px;"></div>
             </div>
-            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+
+            <!-- Case 2 -->
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
+              <input type="radio" name="fftt-med-${m.id}" value="veteranAttest"
+                onchange="toggleUploadCertif(${m.id})"
+                style="accent-color:#e65100;margin-top:3px;flex-shrink:0;">
+              <span><b>2.</b> J'ai fourni, si je suis <b>vétéran</b>, un certificat médical lors de mon précédent changement de catégorie sportive. J'ai pratiqué sans discontinuité et je joins l'attestation qui certifie que j'ai répondu « NON » à toutes les questions de l'auto-questionnaire médical <b>(formulaire 26-10-1)</b></span>
+            </label>
+
+            <!-- Case 3 -->
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
               <input type="radio" name="fftt-med-${m.id}" value="attestMaj"
                 onchange="toggleUploadCertif(${m.id})"
-                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
-              Je joins l'<b>attestation NON</b> à toutes les questions — <b>majeurs &lt; 40 ans</b> (formulaire 26-10-1)
+                style="accent-color:#e65100;margin-top:3px;flex-shrink:0;">
+              <span><b>3.</b> Je joins l'attestation certifiant que j'ai répondu « NON » à toutes les questions de l'auto-questionnaire médical — <b>majeurs de moins de 40 ans</b> <b>(formulaire 26-10-1)</b></span>
             </label>
-            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+
+            <!-- Case 4 -->
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
               <input type="radio" name="fftt-med-${m.id}" value="attestMin"
                 onchange="toggleUploadCertif(${m.id})"
-                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
-              Je joins l'<b>attestation NON</b> — <b>mineurs</b> (formulaire 26-10-2)
+                style="accent-color:#e65100;margin-top:3px;flex-shrink:0;">
+              <span><b>4.</b> Je joins l'attestation certifiant que j'ai répondu « NON » à toutes les questions de l'auto-questionnaire médical — <b>mineurs</b> <b>(formulaire 26-10-2)</b></span>
             </label>
-            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
+
+            <!-- Case 5 -->
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fff3e0;border:1px solid #ffcc80;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
               <input type="radio" name="fftt-med-${m.id}" value="sansCertif"
                 onchange="toggleUploadCertif(${m.id})"
-                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
-              Je ne joins <b>pas de certificat médical</b> — licence sans pratique sportive
+                style="accent-color:#e65100;margin-top:3px;flex-shrink:0;">
+              <span><b>5.</b> Je ne joins <b>pas de certificat médical ni d'attestation</b> certifiant avoir répondu « NON » à toutes les questions d'un auto-questionnaire médical. Je disposerai d'une <b>licence ne me permettant pas la pratique sportive</b></span>
             </label>
           </div>
 
-          <!-- Assurances -->
-          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🛡 Assurances — cocher UNE case *</div>
+          <!-- Assurances officielle FFTT -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:6px 10px;border-radius:6px;margin-bottom:4px;">🛡 Assurances — cocher UNE case obligatoirement *</div>
+          <div style="font-size:10.5px;color:#555;margin-bottom:8px;padding:0 2px;line-height:1.5;">J'atteste avoir pris connaissance des conditions et des garanties d'assurance ainsi que de la possibilité de souscrire une garantie complémentaire (document 26-2-2). Vous devez obligatoirement valider l'un des deux choix ci-dessous :</div>
           <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
-            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
-              <input type="radio" name="fftt-ass-${m.id}" value="souscrit" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
-              Je <b>souscris</b> à la garantie dommage corporel de base (inclus dans le tarif de la licence)
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
+              <input type="radio" name="fftt-ass-${m.id}" value="souscrit" style="accent-color:#2d6a4f;margin-top:3px;flex-shrink:0;">
+              <span><b>1.</b> Je <b>souhaite souscrire</b> à la garantie facultative de base « dommage corporel » : <b>0,38 €</b> pour les vétérans et séniors, <b>0,10 €</b> pour les catégories jeunes <em>(inclus dans le tarif de la licence)</em></span>
             </label>
-            <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
-              <input type="radio" name="fftt-ass-${m.id}" value="renonce" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
-              Je <b>ne souhaite pas souscrire</b> — je renonce à toute indemnité dommage corporel
+            <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
+              <input type="radio" name="fftt-ass-${m.id}" value="renonce" style="accent-color:#e65100;margin-top:3px;flex-shrink:0;">
+              <span><b>2.</b> Je <b>ne souhaite pas souscrire</b> à la garantie facultative de base « dommage corporel ». Je demande le remboursement du montant de la prime d'assurance correspondante et <b>ne bénéficierai d'aucune indemnité</b> au titre du contrat « dommage corporel ».<br>
+              <em style="font-size:10.5px;color:#7b5800;">Le soussigné reconnait avoir été informé des risques encourus lors de ses participations aux matchs et avoir pris connaissance des dispositions relatives à l'assurance exposées ci-dessus.</em></span>
             </label>
           </div>
 
