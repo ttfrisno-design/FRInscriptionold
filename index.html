@@ -2858,6 +2858,28 @@ function memberHtml(m) {
         <input type="checkbox" id="fftt-want-${m.id}" onchange="toggleFfttCategory(${m.id})" style="margin-top:3px;width:16px;height:16px;cursor:pointer;accent-color:#e65100;">
         Je souhaite demander une licence FFTT pour participer aux compétitions
       </label>
+      <!-- Saisie N° licence + recherche dans fichier 25-26 -->
+      <div id="fftt-num-lic-bloc-${m.id}" style="display:none;margin-top:10px;">
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label style="font-size:11px;font-weight:700;color:#5D4037;display:block;margin-bottom:3px;">N° de licence FFTT (renouvellement) <span style="font-weight:400;color:#888;">— laisser vide si 1ère demande</span></label>
+            <input type="text" id="fftt-num-lic-search-${m.id}" placeholder="Ex: 08760123456"
+              oninput="autosave()"
+              style="width:100%;box-sizing:border-box;padding:8px 12px;border:1.5px solid #bcaaa4;border-radius:8px;font-size:14px;font-family:monospace;letter-spacing:1px;">
+          </div>
+          <button onclick="rechercherLicenceFFTT(${m.id})"
+            id="btn-search-lic-${m.id}"
+            style="background:#e65100;color:white;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+            🔍 Rechercher dans la base 25-26
+          </button>
+        </div>
+        <div id="fftt-search-feedback-${m.id}" style="margin-top:6px;font-size:12px;"></div>
+        <button onclick="ouvrirFormulaireBordereau(${m.id})"
+          id="btn-open-bordereau-${m.id}"
+          style="margin-top:8px;background:#2d6a4f;color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;display:none;">
+          📋 Compléter et générer le bordereau
+        </button>
+      </div>
       <div id="fftt-detail-${m.id}" style="display:none;margin-top:12px;">
         <div style="font-size:13px;color:#5D4037;margin-bottom:8px;line-height:1.6;">
           Sélectionnez la catégorie du licencié pour connaître le tarif :
@@ -2909,9 +2931,9 @@ function memberHtml(m) {
             <div><label style="font-size:11px;font-weight:700;color:#c62828;display:block;margin-bottom:2px;">CP de naissance **</label>
               <input type="text" id="fftt-cp-naiss-${m.id}" placeholder="Ex: 76000" oninput="autosave()"
                 style="width:100%;box-sizing:border-box;padding:6px 10px;border:1.5px solid #ef9a9a;border-radius:6px;font-size:13px;"></div>
-            <div><label style="font-size:11px;color:#555;display:block;margin-bottom:2px;">N° licence (renouvellement)</label>
-              <input type="text" id="fftt-num-lic-${m.id}" placeholder="Vide si 1ère demande" oninput="autosave()"
-                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;"></div>
+            <div><label style="font-size:11px;color:#555;display:block;margin-bottom:2px;">N° licence (pré-rempli)</label>
+              <input type="text" id="fftt-num-lic-${m.id}" placeholder="Vide si 1ère demande" oninput="autosave()" readonly
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;background:#f9f9f9;color:#555;"></div>
           </div>
 
           <!-- Catégorie d'âge -->
@@ -2985,8 +3007,8 @@ function memberHtml(m) {
           <div style="font-size:11.5px;font-weight:700;color:#1a2e22;background:#d8f3dc;padding:4px 10px;border-radius:6px;margin-bottom:6px;">✍️ Signature du licencié (ou représentant légal pour les mineurs)</div>
           <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px;margin-bottom:10px;">
             <canvas id="fftt-sig-${m.id}"
-              style="width:100%;max-width:480px;height:90px;border:2px solid #2d6a4f;border-radius:6px;background:white;display:block;touch-action:none;cursor:crosshair;"
-              width="480" height="90"></canvas>
+              style="width:100%;max-width:480px;height:150px;border:2px solid #2d6a4f;border-radius:6px;background:white;display:block;touch-action:none;cursor:crosshair;"
+              width="480" height="150"></canvas>
             <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
               <button onclick="effacerSignatureFFTT(${m.id})"
                 style="background:#e0e0e0;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;">🗑 Effacer</button>
@@ -3065,27 +3087,41 @@ function getSignatureFFTTBase64(memId) {
   const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
   if (!cv) return '';
   const small = document.createElement('canvas');
-  small.width = 240; small.height = 60;
+  small.width = 240; small.height = 75;
   const ctx = small.getContext('2d');
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 240, 60);
-  ctx.drawImage(cv, 0, 0, 240, 60);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 240, 75);
+  ctx.drawImage(cv, 0, 0, 240, 75);
   return small.toDataURL('image/jpeg', 0.5);
 }
 
 // ── Pré-remplissage des champs affichés ──────────────────────
-function preremplirBordereauFFTT(memId) {
+function preremplirBordereauFFTT(memId, licData) {
   const m = state.members.find(m => m.id === memId);
   const r = state.responsable;
   if (!m) return;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
-  set('fftt-nom-' + memId,     m.nom     || r.nom    || '');
-  set('fftt-prenom-' + memId,  m.prenom  || r.prenom || '');
-  set('fftt-ddn-' + memId,     m.ddn ? new Date(m.ddn).toLocaleDateString('fr-FR') : '');
-  set('fftt-sexe-' + memId,    m.sexe    || '');
+  const lic  = licData || m.ffttLicData || {};
+  const set  = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '\u2014'; };
+  const fill = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  // Zone pr�-remplie (lecture seule)
+  set('fftt-nom-'     + memId, lic.nom    || m.nom    || r.nom    || '');
+  set('fftt-prenom-'  + memId, lic.prenom || m.prenom || r.prenom || '');
+  set('fftt-ddn-'     + memId, lic.ddn    || (m.ddn ? new Date(m.ddn).toLocaleDateString('fr-FR') : ''));
+  set('fftt-sexe-'    + memId, lic.sexe   || m.sexe   || '');
   set('fftt-adresse-' + memId, (r.adresse||'') + (r.cp?' '+r.cp:'') + (r.ville?' '+r.ville:''));
-  set('fftt-email-' + memId,   r.email   || '');
-  set('fftt-tel-' + memId,     r.tel     || '');
-  // Initialiser le canvas
+  set('fftt-email-'   + memId, lic.email  || r.email  || '');
+  set('fftt-tel-'     + memId, lic.tel    || r.tel    || '');
+  // Champs � compl�ter : pr�-remplir depuis licData
+  fill('fftt-nom-naiss-'   + memId, lic.nomNaissance   || '');
+  fill('fftt-nationalite-' + memId, lic.nationalite    || 'Fran�aise');
+  fill('fftt-pays-naiss-'  + memId, lic.paysNaissance  || 'France');
+  fill('fftt-ville-naiss-' + memId, lic.villeNaissance || '');
+  fill('fftt-cp-naiss-'    + memId, lic.cpNaissance    || '');
+  fill('fftt-num-lic-'     + memId, lic.numLicence     || '');
+  // Cat�gorie — cocher automatiquement
+  if (lic.categAge) {
+    const radio = document.querySelector(`input[name="fftt-age-${memId}"][value="${lic.categAge}"]`);
+    if (radio) radio.checked = true;
+  }
   setTimeout(() => initSignatureFFTT(memId), 100);
 }
 
@@ -3246,17 +3282,67 @@ function updateFfttBlock(memberId) {
 
 // Toggle affichage du détail catégorie
 function toggleFfttCategory(memberId) {
-  const cb = document.getElementById(`fftt-want-${memberId}`);
+  const cb     = document.getElementById(`fftt-want-${memberId}`);
   const detail = document.getElementById(`fftt-detail-${memberId}`);
-  if (!cb || !detail) return;
-  if (cb.checked) setTimeout(() => preremplirBordereauFFTT(memberId), 200);;
-  detail.style.display = cb.checked ? 'block' : 'none';
+  const bloc   = document.getElementById(`fftt-num-lic-bloc-${memberId}`);
+  if (!cb) return;
+  if (bloc) bloc.style.display = cb.checked ? 'block' : 'none';
+  if (!cb.checked && detail) detail.style.display = 'none';
   const m = state.members.find(m => m.id === memberId);
-  if (m) {
-    m.ffttWant = cb.checked;
-    if (!cb.checked) { m.ffttPrice = 0; }
-  }
+  if (m) { m.ffttWant = cb.checked; if (!cb.checked) m.ffttPrice = 0; }
   renderSummary();
+}
+
+async function rechercherLicenceFFTT(memberId) {
+  const m      = state.members.find(mb => mb.id === memberId);
+  const url    = getAppsScriptUrl();
+  if (!url) return;
+  const numInput = document.getElementById(`fftt-num-lic-search-${memberId}`);
+  const fb       = document.getElementById(`fftt-search-feedback-${memberId}`);
+  const btn      = document.getElementById(`btn-search-lic-${memberId}`);
+  const btnOpen  = document.getElementById(`btn-open-bordereau-${memberId}`);
+  const numLic   = numInput ? numInput.value.trim() : '';
+  const nom    = (m && m.nom)    || (state.responsable && state.responsable.nom)    || '';
+  const prenom = (m && m.prenom) || (state.responsable && state.responsable.prenom) || '';
+  if (!numLic && !nom) {
+    if (fb) { fb.textContent = 'Entrez un N� de licence ou compl�tez le nom du membre.'; fb.style.color = '#e65100'; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '\u23f3 Recherche...'; }
+  try {
+    const res = await callAppsScriptFetch(url, { action: 'getLicenceFFTT', nom: nom, prenom: prenom, numLicence: numLic });
+    const d = res.data || res;
+    if (d && d.found) {
+      if (m) m.ffttLicData = d;
+      if (fb) {
+        fb.style.cssText = 'background:#d8f3dc;color:#2d6a4f;padding:8px 12px;border-radius:6px;font-size:12px;margin-top:4px;';
+        fb.innerHTML = '\u2705 Licenci� trouv� : <strong>' + d.nom + ' ' + d.prenom + '</strong>'
+          + ' \u2014 N�' + (d.numLicence||'nouveau') + ' \u2014 N�(e) le ' + (d.ddn||'?')
+          + '<br><span style="font-size:11px;">\u2139\ufe0f V�rifiez les informations avant de valider</span>';
+      }
+      if (btnOpen) btnOpen.style.display = 'inline-block';
+      preremplirBordereauFFTT(memberId, d);
+    } else {
+      if (m) m.ffttLicData = null;
+      if (fb) {
+        fb.style.cssText = 'background:#fff3e0;color:#e65100;padding:8px 12px;border-radius:6px;font-size:12px;margin-top:4px;';
+        fb.innerHTML = '\u2139\ufe0f ' + (d ? d.message : 'Introuvable')
+          + '<br><span style="font-size:11px;">Compl�tez le bordereau manuellement.</span>';
+      }
+      if (btnOpen) btnOpen.style.display = 'inline-block';
+      preremplirBordereauFFTT(memberId, null);
+    }
+  } catch(e) {
+    if (fb) { fb.style.color = '#c0392b'; fb.textContent = '\u26a0\ufe0f Erreur : ' + e.message; }
+    if (btnOpen) btnOpen.style.display = 'inline-block';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '\ud83d\udd0d Rechercher dans la base 25-26'; }
+  }
+}
+
+function ouvrirFormulaireBordereau(memberId) {
+  const detail = document.getElementById(`fftt-detail-${memberId}`);
+  if (detail) { detail.style.display = 'block'; detail.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
 
 // Met à jour le prix FFTT du membre selon la catégorie choisie
