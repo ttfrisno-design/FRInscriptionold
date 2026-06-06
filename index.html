@@ -3167,8 +3167,10 @@ async function validerBordereauFFTT(memId) {
       await new Promise(r => setTimeout(r, 5000)); // attendre traitement GAS (PDF = ~3-4s)
       result = { ok: true, data: { status: 'ok' } };
     } catch(ePost) {
-      console.warn('[FRI] POST FFTT echoue, fallback JSONP:', ePost.message);
-      result = await callAppsScriptFetch(url, ffttPayload);
+      console.warn('[FRI] POST FFTT echoue, fallback JSONP (sans signature):', ePost.message);
+      // En fallback JSONP, supprimer la signature (trop longue pour une URL)
+      const ffttFallback = { ...ffttPayload, signature: '' };
+      result = await callAppsScriptFetch(url, ffttFallback);
     }
     const data = result && result.data ? result.data : (result || {});
     if (data && data.status === 'ok') {
