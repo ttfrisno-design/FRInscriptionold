@@ -3159,16 +3159,24 @@ async function validerBordereauFFTT(memId) {
     console.log('[FRI] saveBordereauFFTT payload size:', JSON.stringify(ffttPayload).length);
     let result;
     try {
-      await fetch(url, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+      // Envoyer via fetch POST avec redirect:follow
+      // Apps Script redirige vers script.googleusercontent.com qui recoit le body
+      const resp = await fetch(url, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(ffttPayload)
       });
-      await new Promise(r => setTimeout(r, 5000)); // attendre traitement GAS (PDF = ~3-4s)
-      result = { ok: true, data: { status: 'ok' } };
+      let respData = { status: 'ok' };
+      try {
+        const respText = await resp.text();
+        console.log('[FRI] POST FFTT reponse:', respText.substring(0, 200));
+        if (respText && respText.trim().startsWith('{')) respData = JSON.parse(respText);
+      } catch(ep) { console.warn('[FRI] Parse reponse FFTT:', ep.message); }
+      result = { ok: true, data: respData };
     } catch(ePost) {
-      console.warn('[FRI] POST FFTT echoue, fallback JSONP (sans signature):', ePost.message);
-      // En fallback JSONP, supprimer la signature (trop longue pour une URL)
+      console.warn('[FRI] POST FFTT echoue:', ePost.message);
+      // Fallback JSONP sans signature
       const ffttFallback = { ...ffttPayload, signature: '' };
       result = await callAppsScriptFetch(url, ffttFallback);
     }
