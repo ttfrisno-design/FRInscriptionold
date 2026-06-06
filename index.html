@@ -6751,6 +6751,16 @@ async function basculerListeAttente(code, actId, actNom, prenomMembre, nomMembre
     const data = result && result.data ? result.data : (result || {});
     if (data && data.status === 'ok') {
       showAdminToast('✅ Basculé — email envoyé', 'green');
+      const bascules2 = JSON.parse(localStorage.getItem('fri_bascules_pending') || '[]');
+      const regsAll2  = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+      const regSrc2   = regsAll2.find(r => r.code === code) || {};
+      const resp2     = regSrc2.responsable || {};
+      if (!bascules2.find(b => b.code === code && b.actId === actId)) {
+        bascules2.push({ code, date: new Date().toISOString(), nom: nomMembre, prenom: prenomMembre,
+          email: resp2.email || resp2.email1 || '', tel: resp2.tel || resp2.tel1 || '',
+          actNom, actId, tarif: parseFloat(tarifBrut) || 0, status: 'pending_manual', _isBascule: true });
+        localStorage.setItem('fri_bascules_pending', JSON.stringify(bascules2));
+      }
       await chargerDossiersDepuisSheet();
       renderAdmin();
     } else if (!data || !data.status) {
@@ -7112,6 +7122,72 @@ async function chargerDossiersDepuisSheet() {
   sheetLoadInProgress = false;
 }
 
+// Valider le paiement d'une activite basculee
+async function validerPaiementBascule(code, actId, idx) {
+  if (!requireAdmin()) return;
+  if (!confirm('Valider le paiement pour l\'activite basculee du dossier ' + code + ' ?')) return;
+  showAdminToast('⏳ Validation en cours...', 'orange');
+  try {
+    const url = getAppsScriptUrl();
+    const result = await callAppsScriptFetch(url, {
+      action:  'validerPaiement',
+      _token:  FRI_SECRET_TOKEN,
+      code:    code,
+      status:  'paid',
+      rows:    [],
+      actIdBascule: actId
+    });
+    const data = result && result.data ? result.data : (result || {});
+    if (data && (data.status === 'ok' || data.updated > 0)) {
+      // Supprimer de fri_bascules_pending
+      let bascules = JSON.parse(localStorage.getItem('fri_bascules_pending') || '[]');
+      bascules = bascules.filter((b, i) => !(b.code === code && b.actId === actId));
+      localStorage.setItem('fri_bascules_pending', JSON.stringify(bascules));
+      showAdminToast('✅ Paiement validé pour ' + code, 'green');
+      await chargerDossiersDepuisSheet();
+      renderAdmin();
+    } else {
+      showAdminToast('⚠️ Erreur : ' + (data.message || 'inconnue'), 'red');
+    }
+  } catch(e) {
+    showAdminToast('⚠️ Erreur : ' + e.message, 'red');
+  }
+}
+
+
+
+function _renderBasculesPending(c) {
+  const bp = JSON.parse(localStorage.getItem('fri_bascules_pending') || '[]');
+  if (!bp.length) return;
+  const thS = 'text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#ffab40;font-weight:700';
+  let html = '<div style="margin-top:16px;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.4);border-radius:8px;overflow:hidden;">'
+    + '<div style="padding:8px 14px;color:#ffab40;font-weight:700;font-size:12px;border-bottom:1px solid rgba(255,152,0,0.3);">'
+    + '&#x23F3; Activités basculees &mdash; Règlement &agrave; valider</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px;color:rgba(255,255,255,0.85);">'
+    + '<thead><tr><th style="'+thS+'">Date</th><th style="'+thS+'">Dossier</th>'
+    + '<th style="'+thS+'">Membre</th><th style="'+thS+'">Contact</th>'
+    + '<th style="'+thS+'">Activité</th>'
+    + '<th style="text-align:right;'+thS+'">Montant</th>'
+    + '<th style="text-align:center;'+thS+'">Action</th></tr></thead><tbody>';
+  bp.forEach(function(b, i) {
+    html += '<tr style="border-bottom:1px solid rgba(255,152,0,0.15);' + (i%2===0?'':'background:rgba(255,255,255,0.03)') + '">'
+      + '<td style="padding:8px 12px;font-size:12px">' + formatDateAdmin(b.date) + '</td>'
+      + '<td style="padding:8px 12px;font-family:monospace;font-weight:700;color:#ffab40">' + b.code + '</td>'
+      + '<td style="padding:8px 12px">' + (b.prenom||'') + ' ' + (b.nom||'') + '</td>'
+      + '<td style="padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.6)">' + (b.email||'') + '<br>' + (b.tel||'') + '</td>'
+      + '<td style="padding:8px 12px">' + (b.actNom||'') + '</td>'
+      + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:#ffab40">' + (b.tarif>0?b.tarif.toFixed(2)+' €':'—') + '</td>'
+      + '<td style="padding:8px 12px;text-align:center">'
+      + '<button onclick="validerPaiementBascule(\'' + b.code + '\',\'' + (b.actId||'') + '\',' + i + ')"'
+      + ' style="background:#ff9800;color:white;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:700;">'
+      + '&#x2705; Valider paiement</button></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  c.innerHTML += html;
+}
+
+
+
 function mergerDossiersSheet(dossiers) {
   // Groupe par N° dossier (format FRI-XXXX)
   const byCode = {};
@@ -7128,11 +7204,16 @@ function mergerDossiersSheet(dossiers) {
         id:     d.code,
         code:   d.code,
         date:   d.date || '',
-        status: (d.statut && (d.statut.toLowerCase().includes('attente') || d.statut.toLowerCase().includes('pending')))
-                 ? 'pending_manual'
-                 : (d.statut && d.statut.toLowerCase().includes('pay'))
-                   ? 'paid'
-                   : 'pending_manual',  // par défaut non réglé si statut inconnu
+        // 'En attente de place' ou 'Reglement recu' = dossier PAYE, place pas encore dispo
+        // 'En attente' seul = paiement pas encore valide
+        status: (d.statut && (
+            (d.statut.toLowerCase().includes('attente')
+             && !d.statut.toLowerCase().includes('place')
+             && !d.statut.toLowerCase().includes('glement re'))
+            || d.statut.toLowerCase().includes('pending')
+          )) ? 'pending_manual'
+           : (d.statut && d.statut.toLowerCase().includes('pay')) ? 'paid'
+           : 'pending_manual'  // par défaut non réglé si statut inconnu
         responsable: {
           nom:          d.nom_responsable   || d.nom_membre || '',
           prenom:       d.prenom_responsable || d.prenom_membre || '',
@@ -7660,6 +7741,7 @@ async function selectionnerActiviteAjout(code, actId) {
         </button>
       </div>
     </div>`;
+  _renderBasculesPending(c);
 
   document.body.appendChild(mc);
   mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
