@@ -653,6 +653,19 @@
     ⚕️ <strong>Important :</strong> Si vous répondez OUI à au moins une question, un certificat médical de non contre-indication à la pratique sportive est requis. Seule l'attestation (si toutes réponses NON) est à remettre au Foyer Rural — ne pas joindre le questionnaire.
   </div>
 
+  <!-- Envoi certificat medical optionnel -->
+  <div style="background:#e8f4fd;border:2px solid #2980b9;border-radius:10px;padding:16px 18px;margin-bottom:16px;">
+    <div style="font-size:14px;font-weight:700;color:#1565c0;margin-bottom:4px;">📄 Envoyer votre certificat médical au FRI <span style="font-size:12px;font-weight:400;color:#555;">(optionnel)</span></div>
+    <p style="font-size:12px;color:#555;margin:4px 0 12px;line-height:1.6;">
+      Si vous possédez déjà un certificat médical de moins d’un an, vous pouvez le transmettre directement au FRI ici.<br>
+      <strong>Formats acceptés :</strong> PDF, JPG, PNG — max 5 Mo
+    </p>
+    <input type="file" id="certif-med-qs-input" accept=".pdf,.jpg,.jpeg,.png,image/*"
+      onchange="onCertifQSSelected()"
+      style="font-size:12px;width:100%;box-sizing:border-box;margin-bottom:8px;">
+    <div id="certif-med-qs-status" style="font-size:12px;min-height:18px;"></div>
+  </div>
+
   <div id="health-container"></div>
 
   <div class="btn-nav">
@@ -3154,6 +3167,60 @@ function toggleUploadCertif(memId) {
 
 // Envoyer le certificat medical vers Drive via POST
 // Appele des qu'un fichier est selectionne dans le champ certificat
+// Envoi certificat depuis la section QS Sante (pas lie a un membre FFTT specifique)
+async function onCertifQSSelected() {
+  const fileInput = document.getElementById('certif-med-qs-input');
+  const status    = document.getElementById('certif-med-qs-status');
+  const url       = getAppsScriptUrl();
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+  if (!url) { if (status) { status.style.color = '#c0392b'; status.textContent = 'URL Apps Script non configurée.'; } return; }
+  const file = fileInput.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    if (status) { status.style.color = '#c0392b'; status.textContent = 'Fichier trop volumineux (max 5 Mo).'; }
+    return;
+  }
+  if (status) { status.style.color = '#1565c0'; status.textContent = '⏳ Envoi en cours...'; }
+  try {
+    const r    = state.responsable || {};
+    const codeDOM  = document.getElementById('dossier-code')?.textContent?.trim() || '';
+    const codePend = Object.keys(JSON.parse(localStorage.getItem('fri_pending') || '{}')).pop() || '';
+    const code = codeDOM || state.codeDossierPreview || codePend || '';
+    const nom    = r.nom    || '';
+    const prenom = r.prenom || '';
+    const ext    = file.name.split('.').pop().toLowerCase();
+    const fname  = 'CertifMedical_' + (code||'QS') + '_' + (prenom||'')+'_'+(nom||'')+'.'+ext;
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+    const base64 = btoa(binary);
+    const payload = {
+      action:     'uploadCertificatMedical',
+      _token:     FRI_SECRET_TOKEN,
+      code:       code || 'QS',
+      nom:        nom,
+      prenom:     prenom,
+      filename:   fname,
+      mimeType:   file.type || 'application/octet-stream',
+      fileBase64: base64
+    };
+    const formBody = 'payload=' + encodeURIComponent(JSON.stringify(payload));
+    await fetch(url, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody
+    });
+    if (status) {
+      status.style.cssText = 'color:#2d6a4f;font-weight:700;';
+      status.textContent = '✅ Certificat envoyé au FRI (' + file.name + ')';
+    }
+    console.log('[FRI] Certificat QS envoye :', fname);
+  } catch(e) {
+    if (status) { status.style.color = '#c0392b'; status.textContent = '⚠️ Erreur : ' + e.message; }
+    console.warn('[FRI] Erreur certif QS:', e);
+  }
+}
+
 async function onCertifFileSelected(memId) {
   const fileInput = document.getElementById('certif-file-' + memId);
   const status    = document.getElementById('certif-upload-status-' + memId);
