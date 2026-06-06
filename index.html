@@ -2910,7 +2910,8 @@ function memberHtml(m) {
             <b>Nom :</b> <span id="fftt-nom-${m.id}">—</span> &nbsp; <b>Prénom :</b> <span id="fftt-prenom-${m.id}">—</span><br>
             <b>Date de naissance :</b> <span id="fftt-ddn-${m.id}">—</span> &nbsp; <b>Sexe :</b> <span id="fftt-sexe-${m.id}">—</span><br>
             <b>Adresse :</b> <span id="fftt-adresse-${m.id}">—</span><br>
-            <b>Email :</b> <span id="fftt-email-${m.id}">—</span> &nbsp; <b>Tél. :</b> <span id="fftt-tel-${m.id}">—</span>
+            <b>Email :</b> <span id="fftt-email-${m.id}">—</span> &nbsp; <b>Tél. :</b> <span id="fftt-tel-${m.id}">—</span><br>
+            <b>Points FFTT :</b> <span id="fftt-points-${m.id}">—</span>
           </div>
 
           <!-- Données complémentaires -->
@@ -3110,6 +3111,7 @@ function preremplirBordereauFFTT(memId, licData) {
   set('fftt-adresse-' + memId, (r.adresse||'') + (r.cp?' '+r.cp:'') + (r.ville?' '+r.ville:''));
   set('fftt-email-'   + memId, lic.email  || r.email  || '');
   set('fftt-tel-'     + memId, lic.tel    || r.tel    || '');
+  set('fftt-points-'  + memId, lic.points ? lic.points + ' pts' : '');
   // Champs � compl�ter : pr�-remplir depuis licData
   fill('fftt-nom-naiss-'   + memId, lic.nomNaissance   || '');
   fill('fftt-nationalite-' + memId, lic.nationalite    || 'Fran�aise');
@@ -3166,6 +3168,7 @@ async function validerBordereauFFTT(memId) {
     memPrenom: _memb.prenom || _resp.prenom || '',
     ddn:       _memb.ddn    || _resp.ddn    || '',
     sexe:      _memb.sexe   || _resp.sexe   || '',
+    points:    (_memb.ffttLicData && _memb.ffttLicData.points) ? _memb.ffttLicData.points : '',
     // Champs bordereau
     nomNaissance:   nomNaiss,
     nationalite:    national,
