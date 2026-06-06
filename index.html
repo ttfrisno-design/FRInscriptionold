@@ -6993,7 +6993,8 @@ function renderAdmin() {
     </tbody>
   </table>
   <div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.3);text-align:right">${filtered.length} dossier${filtered.length>1?'s':''} affiché${filtered.length>1?'s':''}</div>`;
-}
+  }
+  _renderBasculesPending(c);
 
 // ── Valider paiement manuel (admin) ──
 async function validerPaiement(code, regId) {
@@ -7152,7 +7153,7 @@ async function validerPaiementBascule(code, actId, idx) {
   } catch(e) {
     showAdminToast('⚠️ Erreur : ' + e.message, 'red');
   }
-}
+  }
 
 
 
@@ -7741,8 +7742,6 @@ async function selectionnerActiviteAjout(code, actId) {
         </button>
       </div>
     </div>`;
-  _renderBasculesPending(c);
-
   document.body.appendChild(mc);
   mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
 
