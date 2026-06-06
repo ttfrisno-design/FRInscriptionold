@@ -2952,16 +2952,18 @@ function memberHtml(m) {
                 style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;background:#f9f9f9;color:#555;"></div>
           </div>
 
-          <!-- Catégorie d'âge -->
-          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">👤 Catégorie d'âge *</div>
+          <!-- Catégorie du licencié obligatoire -->
+          <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:4px;">&#x1F464; Catégorie du licencié <span style="font-weight:400;color:#e65100">* obligatoire</span></div>
+          <div style="font-size:10.5px;color:#555;margin-bottom:8px;line-height:1.5;">Sélectionnez la catégorie pour connaître le tarif de la licence :</div>
+          <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;line-height:1.9;"><span style="font-weight:700;color:#e65100">Poussin / Benjamin / Minime</span> — 37 €  &bull;  <span style="font-weight:700;color:#e65100">Cadet</span> — 52 €  &bull;  <span style="font-weight:700;color:#e65100">Junior / Sénior / Vétéran</span> — 70 €</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="veteran" style="accent-color:#e65100;"> Vétéran (≤1986)</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="senior" style="accent-color:#e65100;"> Sénior (87–07)</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="junior" style="accent-color:#e65100;"> Junior (08–11)</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="cadet" style="accent-color:#e65100;"> Cadet (12–13)</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="minime" style="accent-color:#e65100;"> Minime (14–15)</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="benjamin" style="accent-color:#e65100;"> Benjamin (16–17)</label>
-            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="poussin" style="accent-color:#e65100;"> Poussin (≥2018)</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="veteran" style="accent-color:#e65100;" onchange="autosave()"> Vétéran (≤1986) — 70 €</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="senior" style="accent-color:#e65100;" onchange="autosave()"> Sénior (87–07) — 70 €</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="junior" style="accent-color:#e65100;" onchange="autosave()"> Junior (08–11) — 70 €</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="cadet" style="accent-color:#e65100;" onchange="autosave()"> Cadet (12–13) — 52 €</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="minime" style="accent-color:#e65100;" onchange="autosave()"> Minime (14–15) — 37 €</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="benjamin" style="accent-color:#e65100;" onchange="autosave()"> Benjamin (16–17) — 37 €</label>
+            <label style="display:flex;align-items:center;gap:4px;padding:5px 9px;border:1.5px solid #ef9a9a;border-radius:20px;cursor:pointer;font-size:11.5px;background:white;"><input type="radio" name="fftt-age-${m.id}" value="poussin" style="accent-color:#e65100;" onchange="autosave()"> Poussin (≥2018) — 37 €</label>
           </div>
 
           <!-- Certification médicale officielle FFTT (5 cases) -->
@@ -3022,6 +3024,12 @@ function memberHtml(m) {
           <!-- Assurances officielle FFTT -->
           <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:6px 10px;border-radius:6px;margin-bottom:4px;">🛡 Assurances — cocher UNE case obligatoirement *</div>
           <div style="font-size:10.5px;color:#555;margin-bottom:8px;padding:0 2px;line-height:1.5;">J'atteste avoir pris connaissance des conditions et des garanties d'assurance ainsi que de la possibilité de souscrire une garantie complémentaire (document 26-2-2). Vous devez obligatoirement valider l'un des deux choix ci-dessous :</div>
+          <div style="margin-bottom:8px;">
+            <button type="button" onclick="showModalAssuranceFFTT()"
+              style="background:#1565c0;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600;">
+              &#x2139;&#xFE0F; Lire les conditions d'assurance MAIF / FFTT
+            </button>
+          </div>
           <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
             <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.6;">
               <input type="radio" name="fftt-ass-${m.id}" value="souscrit" style="accent-color:#2d6a4f;margin-top:3px;flex-shrink:0;">
@@ -3189,6 +3197,26 @@ function toggleUploadCertif(memId) {
 // Envoyer le certificat medical vers Drive via POST
 // Appele des qu'un fichier est selectionne dans le champ certificat
 // Envoi certificat depuis la section QS Sante (pas lie a un membre FFTT specifique)
+function showModalAssuranceFFTT() {
+  const texte = "MAIF garantit l'ensemble des licenciés de la Fédération Française de Tennis de Table.\n\nLe soussigné déclare avoir pris connaissance de l'extrait des conditions générales proposées par la FFTT figurant sur le site www.fftt.com, rubrique administratif et des assurances proposées, notamment une assurance dommage corporel de base et garanties complémentaires.\n\nL'assurance dommage corporel garantie de base au tarif de :\n  - 0,38 EUR pour les vétérans\n  - 0,38 EUR pour les séniors\n  - 0,10 EUR pour les juniors, cadets, minimes, benjamins, poussins\n\nPourquoi souscrire une garantie individuelle accidents ?\n\nParce que la garantie Responsabilité Civile ne garantit pas vos propres dommages.\n\nParce que la souscription vous offre de nombreux avantages pour une cotisation minime, ce montant étant compris dans le prix de la licence fédérale de chaque catégorie.\n\nParce que vous pourrez percevoir un capital ou un remboursement de frais médicaux en complément des indemnités de votre organisme social.\n\nParce que vous serez garanti sans franchise en complément de la sécurité sociale pour vos frais médicaux, le forfait journalier, les frais de transport non pris en charge et les frais dentaires (selon barème prévu au contrat).\n\nParce que vous pouvez profiter des garanties complémentaires à tarif négocié par la Fédération.\n\nUne pratique sportive vous expose nécessairement à des dommages corporels. Il est important de se protéger par la souscription d'une assurance adaptée, à tarif négocié par la Fédération.";
+
+  // Créer une modale
+  const mc = document.createElement('div');
+  mc.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  mc.id = 'modal-assurance-fftt';
+  mc.innerHTML = '<div style="background:white;border-radius:14px;max-width:600px;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">'
+    + '<div style="background:#1565c0;color:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">'
+    + '<div style="font-weight:700;font-size:15px;">&#x1F6E1; Conditions d\'assurance MAIF / FFTT</div>'
+    + '<button onclick="document.getElementById(\'modal-assurance-fftt\').remove()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:28px;height:28px;color:white;font-size:16px;cursor:pointer;line-height:1;">&times;</button>'
+    + '</div>'
+    + '<div style="padding:20px;overflow-y:auto;font-size:13px;color:#333;line-height:1.75;white-space:pre-wrap;">' + texte + '</div>'
+    + '<div style="padding:12px 20px;border-top:1px solid #eee;text-align:right;">'
+    + '<button onclick="document.getElementById(\'modal-assurance-fftt\').remove()" style="background:#1565c0;color:white;border:none;border-radius:8px;padding:8px 20px;font-size:13px;cursor:pointer;font-weight:700;">Fermer</button>'
+    + '</div></div>'
+  document.body.appendChild(mc);
+  mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
+}
+
 async function onCertifQSSelected() {
   const fileInput = document.getElementById('certif-med-qs-input');
   const status    = document.getElementById('certif-med-qs-status');
@@ -3318,6 +3346,7 @@ async function validerBordereauFFTT(memId) {
   if (!national)  { showToast('Nationalité obligatoire.', 'red'); return; }
   if (!paysNaiss) { showToast('Pays de naissance obligatoire.', 'red'); return; }
   if (!age)       { showToast('Veuillez selectionner votre categorie d\'age.', 'red'); return; }
+  if (!age)       { showToast('Veuillez sélectionner la catégorie du licencié (obligatoire).', 'red'); return; }
   if (!med)       { showToast('Veuillez cocher une option de certification médicale.', 'red'); return; }
   if (!ass)       { showToast('Veuillez cocher une option d\'assurance.', 'red'); return; }
   if (isSignatureFFTTVide(memId)) { showToast('Veuillez signer le bordereau.', 'red'); return; }
