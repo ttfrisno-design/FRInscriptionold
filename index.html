@@ -3763,19 +3763,7 @@ async function _genererPDFQSFFTT(memberId, reponses, hasOui, signatureDataUrl) {
     const nomF    = (m.nom   ||'').replace(/\s+/g,'_');
     const fname   = 'QS-FFTT_' + numRef.replace(/\s/g,'') + '_' + prenomF + '-' + nomF + '.pdf';
 
-    const pdfBlob = doc.output('blob');
-    const pdfUrl  = URL.createObjectURL(pdfBlob);
-    const win = window.open(pdfUrl, '_blank');
-    if (!win) {
-      const a = document.createElement('a');
-      a.href = pdfUrl; a.download = fname; a.style.display='none';
-      document.body.appendChild(a); a.click();
-      setTimeout(()=>{ a.remove(); }, 2000);
-      showToast('✅ QS FFTT généré (autorisez les popups pour l\'ouvrir)', 'green');
-    } else {
-      setTimeout(()=>URL.revokeObjectURL(pdfUrl), 30000);
-      showToast('✅ QS FFTT ' + numRef + ' ouvert dans un nouvel onglet', 'green');
-    }
+    showToast('✅ QS FFTT signé et envoyé au FRI', 'green', 5000);
 
     // Envoi vers Drive
     try {
@@ -5067,22 +5055,8 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   const codeDoss = state.codeDossierPreview;
   const filename = (codeDoss ? codeDoss + '_' : '') + prenom + '-' + nom + '_QS-Sante.pdf';
 
-  // Ouvrir le PDF dans un nouvel onglet (pour enregistrement ou impression)
-  const pdfBlob = doc.output('blob');
-  const pdfUrl  = URL.createObjectURL(pdfBlob);
-  const win = window.open(pdfUrl, '_blank');
-  if (!win) {
-    // Si le navigateur bloque les popups, fallback téléchargement
-    const dlLink = document.createElement('a');
-    dlLink.href = pdfUrl; dlLink.download = filename; dlLink.style.display = 'none';
-    document.body.appendChild(dlLink);
-    dlLink.click();
-    setTimeout(() => { dlLink.remove(); }, 2000);
-    showToast('✅ PDF généré (autorisez les popups pour l\'ouvrir dans un onglet)', 'green');
-  } else {
-    setTimeout(() => URL.revokeObjectURL(pdfUrl), 30000); // libérer après 30s
-    showToast('✅ PDF ouvert dans un nouvel onglet — enregistrez ou imprimez', 'green');
-  }
+  // PDF généré et envoyé au FRI — pas d'ouverture dans un nouvel onglet
+  showToast('✅ QS Santé signé et envoyé au FRI', 'green', 5000);
 
   // ── Envoi PDF vers Drive via Apps Script ──
   try {
