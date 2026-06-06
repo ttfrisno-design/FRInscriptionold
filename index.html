@@ -3169,6 +3169,7 @@ async function validerBordereauFFTT(memId) {
     ddn:       _memb.ddn    || _resp.ddn    || '',
     sexe:      _memb.sexe   || _resp.sexe   || '',
     points:    (_memb.ffttLicData && _memb.ffttLicData.points) ? _memb.ffttLicData.points : '',
+    code:      code, // transmettre le N° dossier dans extra en backup
     // Champs bordereau
     nomNaissance:   nomNaiss,
     nationalite:    national,
