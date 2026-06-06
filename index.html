@@ -2953,19 +2953,35 @@ function memberHtml(m) {
           <div style="font-size:11.5px;font-weight:700;color:#c62828;background:#ffebee;padding:4px 10px;border-radius:6px;margin-bottom:6px;">🏥 Certification médicale — cocher UNE case *</div>
           <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
             <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
-              <input type="radio" name="fftt-med-${m.id}" value="certif" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              <input type="radio" name="fftt-med-${m.id}" value="certif"
+                onchange="toggleUploadCertif(${m.id})"
+                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
               Je joins un <b>certificat médical de pratique sportive</b> de moins d'un an (formulaire 26-9)
             </label>
+            <!-- Zone upload certificat medical -->
+            <div id="certif-upload-zone-${m.id}" style="display:none;margin-top:4px;padding:10px 12px;background:#e8f4fd;border:1.5px solid #2980b9;border-radius:8px;">
+              <div style="font-size:12px;font-weight:700;color:#1565c0;margin-bottom:6px;">📄 Envoyer votre certificat au FRI</div>
+              <div style="font-size:11px;color:#555;margin-bottom:8px;">Formats acceptés : PDF, JPG, PNG — max 5 Mo</div>
+              <input type="file" id="certif-file-${m.id}" accept=".pdf,.jpg,.jpeg,.png,image/*"
+                style="font-size:12px;width:100%;box-sizing:border-box;">
+              <div id="certif-upload-status-${m.id}" style="margin-top:6px;font-size:12px;"></div>
+            </div>
             <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
-              <input type="radio" name="fftt-med-${m.id}" value="attestMaj" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              <input type="radio" name="fftt-med-${m.id}" value="attestMaj"
+                onchange="toggleUploadCertif(${m.id})"
+                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
               Je joins l'<b>attestation NON</b> à toutes les questions — <b>majeurs &lt; 40 ans</b> (formulaire 26-10-1)
             </label>
             <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
-              <input type="radio" name="fftt-med-${m.id}" value="attestMin" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              <input type="radio" name="fftt-med-${m.id}" value="attestMin"
+                onchange="toggleUploadCertif(${m.id})"
+                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
               Je joins l'<b>attestation NON</b> — <b>mineurs</b> (formulaire 26-10-2)
             </label>
             <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:white;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;font-size:11.5px;line-height:1.5;">
-              <input type="radio" name="fftt-med-${m.id}" value="sansCertif" style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
+              <input type="radio" name="fftt-med-${m.id}" value="sansCertif"
+                onchange="toggleUploadCertif(${m.id})"
+                style="accent-color:#e65100;margin-top:2px;flex-shrink:0;">
               Je ne joins <b>pas de certificat médical</b> — licence sans pratique sportive
             </label>
           </div>
@@ -3128,6 +3144,57 @@ function preremplirBordereauFFTT(memId, licData) {
 }
 
 // ── Envoi bordereau FFTT ──────────────────────────────────────
+// Afficher/masquer la zone upload selon le choix certif
+function toggleUploadCertif(memId) {
+  const sel = document.querySelector(`input[name="fftt-med-${memId}"]:checked`);
+  const zone = document.getElementById('certif-upload-zone-' + memId);
+  if (zone) zone.style.display = (sel && sel.value === 'certif') ? 'block' : 'none';
+}
+
+// Envoyer le certificat medical vers Drive via POST
+async function envoyerCertificatMedical(memId, code, nom, prenom) {
+  const fileInput = document.getElementById('certif-file-' + memId);
+  const status    = document.getElementById('certif-upload-status-' + memId);
+  const url       = getAppsScriptUrl();
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) return; // pas de fichier = ok
+  if (!url) return;
+  const file = fileInput.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    if (status) { status.style.color = '#c0392b'; status.textContent = 'Fichier trop volumineux (max 5 Mo).'; }
+    return;
+  }
+  if (status) { status.style.color = '#1565c0'; status.textContent = '\u23f3 Envoi en cours...'; }
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+    const base64 = btoa(binary);
+    const ext     = file.name.split('.').pop().toLowerCase();
+    const fname   = 'CertifMedical_' + (code||'') + '_' + (prenom||'') + '_' + (nom||'') + '.' + ext;
+    const payload = {
+      action:    'uploadCertificatMedical',
+      _token:    FRI_SECRET_TOKEN,
+      code:      code || '',
+      nom:       nom  || '',
+      prenom:    prenom || '',
+      filename:  fname,
+      mimeType:  file.type || 'application/octet-stream',
+      fileBase64: base64
+    };
+    await fetch(url, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    if (status) { status.style.color = '#2d6a4f'; status.textContent = '\u2705 Certificat envoy� au FRI'; }
+    console.log('[FRI] Certificat m�dical envoy� :', fname);
+  } catch(e) {
+    if (status) { status.style.color = '#c0392b'; status.textContent = '\u26a0\ufe0f Erreur envoi : ' + e.message; }
+    console.warn('[FRI] Erreur upload certificat:', e);
+  }
+}
+
 async function validerBordereauFFTT(memId) {
   // Validation des champs obligatoires
   const g = id => document.getElementById(id);
@@ -3185,6 +3252,16 @@ async function validerBordereauFFTT(memId) {
     refusHonor:     g('fftt-refus-honor-'       + memId)?.checked ? '1' : '0',
     refusPhoto:     g('fftt-refus-photo-'       + memId)?.checked ? '1' : '0',
   };
+
+  // Envoyer le certificat medical si "certif" est coche
+  const _memFF = state.members.find(m => m.id === memId);
+  const _rFF   = state.responsable || {};
+  const _nomFF = (_memFF && _memFF.nom)    || _rFF.nom    || '';
+  const _prenFF= (_memFF && _memFF.prenom) || _rFF.prenom || '';
+  const _codeDOM2 = document.getElementById('dossier-code')?.textContent?.trim() || '';
+  const _codePend2 = Object.keys(JSON.parse(localStorage.getItem('fri_pending') || '{}')).pop() || '';
+  const _codeFF = _codeDOM2 || state.codeDossierPreview || _codePend2 || '';
+  await envoyerCertificatMedical(memId, _codeFF, _nomFF, _prenFF);
 
   const sig  = getSignatureFFTTBase64(memId);
   // Construire reg depuis state pour passer a buildRows
