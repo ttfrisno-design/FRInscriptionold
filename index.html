@@ -6944,7 +6944,9 @@ function renderAdmin() {
           </div>` : '';
 
         const validateBtn = isPending
-          ? docsCheckboxes + `<button onclick="validerPaiement('${reg.code}', '${reg.id}')" style="background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:block;width:100%;margin-bottom:4px;" title="Valider le paiement et envoyer l'email de confirmation">✅ Valider paiement</button>`
+          ? docsCheckboxes + `<button onclick="validerPaiement('${reg.code}', '${reg.id}')" style="background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:block;width:100%;margin-bottom:4px;" title="Valider le paiement et envoyer l'email de confirmation">✅ Valider paiement</button>
+          <button onclick="chargerElementsPaiement('${reg.code}','pay-det-${(reg.code||'').replace(/[^A-Z0-9]/g,'')}')" style="background:rgba(255,152,0,0.15);color:#ffab40;border:1px solid rgba(255,152,0,0.3);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;display:block;width:100%;margin-top:4px;">📋 Éléments de règlement</button>
+          <div id="pay-det-${(reg.code||'').replace(/[^A-Z0-9]/g,'')}"></div>`
           : '';
         // Bouton rappel règlement — visible pour tous les dossiers non payés
         const rappelBtn = (!reg.status || reg.status === 'pending_manual')
@@ -7035,6 +7037,86 @@ function renderAdmin() {
   _renderBasculesPending(document.getElementById('admin-table-container'));
 
 // ── Valider paiement manuel (admin) ──
+// Charger et afficher les elements de paiement pour un dossier
+async function chargerElementsPaiement(code, containerId) {
+  const url = getAppsScriptUrl();
+  const container = document.getElementById(containerId);
+  if (!container || !url) return;
+  container.innerHTML = '<span style="color:rgba(255,255,255,0.4);font-size:12px;">\u23f3 Chargement...</span>';
+  try {
+    const res = await callAppsScriptFetch(url, { action: 'getElementsPaiement', _token: FRI_SECRET_TOKEN, code: code });
+    const data = (res && res.data) ? res.data : res;
+    if (!data || !data.elements || data.elements.length === 0) {
+      container.innerHTML = '<span style="color:rgba(255,255,255,0.3);font-size:11px;">Aucun élément de paiement trouvé</span>';
+      return;
+    }
+    const elements = data.elements;
+    const allValid = elements.every(e => e.statut && e.statut.toLowerCase().includes('valid'));
+    let html = '<div style="margin-top:8px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+    html += '<div style="background:rgba(255,255,255,0.08);padding:6px 10px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);display:flex;justify-content:space-between;align-items:center;">';
+    html += '<span> Eléments de règlement et aides</span>';
+    if (!allValid) {
+      html += '<button onclick="validerSelectionElements(\'' + code + '\',\'' + containerId + '\')" style="background:#ff9800;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer;font-weight:700;">\u2705 Valider la sélection</button>';
+    } else {
+      html += '<span style="color:#52b788;font-weight:700;">\u2705 Tout validé</span>';
+    }
+    html += '</div>';
+    elements.forEach(function(el, i) {
+      const isValid = el.statut && el.statut.toLowerCase().includes('valid');
+      const bg = isValid ? 'rgba(82,183,136,0.08)' : 'rgba(255,152,0,0.06)';
+      const cbId = 'chk-pay-' + code.replace(/[^A-Z0-9]/g,'') + '-' + i;
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:' + bg + ';border-top:1px solid rgba(255,255,255,0.06);">';
+      if (!isValid) {
+        html += '<input type="checkbox" id="' + cbId + '" data-onglet="' + el.onglet + '" data-ligne="' + el.ligne + '" style="accent-color:#ff9800;width:14px;height:14px;cursor:pointer;">';
+      } else {
+        html += '<span style="font-size:14px;">\u2705</span>';
+      }
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);">' + el.onglet;
+      if (el.prenom || el.nom) html += ' <span style="font-weight:400;color:rgba(255,255,255,0.5);">\u2014 ' + el.prenom + ' ' + el.nom + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:11px;color:rgba(255,255,255,0.45);">' + (el.detail||'') + '</div>';
+      html += '</div>';
+      html += '<div style="text-align:right;">';
+      html += '<div style="font-size:12px;font-weight:700;color:#ffab40;">' + (el.montant > 0 ? el.montant.toFixed(2) + ' €' : '—') + '</div>';
+      html += '<div style="font-size:10px;color:' + (isValid ? '#52b788' : '#ffab40') + ';">' + el.statut + '</div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<span style="color:rgba(255,100,100,0.6);font-size:11px;">\u26a0\ufe0f ' + e.message + '</span>';
+  }
+}
+
+async function validerSelectionElements(code, containerId) {
+  const url = getAppsScriptUrl();
+  const container = document.getElementById(containerId);
+  const checkboxes = container ? container.querySelectorAll('input[type="checkbox"]:checked') : [];
+  if (checkboxes.length === 0) { showAdminToast('Sélectionnez au moins un élément à valider', 'orange'); return; }
+  showAdminToast('\u23f3 Validation en cours...', 'orange');
+  let okCount = 0;
+  for (const cb of checkboxes) {
+    const onglet = cb.dataset.onglet;
+    const ligne  = cb.dataset.ligne;
+    try {
+      const res = await callAppsScriptFetch(url, { action: 'validerElementPaiement', _token: FRI_SECRET_TOKEN, code, onglet, ligne });
+      const d = (res && res.data) ? res.data : res;
+      if (d && d.status === 'ok') {
+        okCount++;
+        if (d.toutValide) {
+          showAdminToast('\u2705 Tout validé pour ' + code + ' \u2014 Désormais INSCRIT', 'green');
+          await chargerDossiersDepuisSheet();
+          renderAdmin();
+          return;
+        }
+      }
+    } catch(e) { console.warn('validerElement KO:', e); }
+  }
+  showAdminToast('\u2705 ' + okCount + ' élément(s) validé(s)', 'green');
+  await chargerElementsPaiement(code, containerId);
+}
+
 async function validerPaiement(code, regId) {
   if (!requireAdmin()) return;
   
