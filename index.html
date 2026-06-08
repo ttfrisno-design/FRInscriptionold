@@ -6849,192 +6849,278 @@ function renderAdmin() {
   const filterPay = document.getElementById('filter-paiement')?.value || '';
   const c = document.getElementById('admin-table-container');
 
-  if (!regs.length) {
-    c.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px;text-align:center;padding:20px">Aucune inscription enregistrée.</p>';
-    return;
-  }
-
-  // Ne garder que les dossiers avec un code valide FRI-XXXX
   const validRegs = regs.filter(r =>
-    r.code && /^FRI-[A-Z0-9]{4}$/.test(r.code.trim())
-    && r.responsable && r.responsable.nom
+    r.code && /^FRI-[A-Z0-9]{4}$/.test(r.code.trim()) && r.responsable && r.responsable.nom
   );
-
   let filtered = validRegs.filter(r =>
-    `${r.responsable.nom} ${r.responsable.prenom} ${r.responsable.email1 || ''}`.toLowerCase().includes(search) ||
+    `${r.responsable.nom} ${r.responsable.prenom} ${r.responsable.email1||''}`.toLowerCase().includes(search) ||
     r.members.some(m => `${m.nom} ${m.prenom}`.toLowerCase().includes(search))
   );
-
-  // Filtrage paiement : "pending" = statut en attente, sinon filtrer par mode de paiement
-  if (filterPay === 'pending') {
-    filtered = filtered.filter(r => r.status === 'pending_manual');
-  } else if (filterPay) {
-    filtered = filtered.filter(r => r.responsable.modePaiement === filterPay);
-  }
+  if (filterPay === 'pending') filtered = filtered.filter(r => r.status === 'pending_manual');
+  else if (filterPay) filtered = filtered.filter(r => r.responsable.modePaiement === filterPay);
 
   if (!filtered.length) {
-    c.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px;text-align:center;padding:20px">Aucun résultat pour ces critères.</p>';
+    c.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px;text-align:center;padding:20px">Aucun résultat.</p>';
     return;
   }
 
-  // Count pending (sur tous les dossiers valides, pas seulement les filtrés)
   const nbPending = validRegs.filter(r => r.status === 'pending_manual').length;
+  const banner = nbPending > 0
+    ? `<div style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px">&#x23F3;</span>
+        <span style="color:var(--gold);font-size:13px;font-weight:600;">${nbPending} dossier${nbPending>1?'s':''} en attente de validation</span>
+      </div>` : '';
 
-  const thStyle = 'text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green-light);font-weight:700';
+  // Ligne récap par dossier
+  const rows = filtered.map((reg, i) => {
+    const isPending = reg.status === 'pending_manual';
+    const docId = String(reg.code||'').replace(/[^A-Z0-9]/g,'');
+    const bgRow = isPending
+      ? 'background:rgba(201,168,76,0.07);border-bottom:1px solid rgba(201,168,76,0.15);'
+      : `border-bottom:1px solid rgba(255,255,255,0.06);${i%2===0?'':'background:rgba(255,255,255,0.02)'}`;
+    const statusBadge = isPending
+      ? `<span style="background:rgba(201,168,76,0.25);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;">&#x23F3; En attente</span>`
+      : `<span style="background:rgba(45,106,79,0.25);color:#52b788;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;">&#x2705; Valid\u00e9</span>`;
+    const modeIcon = {helloasso:'&#x1F4B3;',cheque:'&#x1F4DD;',especes:'&#x1F4B5;',ancv:'&#x1F3AB;'}[reg.responsable.modePaiement]||'&#x1F4B0;';
+    const total = reg._sheetTotal || (reg.totals ? reg.totals.grandTotal : 0) || 0;
+    // Membres (résumé)
+    const membresCount = reg.members ? reg.members.length : 0;
+    const membresNames = reg.members ? reg.members.slice(0,2).map(m=>`${m.prenom} ${m.nom}`).join(', ') + (membresCount>2?'…':'') : '—';
+    // QS résumé
+    const qsOk  = reg.members ? reg.members.filter(m=>m.qsResult==='attestation_ok').length : 0;
+    const qsCer = reg.members ? reg.members.filter(m=>m.qsResult==='certificat_requis').length : 0;
+    const qsBadge = qsCer>0
+      ? `<span style="color:#ffb74d;font-size:10px;">&#x26A0;&#xFE0F; Certif.</span>`
+      : qsOk===membresCount && membresCount>0
+        ? `<span style="color:#52b788;font-size:10px;">&#x2705; OK</span>`
+        : `<span style="color:rgba(255,255,255,0.3);font-size:10px;">&#x2753;</span>`;
+    // Activités en attente
+    const nbAttente = (reg._rows||[]).filter(r=>(r.statut_inscription||'').toLowerCase().includes('attente')).length;
+    const attenteBadge = nbAttente>0
+      ? `<span style="background:rgba(255,152,0,0.2);color:#ffab40;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;margin-left:4px;">&#x23F3; ${nbAttente} att.</span>` : '';
 
-  const pendingBanner = nbPending > 0
-    ? `<div style="background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.5);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
-        <span style="font-size:20px">⏳</span>
-        <span style="color:var(--gold);font-size:13px;font-weight:600;">${nbPending} dossier${nbPending>1?'s':''} en attente de validation du paiement</span>
-      </div>`
-    : '';
+    return `<tr style="${bgRow}" id="row-${docId}">
+      <td style="padding:8px 10px;white-space:nowrap;font-size:11px;color:rgba(255,255,255,0.45)">${formatDateAdmin(reg.date)}</td>
+      <td style="padding:8px 10px;font-family:monospace;font-weight:700;color:var(--green-light);font-size:12px">${reg.code||'—'}</td>
+      <td style="padding:8px 10px">
+        <div style="font-weight:600;color:white;font-size:12px">${reg.responsable.nom} ${reg.responsable.prenom}</div>
+        <div style="color:rgba(255,255,255,0.35);font-size:10px">${reg.responsable.email1||''}</div>
+      </td>
+      <td style="padding:8px 10px;font-size:11px;color:rgba(255,255,255,0.65)">${membresNames}${attenteBadge}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:700;color:white;font-size:12px;white-space:nowrap">${total>0?total.toFixed(2)+' &#x20AC;':'—'}</td>
+      <td style="padding:8px 10px;font-size:11px">${modeIcon} ${statusBadge}</td>
+      <td style="padding:8px 10px;text-align:center">${qsBadge}</td>
+      <td style="padding:8px 10px;text-align:center">
+        <button onclick="ouvrirDetailDossier('${reg.code}','${docId}')"
+          style="background:var(--green);color:white;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:700;white-space:nowrap;">
+          &#x1F4C2; D\u00e9tail
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
 
-  c.innerHTML = pendingBanner + `<table style="width:100%;border-collapse:collapse;font-size:13px;color:rgba(255,255,255,0.85);">
-    <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.15)">
-      <th style="${thStyle}">Date</th>
-      <th style="${thStyle}">N° Dossier</th>
-      <th style="${thStyle}">Responsable</th>
-      <th style="${thStyle}">Membres</th>
-      <th style="text-align:center;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green-light);font-weight:700">Total</th>
-      <th style="${thStyle}">Paiement / Statut</th>
-      <th style="text-align:center;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green-light);font-weight:700">Santé</th>
-      <th style="text-align:center;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green-light);font-weight:700">Actions</th>
-    </tr></thead>
-    <tbody>
-      ${filtered.map((reg,i) => {
-        const isPending = reg.status === 'pending_manual';
-        const rowBg = isPending
-          ? 'background:rgba(201,168,76,0.08);border-bottom:1px solid rgba(201,168,76,0.2);'
-          : `border-bottom:1px solid rgba(255,255,255,0.07);${i%2===0?'':'background:rgba(255,255,255,0.03)'}`;
-        const modeLab = {helloasso:'HelloAsso 💳',cheque:'Chèque 📝',especes:'Espèces 💵',ancv:'ANCV 🎫'}[reg.responsable.modePaiement] || reg.responsable.modePaiement;
-        const statutBadge = isPending
-          ? `<span style="background:rgba(201,168,76,0.3);color:var(--gold);border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;display:block;margin-top:4px;">⏳ En attente</span>`
-          : `<span style="background:rgba(45,106,79,0.3);color:var(--green-light);border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;display:block;margin-top:4px;">✅ Payé</span>`;
-        // Documents — uniquement ceux sélectionnés par l'adhérent
-        const hasCertif = (reg.members && reg.members.some(m => m.qsResult === 'certificat_requis'))
-                       || (reg._rows && reg._rows.some(r => r.qs_sante === 'Certificat requis'));
-        const allPassAide = reg._rows ? reg._rows.map(r => r.pass_aide || '').join(' ')
-                          : (reg.responsable
-                            ? [reg.responsable.passJeunes==='oui'?'Pass jeunes':'',
-                               reg.responsable.atoutNormandie==='oui'?'Atout Normandie':'',
-                               reg.responsable.passSport==='oui'?'Pass sport':''].join(' ')
-                            : '');
-        const hasPassJeunes     = allPassAide.toLowerCase().includes('jeune') || allPassAide.includes('76');
-        const hasAtoutNormandie = allPassAide.toLowerCase().includes('atout') || allPassAide.toLowerCase().includes('normandie');
-        const hasPassSport      = allPassAide.toLowerCase().includes('pass') && allPassAide.toLowerCase().includes('sport');
-        const hasAnyDoc = hasCertif || hasPassJeunes || hasAtoutNormandie || hasPassSport;
-        const docId = String(reg.code || reg.id || '').replace(/[^A-Z0-9]/g, '');
+  const th = s => `<th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--green-light);font-weight:700;white-space:nowrap">${s}</th>`;
+  c.innerHTML = banner + `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:rgba(255,255,255,0.85);">
+      <thead><tr style="border-bottom:2px solid rgba(255,255,255,0.1)">
+        ${th('Date')}${th('N&deg; Dossier')}${th('Responsable')}${th('Membres')}
+        ${th('Total')}${th('Paiement')}${th('Sant&eacute;')}${th('Actions')}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,0.25);text-align:right">${filtered.length} dossier${filtered.length>1?'s':''}</div>`;
 
-        // Attestation QS santé : toujours requise pour tous les dossiers
-        // Les autres documents : uniquement si l'adhérent les a sélectionnés
-        const docsCheckboxes = isPending ? `
-          <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;">
-            <div style="color:rgba(255,255,255,0.7);margin-bottom:6px;font-weight:600;">📎 Documents à recevoir :</div>
-            <label style="display:flex;align-items:center;gap:6px;margin:4px 0;cursor:pointer;color:rgba(255,255,255,0.9)">
-              <input type="checkbox" id="doc-qs-${docId}" style="cursor:pointer;width:14px;height:14px">
-              📋 Attestation QS santé signée${hasCertif ? ' <span style="color:#ffab40;font-weight:600">(+ certificat médical requis ⚠️)</span>' : ''}</label>
-            ${hasCertif ? `<label style="display:flex;align-items:center;gap:6px;margin:4px 0;cursor:pointer;color:white;font-weight:600">
-              <input type="checkbox" id="doc-certif-${docId}" style="cursor:pointer;width:14px;height:14px"> ⚠️ Certificat médical</label>` : ''}
-            ${hasPassJeunes ? `<label style="display:flex;align-items:center;gap:6px;margin:4px 0;cursor:pointer;color:rgba(255,255,255,0.9)">
-              <input type="checkbox" id="doc-passjeunes-${docId}" style="cursor:pointer;width:14px;height:14px"> Pass'jeunes 76</label>` : ''}
-            ${hasAtoutNormandie ? `<label style="display:flex;align-items:center;gap:6px;margin:4px 0;cursor:pointer;color:rgba(255,255,255,0.9)">
-              <input type="checkbox" id="doc-atout-${docId}" style="cursor:pointer;width:14px;height:14px"> Atout Normandie</label>` : ''}
-            ${hasPassSport ? `<label style="display:flex;align-items:center;gap:6px;margin:4px 0;cursor:pointer;color:rgba(255,255,255,0.9)">
-              <input type="checkbox" id="doc-passsport-${docId}" style="cursor:pointer;width:14px;height:14px"> Pass'sport État</label>` : ''}
-          </div>` : '';
-
-        const validateBtn = isPending
-          ? docsCheckboxes + `<button onclick="validerPaiement('${reg.code}', '${reg.id}')" style="background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;display:block;width:100%;margin-bottom:4px;" title="Valider le paiement et envoyer l'email de confirmation">✅ Valider paiement</button>
-          <button onclick="chargerElementsPaiement('${reg.code}','pay-det-${(reg.code||'').replace(/[^A-Z0-9]/g,'')}')" style="background:rgba(255,152,0,0.15);color:#ffab40;border:1px solid rgba(255,152,0,0.3);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;display:block;width:100%;margin-top:4px;">📋 Éléments de règlement</button>
-          <div id="pay-det-${(reg.code||'').replace(/[^A-Z0-9]/g,'')}"></div>`
-          : '';
-        // Bouton rappel règlement — visible pour tous les dossiers non payés
-        const rappelBtn = (!reg.status || reg.status === 'pending_manual')
-          ? `<button onclick="envoyerRappelManuel('${reg.code || reg.id}')"
-              style="background:rgba(230,81,0,0.8);border:none;color:white;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;display:block;width:100%;margin-bottom:4px;"
-              title="Envoyer un rappel de règlement avec facture PDF">📨 Rappel règlement</button>`
-          : '';
-        return `<tr style="${rowBg}">
-          <td style="padding:10px 12px;white-space:nowrap;font-size:12px">${formatDateAdmin(reg.date)}</td>
-          <td style="padding:10px 12px;font-family:monospace;font-weight:700;color:var(--green-light);font-size:13px">${reg.code || '—'}</td>
-          <td style="padding:10px 12px">
-            <strong style="color:white">${reg.responsable.nom} ${reg.responsable.prenom}</strong><br>
-            <span style="color:rgba(255,255,255,0.4);font-size:11px">${reg.responsable.email1 || '—'}</span><br>
-            <span style="color:rgba(255,255,255,0.4);font-size:11px">${reg.responsable.tel1 || ''}</span>
-          </td>
-          <td style="padding:10px 12px;font-size:12px">${reg.members.map(m => {
-            // Afficher les activités : depuis _rows Sheet (fiable) ou depuis activities (localStorage)
-            let actsStr = '';
-            const memNomComplet = (m.prenom + ' ' + m.nom).trim();
-            console.log('[FRI] _rows pour', reg.code, ':', (reg._rows||[]).map(r=>({act:r.activite_id, statut:r.statut_inscription, mem:r.prenom_membre+' '+r.nom_membre})));
-            const sheetRows = (reg._rows || []).filter(r =>
-              r.activite && (r.prenom_membre + ' ' + r.nom_membre).trim() === memNomComplet
-              && !(r.statut_inscription || '').toLowerCase().includes('supprim')
-            ).sort((a, b) => {
-              // Mettre les lignes 'attente' en premier pour que le badge soit visible
-              const aW = (a.statut_inscription || '').toLowerCase().includes('attente') ? 0 : 1;
-              const bW = (b.statut_inscription || '').toLowerCase().includes('attente') ? 0 : 1;
-              return aW - bW;
-            });
-            if (sheetRows.length > 0) {
-              // Source Sheet — noms exacts, activités réelles
-              const seenActs = new Set();
-              actsStr = sheetRows.map(r => {
-                const key = r.activite_id || r.activite;
-                if (seenActs.has(key)) return '';
-                seenActs.add(key);
-                const nom = r.activite || r.activite_id || '?';
-                const isWait = (r.statut_inscription || '').toLowerCase().includes('attente');
-                if (isWait) {
-                  // Calculer le tarif depuis la définition de l'activité
-                  // r.activite_id = placesId (ex: PINGL18/J17) → convertir en actId frontend
-                  const actIdFront = placesIdToActId(r.activite_id || '') || r.activite_id;
-                  const actDef = getActById(actIdFront);
-                  const isnoMem = (reg.responsable && reg.responsable.commune === 'isno') ||
-                                  (reg.responsable && (reg.responsable.ville||'').toUpperCase().indexOf('ISNEAUVILLE') >= 0);
-                  const tarifReel = actDef ? (isnoMem ? actDef.isno : actDef.hc) : (Number(r.tarif_brut) || 0);
-                  return `<span style="font-size:10px;color:#ffb74d;">⏳ ${nom} (${tarifReel} €)</span>`
-                    + `<button onclick="basculerListeAttente('${reg.code || reg.id}','${(r.activite_id||'').replace(/'/g,"\'")}','${(r.activite||'').replace(/'/g,"\'")}','${(r.prenom_membre||'').replace(/'/g,"\'")}','${(r.nom_membre||'').replace(/'/g,"\'")}','${tarifReel}')"
-                      style="background:#ff9800;border:none;color:white;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;"
-                      title="Basculer en liste des inscrits — ${tarifReel} €">↑ Inscrire</button>`;
-                }
-                return `<span style="font-size:10px;color:rgba(255,255,255,0.75);">· ${nom}</span>`;
-              }).filter(Boolean).join('<br>') || '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
-            } else {
-              // Fallback localStorage
-              const actsActives = (m.activities || []).filter(a => {
-                try { const act = getActById(a); return !act || act.linkedWith !== a; } catch(e) { return true; }
-              });
-              actsStr = actsActives.length
-                ? actsActives.map(a => {
-                    try {
-                      const act = getActById(a);
-                      const label = act ? act.name.replace(/\n/g,' ') : a;
-                      return `<span style="font-size:10px;color:rgba(255,255,255,0.6);">· ${label}</span>`;
-                    } catch(e) { return `<span style="font-size:10px;color:rgba(255,255,255,0.4);">· ${a}</span>`; }
-                  }).filter(Boolean).join('<br>')
-                : '<span style="font-size:10px;color:rgba(255,100,100,0.6);">Aucune activité</span>';
-            }
-            return `<div style="margin-bottom:4px;"><strong style="color:white;font-size:12px">${m.prenom} ${m.nom}</strong><br>${actsStr}</div>`;
-          }).join('')}</td>
-          <td style="padding:10px 12px;text-align:center;font-weight:700;color:white">${reg._sheetTotal ? reg._sheetTotal.toFixed(2) : (reg.totals ? reg.totals.grandTotal.toFixed(2) : '—')} €</td>
-          <td style="padding:10px 12px;font-size:12px">${modeLab}${statutBadge}</td>
-          <td style="padding:10px 12px;text-align:center;font-size:13px">${reg.members.map(m => `${m.qsResult==='attestation_ok'?'✅':m.qsResult==='certificat_requis'?'⚠️':'❓'}`).join(' ')}</td>
-          <td style="padding:10px 12px;text-align:center;min-width:110px">
-            ${validateBtn}
-            ${rappelBtn}
-            <button onclick="exportSingleExcel(${reg.id})" style="background:var(--green);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" title="Exporter">📊</button>
-            <button onclick="ouvrirAjoutActivite('${reg.code || reg.id}')" style="background:rgba(21,101,192,0.85);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Ajouter une activité">➕</button>
-            <button onclick="ouvrirSupprActivite('${reg.code || reg.id}')" style="background:rgba(230,81,0,0.8);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer une activité">➖</button>
-            <button onclick="deleteRegistration(${reg.id})" style="background:rgba(192,57,43,0.7);border:none;color:white;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:4px;" title="Supprimer le dossier">🗑</button>
-          </td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>
-  <div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.3);text-align:right">${filtered.length} dossier${filtered.length>1?'s':''} affiché${filtered.length>1?'s':''}</div>`;
+  // Panneau détail (si déjà ouvert)
+  const detailOpen = document.getElementById('admin-detail-panel');
+  if (detailOpen && detailOpen.dataset.code) {
+    const docIdOpen = detailOpen.dataset.code.replace(/[^A-Z0-9]/g,'');
+    const reg2 = filtered.find(r => r.code === detailOpen.dataset.code);
+    if (reg2) ouvrirDetailDossier(detailOpen.dataset.code, docIdOpen);
   }
-  _renderBasculesPending(document.getElementById('admin-table-container'));
+  _renderBasculesPending(c);
+}
+
+// ── Panneau détail d'un dossier ─────────────────────────────────────────────
+function ouvrirDetailDossier(code, docId) {
+  const regs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+  const reg  = regs.find(r => r.code === code);
+  if (!reg) return;
+
+  // Sauvegarder l'état des coches dans localStorage
+  const savedChecks = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
+  const checks = savedChecks[code] || {};
+
+  // Récupérer ou créer le panneau détail
+  let panel = document.getElementById('admin-detail-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'admin-detail-panel';
+    panel.style.cssText = 'position:fixed;top:0;right:0;width:min(520px,100vw);height:100vh;background:#1a2e22;border-left:2px solid rgba(45,106,79,0.4);overflow-y:auto;z-index:800;box-shadow:-4px 0 30px rgba(0,0,0,0.5);transition:transform 0.25s ease;';
+    document.body.appendChild(panel);
+  }
+  panel.dataset.code = code;
+
+  const isPending = reg.status === 'pending_manual';
+  const resp = reg.responsable || {};
+  const total = reg._sheetTotal || (reg.totals ? reg.totals.grandTotal : 0) || 0;
+  const modeLabels = {helloasso:'HelloAsso',cheque:'Ch\u00e8que',especes:'Esp\u00e8ces',ancv:'Coupon ANCV',cheque3:'Ch\u00e8ques \u00e9chelonn\u00e9s'};
+  const modeLabel = modeLabels[resp.modePaiement] || resp.modePaiement || '—';
+
+  // ── Activités ────────────────────────────────────────────────────────────
+  const rowsSheet = reg._rows || [];
+  const rowsActives = rowsSheet.filter(r => !(r.statut_inscription||'').toLowerCase().includes('supprim'));
+  const rowsOk     = rowsActives.filter(r => !(r.statut_inscription||'').toLowerCase().includes('attente'));
+  const rowsAttente = rowsActives.filter(r => (r.statut_inscription||'').toLowerCase().includes('attente'));
+
+  const activitesHtml = `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">&#x26BD; Activit\u00e9s inscrites</div>
+      ${rowsOk.length ? rowsOk.map(r=>{
+        const seen = new Set();
+        const key = r.activite_id||r.activite;
+        if (seen.has(key)) return ''; seen.add(key);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
+          <span style="color:rgba(255,255,255,0.8);">${r.prenom_membre||''} ${r.nom_membre||''} \u2014 ${r.activite||r.activite_id||'?'}</span>
+          <span style="color:#52b788;font-weight:700;white-space:nowrap;">${Number(r.tarif_brut)||0} \u20AC</span>
+        </div>`;
+      }).filter(Boolean).join('') : '<div style="font-size:11px;color:rgba(255,255,255,0.3);">Aucune activit\u00e9 inscrite</div>'}
+    </div>
+    ${rowsAttente.length ? `<div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#ffab40;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">&#x23F3; Activit\u00e9s en attente</div>
+      ${rowsAttente.map(r => {
+        const actIdFront = placesIdToActId(r.activite_id||'')||r.activite_id;
+        const actDef = getActById(actIdFront);
+        const isno = (resp.commune==='isno')||(resp.ville||'').toUpperCase().includes('ISNEAUVILLE');
+        const tarif = actDef ? (isno?actDef.isno:actDef.hc) : (Number(r.tarif_brut)||0);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,152,0,0.1);font-size:12px;">
+          <span style="color:#ffb74d;">${r.prenom_membre||''} ${r.nom_membre||''} \u2014 ${r.activite||r.activite_id||'?'}</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:#ffab40;font-weight:700;">${tarif} \u20AC</span>
+            <button onclick="basculerListeAttente('${code}','${(r.activite_id||'').replace(/'/g,"\\'")}','${(r.activite||'').replace(/'/g,"\\'")}','${(r.prenom_membre||'').replace(/'/g,"\\'")}','${(r.nom_membre||'').replace(/'/g,"\\'")}','${tarif}')"
+              style="background:#ff9800;border:none;color:white;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:600;">\u2191 Inscrire</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}`;
+
+  // ── Documents ────────────────────────────────────────────────────────────
+  const hasCertif = (reg.members||[]).some(m=>m.qsResult==='certificat_requis')
+    || rowsSheet.some(r=>r.qs_sante==='Certificat requis');
+  const allPassAide = rowsSheet.map(r=>r.pass_aide||'').join(' ');
+  const hasPassJeunes = allPassAide.toLowerCase().includes('jeune');
+  const hasAtout = allPassAide.toLowerCase().includes('atout');
+  const hasPassSport = allPassAide.toLowerCase().includes('pass')&&allPassAide.toLowerCase().includes('sport');
+
+  function checkItem(id, label, emoji) {
+    const stored = checks[id];
+    const isChecked = stored === 'recu';
+    const isPending2 = stored === 'attente';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <span style="font-size:12px;color:rgba(255,255,255,0.8);">${emoji} ${label}</span>
+      <div style="display:flex;gap:6px;">
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#ffab40;">
+          <input type="radio" name="chk-${docId}-${id}" value="attente" ${isPending2?'checked':''} onchange="enregistrerCoche('${code}','${id}','attente')"
+            style="accent-color:#ff9800;"> En attente
+        </label>
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#52b788;">
+          <input type="radio" name="chk-${docId}-${id}" value="recu" ${isChecked?'checked':''} onchange="enregistrerCoche('${code}','${id}','recu')"
+            style="accent-color:#52b788;"> Re\u00e7u
+        </label>
+      </div>
+    </div>`;
+  }
+
+  const docsHtml = `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">&#x1F4CB; Documents</div>
+      ${checkItem('qs', 'QS Sant\u00e9 sign\u00e9', '&#x1F49A;')}
+      ${checkItem('ri', 'R\u00e8glement int\u00e9rieur sign\u00e9', '&#x1F4DC;')}
+      ${hasCertif ? checkItem('certif', 'Certificat m\u00e9dical', '&#x1FA7A;') : ''}
+      ${hasPassJeunes ? checkItem('passjeunes', "Pass'Jeunes 76", '&#x1F9B8;') : ''}
+      ${hasAtout ? checkItem('atout', 'Atout Normandie', '&#x1F3C6;') : ''}
+      ${hasPassSport ? checkItem('passsport', "Pass'Sport \u00c9tat", '&#x26BD;') : ''}
+    </div>`;
+
+  // ── Aides et paiements ────────────────────────────────────────────────────
+  const passAideStr2 = rowsSheet.length ? rowsSheet[0].pass_aide||'' : '';
+  const aidesHtml = `
+    <div style="margin-bottom:14px;" id="detail-elements-${docId}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;">&#x1F4B0; R\u00e8glement &amp; Aides</div>
+        <button onclick="chargerElementsPaiement('${code}','detail-elements-${docId}')"
+          style="background:rgba(45,106,79,0.3);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer;">
+          &#x1F504; Charger depuis le Sheet
+        </button>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.6);">Mode : <strong style="color:white">${modeLabel}</strong>
+        &nbsp;&bull;&nbsp; Total : <strong style="color:#52b788">${total.toFixed(2)} \u20AC</strong></div>
+    </div>`;
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const actionsHtml = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+      ${isPending ? `<button onclick="validerPaiement('${code}','${reg.id}')"
+        style="flex:1;min-width:140px;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;font-weight:700;">
+        &#x2705; Valider paiement</button>` : ''}
+      ${isPending ? `<button onclick="envoyerRappelManuel('${code}')"
+        style="flex:1;min-width:140px;background:rgba(230,81,0,0.8);color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;font-weight:600;">
+        &#x1F4E8; Rappel</button>` : ''}
+      <button onclick="ouvrirAjoutActivite('${code}')"
+        style="background:rgba(21,101,192,0.7);color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;">&#x2795; Activit\u00e9</button>
+      <button onclick="ouvrirSupprActivite('${code}')"
+        style="background:rgba(230,81,0,0.6);color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;">&#x2796; Suppr.</button>
+      <button onclick="exportSingleExcel(${reg.id})"
+        style="background:rgba(45,106,79,0.5);color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;">&#x1F4CA; Export</button>
+      <button onclick="deleteRegistration(${reg.id})"
+        style="background:rgba(192,57,43,0.6);color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;">&#x1F5D1;</button>
+    </div>`;
+
+  panel.innerHTML = `
+    <div style="padding:16px 18px;background:rgba(0,0,0,0.3);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:2;">
+      <div>
+        <span style="font-family:monospace;font-weight:700;font-size:16px;color:var(--green-light)">${code}</span>
+        <span style="margin-left:10px;font-size:12px;color:rgba(255,255,255,0.5)">${formatDateAdmin(reg.date)}</span>
+        ${isPending ? `<span style="margin-left:8px;background:rgba(201,168,76,0.25);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;">&#x23F3; En attente</span>`
+                    : `<span style="margin-left:8px;background:rgba(45,106,79,0.25);color:#52b788;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;">&#x2705; Valid\u00e9</span>`}
+      </div>
+      <button onclick="fermerDetailDossier()"
+        style="background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.6);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1;">&times;</button>
+    </div>
+    <div style="padding:18px;">
+      <!-- Responsable + membres -->
+      <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.04);border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">&#x1F464; Responsable</div>
+        <div style="font-size:13px;font-weight:600;color:white">${resp.nom} ${resp.prenom}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px">${resp.email1||''} &bull; ${resp.tel1||''}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35)">${resp.adresse||''} ${resp.cp||''} ${resp.ville||''}</div>
+        ${(reg.members||[]).length > 1 ? `<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.5)">Membres : ${(reg.members||[]).map(m=>`${m.prenom} ${m.nom}`).join(', ')}</div>` : ''}
+      </div>
+      <!-- QS Santé résumé -->
+      <div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">&#x1F49A; QS Sant\u00e9</div>
+        ${(reg.members||[]).map(m => `<div style="font-size:12px;color:rgba(255,255,255,0.75)">${m.prenom} ${m.nom} —
+          ${m.qsResult==='attestation_ok'?'<span style="color:#52b788">&#x2705; Attestation OK</span>':m.qsResult==='certificat_requis'?'<span style="color:#ffb74d">&#x26A0;&#xFE0F; Certificat requis</span>':'<span style="color:rgba(255,255,255,0.3)">Non renseign\u00e9</span>'}</div>`).join('')}
+      </div>
+      ${activitesHtml}
+      ${docsHtml}
+      ${aidesHtml}
+      ${actionsHtml}
+    </div>`;
+}
+
+function fermerDetailDossier() {
+  const panel = document.getElementById('admin-detail-panel');
+  if (panel) panel.remove();
+}
+
+function enregistrerCoche(code, itemId, valeur) {
+  const saved = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
+  if (!saved[code]) saved[code] = {};
+  saved[code][itemId] = valeur;
+  localStorage.setItem('fri_admin_checks', JSON.stringify(saved));
+  showAdminToast((valeur==='recu'?'\u2705 ':'&#x23F3; ') + itemId + ' : ' + valeur, valeur==='recu'?'green':'orange');
+}
+
 
 // ── Valider paiement manuel (admin) ──
 // Charger et afficher les elements de paiement pour un dossier
