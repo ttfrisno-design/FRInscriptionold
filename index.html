@@ -7335,6 +7335,23 @@ function mergerDossiersSheet(dossiers) {
   });
 
 
+  // Recalculer le statut de chaque dossier apres avoir groupe toutes les lignes
+  // Un dossier est 'paid' si AU MOINS UNE ligne (non en attente) est payee
+  Object.values(byCode).forEach(reg => {
+    if (!reg._rows || reg._rows.length === 0) return;
+    const hasPayedLine = reg._rows.some(r => {
+      const st = (r.statut || r.statut_paiement || '').toLowerCase();
+      return st.includes('pay');
+    });
+    const allAttenteNonPayees = reg._rows.every(r => {
+      const st = (r.statut || r.statut_paiement || '').toLowerCase();
+      return st.includes('attente') && !st.includes('pay') && !st.includes('glement re');
+    });
+    if (hasPayedLine) reg.status = 'paid';
+    else if (allAttenteNonPayees) reg.status = 'pending_manual';
+    // sinon garder le statut calcule depuis la premiere ligne
+  });
+
   // Fusionner dans localStorage — le Sheet fait autorité pour le statut
   const local = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
 
