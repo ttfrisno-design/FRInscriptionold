@@ -7150,12 +7150,17 @@ async function chargerEtAfficherElementsPaiement(code, docId) {
       return;
     }
     const elements = data.elements;
-    let html = '<div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">'
-      + '<span style="font-size:10px;color:rgba(255,255,255,0.35);">' + elements.length + ' élément(s)</span>'
-      + '<div style="display:flex;gap:6px;">'
-      + '<button onclick="validerSelectionElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="background:#ff9800;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:700;">✅ Valider la sélection</button>'
-      + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="background:rgba(45,106,79,0.25);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer;">&#x1F504;</button>'
-      + '</div></div>';
+    const allPending = elements.filter(function(e){return !e.statut||!e.statut.toLowerCase().includes('valid');});
+    let html = '<div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">'
+      + '<span style="font-size:10px;color:rgba(255,255,255,0.4);">' + elements.length + ' élément(s) — ' + allPending.length + ' en attente</span>'
+      + '<button onclick="chargerEtAfficherElementsPaiement(\''+code+'\',\''+docId+'\')" style="background:rgba(45,106,79,0.2);color:var(--green-light);border:1px solid rgba(45,106,79,0.3);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;">&#x1F504;</button>'
+      + '</div>'
+      + (allPending.length > 0
+        ? '<div style="display:flex;gap:6px;margin-bottom:8px;">'
+          + '<button onclick="toutCocherElements(\''+docId+'\')" style="flex:1;background:rgba(255,152,0,0.15);color:#ffab40;border:1px solid rgba(255,152,0,0.3);border-radius:5px;padding:6px 8px;font-size:11px;cursor:pointer;">☑ Tout cocher</button>'
+          + '<button onclick="validerSelectionElementsPaiement(\''+code+'\',\''+docId+'\')" style="flex:1;background:#ff9800;color:white;border:none;border-radius:5px;padding:6px 8px;font-size:11px;cursor:pointer;font-weight:700;">✅ Valider sélection</button>'
+          + '</div>'
+        : '');
     elements.forEach(function(el, i) {
       const isValid = el.statut && el.statut.toLowerCase().includes('valid');
       const cbId = 'pay-chk-' + code.replace(/[^A-Z0-9]/g,'') + '-' + i;
@@ -7164,9 +7169,12 @@ async function chargerEtAfficherElementsPaiement(code, docId) {
       const bg = isValid ? 'rgba(45,106,79,0.1)' : 'rgba(255,152,0,0.06)';
       html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:2px;background:' + bg + ';">';
       if (!isValid) {
-        html += '<input type="checkbox" id="' + cbId + '" data-onglet="' + el.onglet + '" data-ligne="' + el.ligne + '" style="accent-color:#ff9800;width:14px;height:14px;cursor:pointer;flex-shrink:0;">';
+        html += '<label for="'+cbId+'" style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;padding:2px;">'
+          + '<input type="checkbox" id="'+cbId+'" data-onglet="'+el.onglet+'" data-ligne="'+el.ligne+'"'
+          + ' style="accent-color:#ff9800;width:16px;height:16px;cursor:pointer;">'
+          + '</label>';
       } else {
-        html += '<span style="font-size:14px;flex-shrink:0;">✅</span>';
+        html += '<span style="font-size:16px;flex-shrink:0;">✅</span>';
       }
       html += '<div style="flex:1;min-width:0;">'
         + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + el.onglet + '</div>'
@@ -7181,6 +7189,14 @@ async function chargerEtAfficherElementsPaiement(code, docId) {
   } catch(e) {
     container.innerHTML = '<div style="color:rgba(255,100,100,0.6);font-size:11px;">⚠️ ' + e.message + '</div>';
   }
+}
+
+function toutCocherElements(docId) {
+  const container = document.getElementById('detail-elements-' + docId);
+  if (!container) return;
+  const boxes = container.querySelectorAll('input[type="checkbox"]');
+  const allChecked = Array.from(boxes).every(b => b.checked);
+  boxes.forEach(b => { b.checked = !allChecked; });
 }
 
 async function validerSelectionElementsPaiement(code, docId) {
