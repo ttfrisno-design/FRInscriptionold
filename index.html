@@ -4316,13 +4316,15 @@ function calcTotals() {
         counted.add(pairKey);
       }
       // Activité en liste d'attente : ne pas comptabiliser dans le total à payer
-      if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return;
+      const _wl0 = m.waitingList || [];
+      if (_wl0.includes ? _wl0.includes(actId) : _wl0.has ? _wl0.has(actId) : false) return;
       let price = isno ? act.isno : act.hc;
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
       const cF = calcCountryForfait(m, isno);
       const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
       if (cF.forfait && CFIDS.includes(actId)) price = (cF.ids[0] === actId) ? cF.prix : 0;
       totalBeforeDiscount += price;
+      // Forfait country : jamais éligible remise 15%
       const isCountryForfaitActive = cF.forfait && CFIDS.includes(actId);
       if (!isCountryForfaitActive && !NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) discountableTotal += price;
     });
@@ -4333,13 +4335,17 @@ function calcTotals() {
     const counted = new Set();
     const waiting = m.waitingList || new Set();
     m.activities.forEach(actId => {
-      if (Array.isArray(waiting) ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return; // liste d'attente exclue
+      if (waiting.includes ? waiting.includes(actId) : waiting.has ? waiting.has(actId) : false) return; // liste d'attente exclue
       const act = getActById(actId);
       if (act && act.linkedWith) {
         const pk = [actId, act.linkedWith].sort().join('|');
         if (counted.has(pk)) return;
         counted.add(pk);
       }
+      // Forfait country : ne compte pas pour la remise 15%
+      const cFc = calcCountryForfait(m, isno);
+      const CFIDSc = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+      if (cFc.forfait && CFIDSc.includes(actId)) return;
       if (!NON_DISCOUNTABLE.includes(actId) && (!actId.startsWith('tt-') || isno)) acc++;
     });
     return acc;
@@ -4401,7 +4407,8 @@ function buildRows(reg) {
         // Appliquer remise 15% si éligible — tarif = montant réellement réglé
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
         const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
-        const estElig = !_isWaiting && aRemise15 && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+        const isCountryForfaitLinked = cFl.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId);
+        const estElig = !_isWaiting && aRemise15 && !isCountryForfaitLinked && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
         const tarifBrut = price;
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
 
@@ -4474,7 +4481,8 @@ function buildRows(reg) {
       if (cFl2.forfait && CFIDSl2.includes(actId)) price = (cFl2.ids[0] === actId) ? cFl2.prix : 0;
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
       const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
-      const estElig2 = !_isWaiting2 && aRemise15b && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
+      const isCountryForfait2 = cFl2.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId);
+      const estElig2 = !_isWaiting2 && aRemise15b && !isCountryForfait2 && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
       const tarifBrut2 = price; // après forfait country
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
       rows.push({
