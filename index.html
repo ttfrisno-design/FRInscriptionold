@@ -2030,79 +2030,45 @@ async function loadPlaces(force = false) {
   const now = Date.now();
   if (!force && state.placesLoaded && (now - state.placesLoadedAt) < PLACES_CACHE_TTL) return;
 
-  // Initialiser avec les valeurs par défaut
+  // Initialiser avec valeurs par défaut
   getAllActs().forEach(act => {
     if (!state.places[act.id])
       state.places[act.id] = { capacity: DEFAULT_CAPACITY, registered: 0, available: DEFAULT_CAPACITY };
   });
 
-  const sheetId = (localStorage.getItem('fri_sheet_id') || SHEET_ID_PUBLIC || '').trim();
-  if (!sheetId) {
-    state.placesLoaded = true; state.placesLoadedAt = now; return;
-  }
+  const url = getAppsScriptUrl();
+  if (!url) { state.placesLoaded = true; state.placesLoadedAt = now; return; }
 
   try {
-    // Extraire l'ID si URL complète collée
-    const urlMatch = sheetId.match(/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    const id = urlMatch ? urlMatch[1] : sheetId;
-    const url = 'https://docs.google.com/spreadsheets/d/' + id +
-      '/gviz/tq?tqx=out:json&sheet=Places&headers=1&_t=' + now;
-    console.log('loadPlaces gviz URL:', url.substring(0, 100));
-    const resp = await fetch(url, { cache: 'no-store' });
-    console.log('loadPlaces HTTP:', resp.status);
-    if (!resp.ok) {
-      console.warn('loadPlaces: HTTP', resp.status, '— onglet Places inaccessible');
-      // Si 410 (fichier supprimé) ou 404, effacer le cache pour utiliser l'ID par défaut
-      if (resp.status === 410 || resp.status === 404) {
-        localStorage.removeItem('fri_sheet_id');
-        console.warn('loadPlaces: ID Sheet invalide supprimé du cache — rechargement...');
-        if (id !== SHEET_ID_PUBLIC) { setTimeout(() => loadPlaces(true), 500); return; }
-      }
+    // Charger via GAS (pas besoin de Sheet public)
+    const res = await callAppsScriptFetch(url, { action: 'getPlacesRestantes' });
+    const data = (res && res.data) ? res.data : res;
+    if (!data || !data.places || Object.keys(data.places).length === 0) {
+      console.warn('[FRI] loadPlaces: aucune place retourned par GAS');
       state.placesLoaded = true; state.placesLoadedAt = now; return;
     }
-    const text = await resp.text();
-    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if (!match) {
-      console.warn('loadPlaces: format gviz invalide');
-      state.placesLoaded = true; state.placesLoadedAt = now; return;
-    }
-    const gviz = JSON.parse(match[1]);
-    const nbRows = gviz.table?.rows?.length || 0;
-    console.log('loadPlaces: cols=', gviz.table?.cols?.map(c=>c.label).join('|'), '| rows=', nbRows);
-    if (!gviz.table || !gviz.table.rows || nbRows === 0) {
-      console.warn('loadPlaces: onglet Places vide');
-      state.placesLoaded = true; state.placesLoadedAt = now; return;
-    }
-
-    // Col 0=ID Activite, col 1=Nom, col 2=Capacite max, col 3=Inscrits, col 4=Places restantes
     let updated = 0;
-    gviz.table.rows.forEach(row => {
-      if (!row.c) return;
-      const actId    = row.c[0] ? String(row.c[0].v || '').trim() : '';
-      const capacity = row.c[2] ? Number(row.c[2].v ?? DEFAULT_CAPACITY) : DEFAULT_CAPACITY;
-      const inscrits = row.c[3] ? Number(row.c[3].v ?? 0) : 0;
-      // Utiliser directement la colonne "Places restantes" (col 4) du Sheet
-      const placesRestantes = row.c[4] ? Number(row.c[4].v ?? Math.max(0, capacity - inscrits)) : Math.max(0, capacity - inscrits);
-      if (actId) {
-        const data = { capacity, registered: inscrits, available: Math.max(0, placesRestantes) };
-        // Stocker sous l'ID Places (ex: FITL1730)
-        state.places[actId] = data;
-        // Stocker aussi sous chaque ID site qui mappe vers cet ID Places
-        getAllActs().forEach(act => {
-          if (siteToPlacesId(act.id) === actId) state.places[act.id] = data;
-        });
-        updated++;
-      }
+    Object.keys(data.places).forEach(actId => {
+      const p = data.places[actId];
+      const d = {
+        capacity:   Number(p.capacity   ?? p.capacite  ?? DEFAULT_CAPACITY),
+        registered: Number(p.registered ?? p.inscrits  ?? 0),
+        available:  Math.max(0, Number(p.available ?? p.restantes ?? p.capacity ?? p.capacite ?? DEFAULT_CAPACITY))
+      };
+      state.places[actId] = d;
+      getAllActs().forEach(act => {
+        if (siteToPlacesId(act.id) === actId) state.places[act.id] = d;
+      });
+      updated++;
     });
-    console.log('loadPlaces: ' + updated + ' activités chargées depuis le Sheet');
+    console.log('[FRI] loadPlaces GAS: ' + updated + ' activités');
     state.placesLoaded = true;
     state.placesLoadedAt = now;
   } catch(err) {
-    console.error('loadPlaces erreur:', err.message);
+    console.error('[FRI] loadPlaces erreur:', err.message);
     state.placesLoaded = true; state.placesLoadedAt = now;
   }
 }
-
 // Alias maintenu pour compatibilité
 function loadPlacesJsonp() { return loadPlaces(true); }
 
@@ -3089,36 +3055,55 @@ var _ffttCanvas = {}, _ffttCtx = {}, _ffttDrawing = {};
 
 function initSignatureFFTT(memId) {
   const cv = document.getElementById('fftt-sig-' + memId);
-  if (!cv || _ffttCanvas[memId]) return;
-  _ffttCanvas[memId] = cv;
-  _ffttCtx[memId]    = cv.getContext('2d', { willReadFrequently: true });
+  if (!cv) return;
+
+  // Supprimer les anciens listeners en clonant le canvas (technique propre)
+  const newCv = cv.cloneNode(true);
+  cv.parentNode.replaceChild(newCv, cv);
+  _ffttCanvas[memId]  = newCv;
+  _ffttCtx[memId]     = newCv.getContext('2d', { willReadFrequently: true });
   _ffttDrawing[memId] = false;
 
   const getPos = (e) => {
-    const r = cv.getBoundingClientRect();
+    const r = newCv.getBoundingClientRect();
     const src = e.touches ? e.touches[0] : e;
-    return { x: (src.clientX - r.left) * cv.width / r.width,
-             y: (src.clientY - r.top)  * cv.height / r.height };
+    return { x: (src.clientX - r.left) * newCv.width / r.width,
+             y: (src.clientY - r.top)  * newCv.height / r.height };
   };
-  const start = (e) => { e.preventDefault(); _ffttDrawing[memId]=true;
-    _ffttCtx[memId].beginPath(); const p=getPos(e);
-    _ffttCtx[memId].moveTo(p.x,p.y); };
-  const move  = (e) => { e.preventDefault(); if(!_ffttDrawing[memId])return;
-    const p=getPos(e); _ffttCtx[memId].lineWidth=2.2; _ffttCtx[memId].strokeStyle='#1a2e22';
-    _ffttCtx[memId].lineCap='round'; _ffttCtx[memId].lineTo(p.x,p.y);
-    _ffttCtx[memId].stroke(); };
-  const stop  = () => { _ffttDrawing[memId]=false; };
+  const start = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    _ffttDrawing[memId] = true;
+    _ffttCtx[memId].beginPath();
+    const p = getPos(e); _ffttCtx[memId].moveTo(p.x, p.y);
+  };
+  const move = (e) => {
+    e.preventDefault();
+    if (!_ffttDrawing[memId]) return;
+    const p = getPos(e);
+    _ffttCtx[memId].lineWidth = 2.2; _ffttCtx[memId].strokeStyle = '#1a2e22';
+    _ffttCtx[memId].lineCap = 'round'; _ffttCtx[memId].lineTo(p.x, p.y);
+    _ffttCtx[memId].stroke();
+  };
+  const stop = (e) => { _ffttDrawing[memId] = false; };
 
-  cv.addEventListener('mousedown', start); cv.addEventListener('mousemove', move);
-  cv.addEventListener('mouseup', stop);   cv.addEventListener('touchstart', start, { passive:false });
-  cv.addEventListener('touchmove', move, { passive:false }); cv.addEventListener('touchend', stop);
+  newCv.addEventListener('mousedown',  start, { passive: false });
+  newCv.addEventListener('mousemove',  move,  { passive: false });
+  newCv.addEventListener('mouseup',    stop);
+  newCv.addEventListener('mouseleave', stop);
+  newCv.addEventListener('touchstart', start, { passive: false });
+  newCv.addEventListener('touchmove',  move,  { passive: false });
+  newCv.addEventListener('touchend',   stop);
+  newCv.addEventListener('touchcancel',stop);
 }
 
 function effacerSignatureFFTT(memId) {
+  _ffttDrawing[memId] = false;
   const cv = _ffttCanvas[memId] || document.getElementById('fftt-sig-' + memId);
   if (!cv) return;
   const ctx = _ffttCtx[memId] || cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
+  // Reinitialiser proprement les listeners après effacement
+  setTimeout(() => initSignatureFFTT(memId), 0);
 }
 
 function isSignatureFFTTVide(memId) {
