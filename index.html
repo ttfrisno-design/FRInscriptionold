@@ -7122,84 +7122,143 @@ function fermerDetailDossier() {
   if (panel) panel.remove();
 }
 
+// Enregistre un element de paiement : localStorage + Sheet
+async function enregistrerCocheElement(code, itemId, onglet, ligne, docId) {
+  // 1. Sauvegarder en localStorage
+  const saved = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
+  if (!saved[code]) saved[code] = {};
+  saved[code][itemId] = 'recu';
+  localStorage.setItem('fri_admin_checks', JSON.stringify(saved));
+  showAdminToast('\u2705 ' + onglet + ' re\u00e7u', 'green');
+  // 2. Mettre a jour le statut dans le Sheet
+  try {
+    const url = getAppsScriptUrl();
+    if (url && onglet && ligne) {
+      const res = await callAppsScriptFetch(url, { action: 'validerElementPaiement', _token: FRI_SECRET_TOKEN, code: code, onglet: onglet, ligne: ligne });
+      const d = (res && res.data) ? res.data : res;
+      if (d && d.toutValide) {
+        showAdminToast('\u2705 Tout valid\u00e9 pour ' + code + ' \u2014 Inscrit !', 'green');
+        await chargerDossiersDepuisSheet(); renderAdmin(); return;
+      }
+    }
+  } catch(e) { console.warn('validerElement KO:', e); }
+  // 3. Rafraichir l'affichage
+  if (docId) chargerEtAfficherElementsPaiement(code, docId);
+}
+
 function enregistrerCoche(code, itemId, valeur) {
+  // Sauvegarder en localStorage
   const saved = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
   if (!saved[code]) saved[code] = {};
   saved[code][itemId] = valeur;
   localStorage.setItem('fri_admin_checks', JSON.stringify(saved));
-  showAdminToast((valeur==='recu'?'\u2705 ':'&#x23F3; ') + itemId + ' : ' + valeur, valeur==='recu'?'green':'orange');
+  // Toast de confirmation discret
+  const label = itemId.replace(/^pay_/,'').replace(/_/g,' ');
+  if (valeur === 'recu') {
+    showAdminToast('\u2705 ' + label + ' \u2014 Re\u00e7u', 'green');
+  } else {
+    showAdminToast('\u23f3 ' + label + ' \u2014 En attente', 'orange');
+  }
 }
 
 
 // ── Valider paiement manuel (admin) ──
 // Charger et afficher les elements de paiement pour un dossier
 async function chargerEtAfficherElementsPaiement(code, docId) {
-  const containerId = 'detail-elements-' + docId;
-  const container = document.getElementById(containerId);
-  const url = getAppsScriptUrl();
+  var cid = 'detail-elements-' + docId;
+  var container = document.getElementById(cid);
+  var url = getAppsScriptUrl();
   if (!container || !url) return;
-  container.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:8px 0;">\u23f3 Chargement...</div>';
-
-  // Etat des coches persiste en localStorage (independant du Sheet)
-  const savedChecks = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
-  const checks = savedChecks[code] || {};
-
+  container.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:8px">⏳ Chargement...</div>';
+  var savedChecks = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
+  var checks = savedChecks[code] || {};
   try {
-    const res = await callAppsScriptFetch(url, { action: 'getElementsPaiement', _token: FRI_SECRET_TOKEN, code: code });
-    const data = (res && res.data) ? res.data : res;
-    if (!data || !data.elements || data.elements.length === 0) {
-      container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:6px 0;">'
-        + 'Aucun \u00e9l\u00e9ment dans le Sheet.</div>'
-        + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" '
-        + 'style="margin-top:6px;background:rgba(45,106,79,0.25);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;">\ud83d\udd04 Recharger</button>';
+    var res = await callAppsScriptFetch(url, { action: 'getElementsPaiement', _token: FRI_SECRET_TOKEN, code: code });
+    var data = (res && res.data) ? res.data : res;
+    if (!data || !data.elements || !data.elements.length) {
+      container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:6px">Aucun élément dans le Sheet.</div>';
       return;
     }
-    const elements = data.elements;
-    const nbRecu = elements.filter(function(el) {
-      return checks['pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_')] === 'recu';
-    }).length;
-    const nbTotal = elements.length;
-
-    let html = '<div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">'
-      + '<span style="font-size:10px;color:rgba(255,255,255,0.4);">' + nbRecu + ' / ' + nbTotal + ' re\u00e7us</span>'
-      + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" '
-      + 'style="background:rgba(45,106,79,0.2);color:var(--green-light);border:1px solid rgba(45,106,79,0.3);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;">\ud83d\udd04</button>'
-      + '</div>';
-
-    elements.forEach(function(el) {
-      const itemId = 'pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_');
-      const stored   = checks[itemId];
-      const isRecu   = stored === 'recu';
-      const isAttente= stored === 'attente';
-      const montantStr = el.montant > 0 ? el.montant.toFixed(2) + '\u00a0\u20ac' : '\u2014';
-      const bg = isRecu ? 'rgba(45,106,79,0.18)' : isAttente ? 'rgba(255,152,0,0.1)' : 'rgba(255,255,255,0.03)';
-
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;margin-bottom:3px;background:' + bg + ';">'
-        // Colonne gauche : radios
-        + '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">'
-        + '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#ffab40;padding:2px 5px;border-radius:4px;background:' + (isAttente?'rgba(255,152,0,0.2)':'rgba(255,255,255,0.05)') + ';">'
-        + '<input type="radio" name="pay-' + docId + '-' + itemId + '" value="attente" ' + (isAttente?'checked':'')
-        + ' onchange="enregistrerCoche(\'' + code + '\',\'' + itemId + '\',\'attente\');chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')"'
-        + ' style="accent-color:#ff9800;"> \u23f3</label>'
-        + '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#52b788;padding:2px 5px;border-radius:4px;background:' + (isRecu?'rgba(45,106,79,0.3)':'rgba(255,255,255,0.05)') + ';">'
-        + '<input type="radio" name="pay-' + docId + '-' + itemId + '" value="recu" ' + (isRecu?'checked':'')
-        + ' onchange="enregistrerCoche(\'' + code + '\',\'' + itemId + '\',\'recu\');chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')"'
-        + ' style="accent-color:#52b788;"> \u2705</label>'
-        + '</div>'
-        // Colonne milieu : onglet + membre
-        + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,' + (isRecu?'0.95':'0.8') + ');white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + el.onglet + '</div>'
-        + (el.prenom||el.nom ? '<div style="font-size:10px;color:rgba(255,255,255,0.4);">' + (el.prenom||'') + ' ' + (el.nom||'') + '</div>' : '')
-        + '</div>'
-        // Colonne droite : montant
-        + '<div style="text-align:right;flex-shrink:0;">'
-        + '<div style="font-size:13px;font-weight:700;color:' + (isRecu?'#52b788':'#ffab40') + ';">' + montantStr + '</div>'
-        + '</div>'
-        + '</div>';
+    var elems = data.elements;
+    var nbRecu = 0;
+    elems.forEach(function(el) {
+      if (checks['pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_')] === 'recu') nbRecu++;
     });
-    container.innerHTML = html;
+
+    var div = document.createElement('div');
+
+    // -- Header --
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;';
+    hdr.innerHTML = '<span style="font-size:10px;color:rgba(255,255,255,0.4);">' + nbRecu + ' / ' + elems.length + ' reçus</span>';
+    var btnR = document.createElement('button');
+    btnR.innerHTML = '&#x1F504;';
+    btnR.style.cssText = 'background:rgba(45,106,79,0.2);color:var(--green-light);border:1px solid rgba(45,106,79,0.3);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;';
+    btnR.onclick = function() { chargerEtAfficherElementsPaiement(code, docId); };
+    hdr.appendChild(btnR);
+    div.appendChild(hdr);
+
+    // -- Lignes --
+    elems.forEach(function(el) {
+      var itemId = 'pay_' + el.onglet.replace(/[^A-Za-z0-9]/g, '_');
+      var isRecu = checks[itemId] === 'recu';
+      var isAtt  = checks[itemId] === 'attente';
+      var montStr = el.montant > 0 ? el.montant.toFixed(2) + ' €' : '—';
+      var bg = isRecu ? 'rgba(45,106,79,0.18)' : isAtt ? 'rgba(255,152,0,0.1)' : 'rgba(255,255,255,0.03)';
+
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;margin-bottom:3px;background:' + bg + ';';
+
+      // Radios
+      var rdiv = document.createElement('div');
+      rdiv.style.cssText = 'display:flex;flex-direction:column;gap:2px;flex-shrink:0;';
+
+      function makeRadio(val, color, emoji, checked, onch) {
+        var lbl = document.createElement('label');
+        lbl.style.cssText = 'display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:' + color + ';padding:2px 5px;border-radius:4px;';
+        var rb = document.createElement('input');
+        rb.type = 'radio'; rb.name = 'pay-' + docId + '-' + itemId;
+        rb.value = val; rb.checked = checked; rb.style.accentColor = color;
+        rb.onchange = onch;
+        lbl.appendChild(rb);
+        var sp = document.createElement('span');
+        sp.innerHTML = emoji;
+        lbl.appendChild(sp);
+        return lbl;
+      }
+
+      rdiv.appendChild(makeRadio('attente','#ffab40','&#x23F3;',isAtt,
+        (function(c,id,did){return function(){
+          enregistrerCoche(c,id,'attente');
+          chargerEtAfficherElementsPaiement(c,did);
+        };})(code,itemId,docId)
+      ));
+      rdiv.appendChild(makeRadio('recu','#52b788','&#x2705;',isRecu,
+        (function(c,id,ong,lig,did){return function(){
+          enregistrerCocheElement(c,id,ong,lig,did);
+        };})(code,itemId,el.onglet,el.ligne,docId)
+      ));
+      row.appendChild(rdiv);
+
+      // Info
+      var info = document.createElement('div');
+      info.style.cssText = 'flex:1;min-width:0;';
+      info.innerHTML = '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,' + (isRecu?'0.95':'0.8') + ');">' + el.onglet + '</div>'
+        + (el.prenom||el.nom ? '<div style="font-size:10px;color:rgba(255,255,255,0.4);">' + (el.prenom||'') + ' ' + (el.nom||'') + '</div>' : '');
+      row.appendChild(info);
+
+      // Montant
+      var mont = document.createElement('div');
+      mont.style.cssText = 'text-align:right;flex-shrink:0;';
+      mont.innerHTML = '<div style="font-size:13px;font-weight:700;color:' + (isRecu?'#52b788':'#ffab40') + ';">' + montStr + '</div>';
+      row.appendChild(mont);
+      div.appendChild(row);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(div);
   } catch(e) {
-    container.innerHTML = '<div style="color:rgba(255,100,100,0.6);font-size:11px;">\u26a0\ufe0f ' + e.message + '</div>';
+    container.innerHTML = '<div style="color:rgba(255,100,100,0.6);font-size:11px;">⚠️ ' + e.message + '</div>';
   }
 }
 
