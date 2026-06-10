@@ -7545,10 +7545,14 @@ function ouvrirModalPaiementBascule(code, actId, tarifBrut, actNom) {
     + '<div style="display:flex;gap:10px;">'
     + '<button onclick="document.getElementById(\'modal-pay-bascule\').remove()" '
     + 'style="flex:1;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:none;border-radius:8px;padding:10px;font-size:13px;cursor:pointer;">Annuler</button>'
-    + '<button onclick="confirmerPaiementBascule(\'" + code + "\',\'" + actId + "\')" '
+    + '<button id="btn-confirm-bascule" '
     + 'style="flex:2;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">\u2705 Valider le r\u00e8glement</button>'
     + '</div></div></div>';
   document.body.appendChild(mc);
+  // Attacher le listener proprement pour eviter les pb d'echappement
+  document.getElementById('btn-confirm-bascule').addEventListener('click', function() {
+    confirmerPaiementBascule(code, actId);
+  });
   mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
 }
 
