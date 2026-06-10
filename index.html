@@ -4569,33 +4569,44 @@ function renderSummary() {
         const joursCombi  = linked ? act.jour + ' + ' + linked.jour : act.jour;
         const heuresCombi = linked ? act.heure + ' + ' + linked.heure : act.heure;
         const nomClean = act.name.replace(/\n/g, ' — ');
+        const _wlL = m.waitingList || [];
+        const _isWaitingL = _wlL.includes(actId);
         const price = isno ? act.isno : act.hc;
-        return `<tr>
+        const prixCellL = _isWaitingL
+          ? '<span style="color:#ff9800;font-weight:600">⏳ En attente</span>'
+          : price + '€';
+        const trStyleL = _isWaitingL ? ' style="opacity:0.7;background:#fff8e1"' : '';
+        return `<tr${trStyleL}>
           <td>${m.prenom} ${m.nom}</td>
-          <td>${nomClean}</td>
+          <td>${nomClean}${_isWaitingL ? ' <span style="font-size:10px;color:#ff9800">(liste d\'attente)</span>' : ''}</td>
           <td>${joursCombi}</td>
           <td>${heuresCombi}</td>
           <td>${act.lieu || '—'}</td>
-          <td style="text-align:right;font-weight:600">${price}€</td>
+          <td style="text-align:right;font-weight:600">${prixCellL}</td>
         </tr>`;
       }
       const nomClean = act.name.replace(/\n/g, ' — ');
+      const _wlR = m.waitingList || [];
+      const _isWaitingR = _wlR.includes(actId);
       let price = isno ? act.isno : act.hc;
       if (isTTActivity(actId) && m.sexe === 'F') price = Math.max(0, price - 30);
       const cFrs = calcCountryForfait(m, isno);
       const CFIDSrs = ['country-debu-a','country-novice','country-inter','country-debu-j'];
-      let prixLabel = price + '€';
-      if (cFrs.forfait && CFIDSrs.includes(actId)) {
+      let prixLabel = _isWaitingR
+        ? '<span style="color:#ff9800;font-weight:600">⏳ En attente</span>'
+        : price + '€';
+      if (!_isWaitingR && cFrs.forfait && CFIDSrs.includes(actId)) {
         price = (cFrs.ids[0] === actId) ? cFrs.prix : 0;
         prixLabel = (cFrs.ids[0] === actId) ? price + '€ <small style="color:#1b5e20">(forfait)</small>' : '<span style="color:#999">inclus</span>';
       }
-      return `<tr>
+      const trStyleR = _isWaitingR ? ' style="opacity:0.7;background:#fff8e1"' : '';
+      return `<tr${trStyleR}>
         <td>${m.prenom} ${m.nom}</td>
-        <td>${nomClean}</td>
+        <td>${nomClean}${_isWaitingR ? ' <span style="font-size:10px;color:#ff9800">(liste d\'attente)</span>' : ''}</td>
         <td>${act.jour}</td>
         <td>${act.heure}</td>
         <td>${act.lieu || '—'}</td>
-        <td style="text-align:right;font-weight:600">${price}€</td>
+        <td style="text-align:right;font-weight:600">${prixLabel}</td>
       </tr>`;
     }).join('');
     return actsRows;
