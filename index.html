@@ -7513,36 +7513,75 @@ async function chargerDossiersDepuisSheet() {
 }
 
 // Valider le paiement d'une activite basculee
-async function validerPaiementBascule(code, actId, idx) {
+function ouvrirModalPaiementBascule(code, actId, tarifBrut, actNom) {
+  document.getElementById('modal-pay-bascule')?.remove();
+  const tarif = parseFloat(tarifBrut) || 0;
+  const mc = document.createElement('div');
+  mc.id = 'modal-pay-bascule';
+  mc.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  mc.innerHTML = '<div style="background:#1a2e22;border-radius:14px;max-width:440px;width:100%;border:1px solid rgba(45,106,79,0.4);">'
+    + '<div style="background:rgba(0,0,0,0.3);padding:16px 20px;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center;">'
+    + '<div style="font-weight:700;font-size:15px;color:var(--green-light);">&#x1F4B3; Valider le r\u00e8glement</div>'
+    + '<button onclick="document.getElementById(\'modal-pay-bascule\').remove()" style="background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:28px;height:28px;color:white;font-size:16px;cursor:pointer;">&times;</button>'
+    + '</div>'
+    + '<div style="padding:20px;">'
+    + '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:16px;">'
+    + 'Dossier\u00a0: <strong style="color:white">' + code + '</strong>'
+    + (actNom ? '<br>Activit\u00e9\u00a0: <strong style="color:#ffab40">' + actNom + '</strong>' : '')
+    + '<br>Montant\u00a0: <strong style="color:#52b788">' + tarif.toFixed(2) + '\u00a0\u20ac</strong>'
+    + '</div>'
+    + '<div style="margin-bottom:12px;">'
+    + '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Mode de paiement</label>'
+    + '<select id="bascule-mode-pay" style="width:100%;background:#0d1f14;color:white;border:1px solid rgba(45,106,79,0.5);border-radius:7px;padding:8px 12px;font-size:13px;">'
+    + '<option value="cheque">Ch\u00e8que</option>'
+    + '<option value="especes">Esp\u00e8ces</option>'
+    + '<option value="helloasso">HelloAsso</option>'
+    + '</select></div>'
+    + '<div style="margin-bottom:16px;">'
+    + '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Montant r\u00e9gl\u00e9 (\u20ac)</label>'
+    + '<input id="bascule-montant-pay" type="number" step="0.01" value="' + tarif.toFixed(2) + '" '
+    + 'style="width:100%;background:#0d1f14;color:white;border:1px solid rgba(45,106,79,0.5);border-radius:7px;padding:8px 12px;font-size:14px;font-weight:700;box-sizing:border-box;">'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;">'
+    + '<button onclick="document.getElementById(\'modal-pay-bascule\').remove()" '
+    + 'style="flex:1;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:none;border-radius:8px;padding:10px;font-size:13px;cursor:pointer;">Annuler</button>'
+    + '<button onclick="confirmerPaiementBascule(\'" + code + "\',\'" + actId + "\')" '
+    + 'style="flex:2;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">\u2705 Valider le r\u00e8glement</button>'
+    + '</div></div></div>';
+  document.body.appendChild(mc);
+  mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
+}
+
+async function confirmerPaiementBascule(code, actId) {
+  const mode    = document.getElementById('bascule-mode-pay')?.value || 'cheque';
+  const montant = parseFloat(document.getElementById('bascule-montant-pay')?.value) || 0;
+  document.getElementById('modal-pay-bascule')?.remove();
   if (!requireAdmin()) return;
-  if (!confirm('Valider le paiement pour l\'activite basculee du dossier ' + code + ' ?')) return;
-  showAdminToast('⏳ Validation en cours...', 'orange');
+  showAdminToast('⏳ Validation...', 'orange');
   try {
     const url = getAppsScriptUrl();
     const result = await callAppsScriptFetch(url, {
-      action:  'validerPaiement',
-      _token:  FRI_SECRET_TOKEN,
-      code:    code,
-      status:  'paid',
-      rows:    [],
-      actIdBascule: actId
+      action: 'validerPaiementBascule', _token: FRI_SECRET_TOKEN,
+      code: code, actId: actId, modePaiement: mode, montant: montant
     });
     const data = result && result.data ? result.data : (result || {});
-    if (data && (data.status === 'ok' || data.updated > 0)) {
-      // Supprimer de fri_bascules_pending
+    if (data && data.status === 'ok') {
       let bascules = JSON.parse(localStorage.getItem('fri_bascules_pending') || '[]');
-      bascules = bascules.filter((b, i) => !(b.code === code && b.actId === actId));
+      bascules = bascules.filter(b => !(b.code === code && b.actId === actId));
       localStorage.setItem('fri_bascules_pending', JSON.stringify(bascules));
-      showAdminToast('✅ Paiement validé pour ' + code, 'green');
-      await chargerDossiersDepuisSheet();
-      renderAdmin();
+      showAdminToast('✅ Règlement validé — ' + mode, 'green');
+      await chargerDossiersDepuisSheet(); renderAdmin();
     } else {
-      showAdminToast('⚠️ Erreur : ' + (data.message || 'inconnue'), 'red');
+      showAdminToast('⚠️ ' + (data.message || 'Erreur'), 'red');
     }
-  } catch(e) {
-    showAdminToast('⚠️ Erreur : ' + e.message, 'red');
-  }
-  }
+  } catch(e) { showAdminToast('⚠️ ' + e.message, 'red'); }
+}
+
+async function validerPaiementBascule(code, actId, idx) {
+  const bp = JSON.parse(localStorage.getItem('fri_bascules_pending') || '[]');
+  const b  = bp.find(x => x.code === code && x.actId === actId);
+  ouvrirModalPaiementBascule(code, actId, b ? b.tarif : 0, b ? b.actNom : actId);
+}
 
 
 
