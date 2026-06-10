@@ -6821,6 +6821,9 @@ async function basculerListeAttente(code, actId, actNom, prenomMembre, nomMembre
           actNom, actId, tarif: parseFloat(tarifBrut) || 0, status: 'pending_manual', _isBascule: true });
         localStorage.setItem('fri_bascules_pending', JSON.stringify(bascules2));
       }
+      // Invalider le cache des places pour forcer le rechargement
+      state.placesLoaded = false;
+      await loadPlaces(true);
       await chargerDossiersDepuisSheet();
       renderAdmin();
     } else if (!data || !data.status) {
