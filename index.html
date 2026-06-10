@@ -1526,6 +1526,7 @@ function goStep(n) {
   state.step = n;
   window.scrollTo({top:0, behavior:'smooth'});
   if (n === 1) setTimeout(detectCommune, 300); // détecter autofill navigateur
+  if (n === 2) loadPlaces().catch(e => console.warn('loadPlaces step2 KO:', e));
   if (n === 3) renderHealth();
   if (n === 4) {
     try {
