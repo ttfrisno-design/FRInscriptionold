@@ -7022,59 +7022,49 @@ function ouvrirDetailDossier(code, docId) {
       }).join('')}
     </div>` : ''}`;
 
-  // ── Documents ────────────────────────────────────────────────────────────
-  const hasCertif = (reg.members||[]).some(m=>m.qsResult==='certificat_requis')
-    || rowsSheet.some(r=>r.qs_sante==='Certificat requis');
-  const allPassAide = rowsSheet.map(r=>r.pass_aide||'').join(' ');
-  const hasPassJeunes = allPassAide.toLowerCase().includes('jeune');
-  const hasAtout = allPassAide.toLowerCase().includes('atout');
-  const hasPassSport = allPassAide.toLowerCase().includes('pass')&&allPassAide.toLowerCase().includes('sport');
+  // Documents (QS par membre + RI + Bordereau FFTT si applicable)
+  const hasFFTT = (reg.members||[]).some(m => m.ffttWant || m.ffttPrice > 0)
+    || rowsSheet.some(r => Number(r.fftt_price) > 0);
 
   function checkItem(id, label, emoji) {
     const stored = checks[id];
-    const isChecked = stored === 'recu';
-    const isPending2 = stored === 'attente';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-      <span style="font-size:12px;color:rgba(255,255,255,0.8);">${emoji} ${label}</span>
-      <div style="display:flex;gap:6px;">
-        <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#ffab40;">
-          <input type="radio" name="chk-${docId}-${id}" value="attente" ${isPending2?'checked':''} onchange="enregistrerCoche('${code}','${id}','attente')"
-            style="accent-color:#ff9800;"> En attente
-        </label>
-        <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#52b788;">
-          <input type="radio" name="chk-${docId}-${id}" value="recu" ${isChecked?'checked':''} onchange="enregistrerCoche('${code}','${id}','recu')"
-            style="accent-color:#52b788;"> Re\u00e7u
-        </label>
-      </div>
-    </div>`;
+    const isRecu    = stored === 'recu';
+    const isAttente = stored === 'attente';
+    const bg = isRecu ? 'rgba(45,106,79,0.15)' : isAttente ? 'rgba(255,152,0,0.08)' : 'transparent';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:6px;margin-bottom:3px;background:' + bg + ';">'
+      + '<span style="font-size:12px;color:rgba(255,255,255,' + (isRecu?'0.95':'0.75') + ');">' + emoji + ' ' + label + '</span>'
+      + '<div style="display:flex;gap:4px;">'
+      + '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#ffab40;padding:2px 6px;border-radius:4px;background:' + (isAttente?'rgba(255,152,0,0.2)':'rgba(255,255,255,0.05)') + ';">'
+      + '<input type="radio" name="chk-' + docId + '-' + id + '" value="attente" ' + (isAttente?'checked':'') + ' onchange="enregistrerCoche(\'' + code + '\',\'' + id + '\',\'attente\')" style="accent-color:#ff9800;"> ⏳ Attente'
+      + '</label>'
+      + '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:#52b788;padding:2px 6px;border-radius:4px;background:' + (isRecu?'rgba(45,106,79,0.3)':'rgba(255,255,255,0.05)') + ';">'
+      + '<input type="radio" name="chk-' + docId + '-' + id + '" value="recu" ' + (isRecu?'checked':'') + ' onchange="enregistrerCoche(\'' + code + '\',\'' + id + '\',\'recu\')" style="accent-color:#52b788;"> ✅ Reçu'
+      + '</label></div></div>';
   }
 
-  const docsHtml = `
-    <div style="margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">&#x1F4CB; Documents</div>
-      ${checkItem('qs', 'QS Sant\u00e9 sign\u00e9', '&#x1F49A;')}
-      ${checkItem('ri', 'R\u00e8glement int\u00e9rieur sign\u00e9', '&#x1F4DC;')}
-      ${hasCertif ? checkItem('certif', 'Certificat m\u00e9dical', '&#x1FA7A;') : ''}
-      ${hasPassJeunes ? checkItem('passjeunes', "Pass'Jeunes 76", '&#x1F9B8;') : ''}
-      ${hasAtout ? checkItem('atout', 'Atout Normandie', '&#x1F3C6;') : ''}
-      ${hasPassSport ? checkItem('passsport', "Pass'Sport \u00c9tat", '&#x26BD;') : ''}
-    </div>`;
+  const qsItems = (reg.members||[]).map(function(m,i) {
+    const lbl = (reg.members.length > 1 ? (m.prenom||'') + ' ' + (m.nom||'') + ' — ' : '') + 'QS Santé signé';
+    return checkItem('qs_' + i, lbl, '&#x1F49A;');
+  }).join('');
 
-  // ── Aides et paiements ────────────────────────────────────────────────────
-  const passAideStr2 = rowsSheet.length ? rowsSheet[0].pass_aide||'' : '';
-  const aidesHtml = `
-    <div style="margin-bottom:14px;" id="detail-elements-${docId}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;">&#x1F4B0; R\u00e8glement &amp; Aides</div>
-        <button onclick="chargerElementsPaiement('${code}','detail-elements-${docId}')"
-          style="background:rgba(45,106,79,0.3);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer;">
-          &#x1F504; Charger depuis le Sheet
-        </button>
-      </div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.6);">Mode : <strong style="color:white">${modeLabel}</strong>
-        &nbsp;&bull;&nbsp; Total : <strong style="color:#52b788">${total.toFixed(2)} \u20AC</strong></div>
-    </div>`;
+  const docsHtml = '<div style="margin-bottom:14px;">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">&#x1F4CB; Documents à valider</div>'
+    + qsItems
+    + checkItem('ri', 'Règlement intérieur signé', '&#x1F4DC;')
+    + (hasFFTT ? checkItem('bordereau_fftt', 'Bordereau FFTT reçu / généré', '&#x1F3D3;') : '')
+    + '</div>';
 
+  // Reglement & Aides — charge depuis le Sheet avec cases a cocher
+  const aidesHtml = '<div style="margin-bottom:14px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--green-light);text-transform:uppercase;letter-spacing:0.5px;">&#x1F4B0; Règlement &amp; Aides</div>'
+    + '<span style="font-size:11px;color:rgba(255,255,255,0.4);">Mode : ' + modeLabel + ' — ' + total.toFixed(2) + ' €</span>'
+    + '</div>'
+    + '<div id="detail-elements-' + docId + '">'
+    + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" '
+    + 'style="width:100%;background:rgba(45,106,79,0.25);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:7px;padding:8px;font-size:12px;cursor:pointer;font-weight:600;">'
+    + '&#x1F504; Charger les éléments de règlement depuis le Sheet'
+    + '</button></div></div>';
   // ── Actions ───────────────────────────────────────────────────────────────
   const actionsHtml = `
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
@@ -7143,6 +7133,82 @@ function enregistrerCoche(code, itemId, valeur) {
 
 // ── Valider paiement manuel (admin) ──
 // Charger et afficher les elements de paiement pour un dossier
+async function chargerEtAfficherElementsPaiement(code, docId) {
+  const containerId = 'detail-elements-' + docId;
+  const container = document.getElementById(containerId);
+  const url = getAppsScriptUrl();
+  if (!container || !url) return;
+  container.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:8px 0;">⏳ Chargement depuis le Sheet...</div>';
+  const savedChecks = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
+  const checks = savedChecks[code] || {};
+  try {
+    const res = await callAppsScriptFetch(url, { action: 'getElementsPaiement', _token: FRI_SECRET_TOKEN, code: code });
+    const data = (res && res.data) ? res.data : res;
+    if (!data || !data.elements || data.elements.length === 0) {
+      container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:6px 0;">Aucun élément de règlement dans le Sheet.</div>'
+        + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="margin-top:6px;background:rgba(45,106,79,0.25);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;">&#x1F504; Recharger</button>';
+      return;
+    }
+    const elements = data.elements;
+    let html = '<div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">'
+      + '<span style="font-size:10px;color:rgba(255,255,255,0.35);">' + elements.length + ' élément(s)</span>'
+      + '<div style="display:flex;gap:6px;">'
+      + '<button onclick="validerSelectionElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="background:#ff9800;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:700;">✅ Valider la sélection</button>'
+      + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="background:rgba(45,106,79,0.25);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer;">&#x1F504;</button>'
+      + '</div></div>';
+    elements.forEach(function(el, i) {
+      const isValid = el.statut && el.statut.toLowerCase().includes('valid');
+      const cbId = 'pay-chk-' + code.replace(/[^A-Z0-9]/g,'') + '-' + i;
+      const montantStr = el.montant > 0 ? el.montant.toFixed(2) + ' €' : '—';
+      const statusColor = isValid ? '#52b788' : '#ffab40';
+      const bg = isValid ? 'rgba(45,106,79,0.1)' : 'rgba(255,152,0,0.06)';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:2px;background:' + bg + ';">';
+      if (!isValid) {
+        html += '<input type="checkbox" id="' + cbId + '" data-onglet="' + el.onglet + '" data-ligne="' + el.ligne + '" style="accent-color:#ff9800;width:14px;height:14px;cursor:pointer;flex-shrink:0;">';
+      } else {
+        html += '<span style="font-size:14px;flex-shrink:0;">✅</span>';
+      }
+      html += '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + el.onglet + '</div>'
+        + (el.prenom||el.nom ? '<div style="font-size:10px;color:rgba(255,255,255,0.4);">' + (el.prenom||'') + ' ' + (el.nom||'') + '</div>' : '')
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0;">'
+        + '<div style="font-size:12px;font-weight:700;color:' + statusColor + ';">' + montantStr + '</div>'
+        + '<div style="font-size:9px;color:' + statusColor + ';white-space:nowrap;">' + el.statut + '</div>'
+        + '</div></div>';
+    });
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div style="color:rgba(255,100,100,0.6);font-size:11px;">⚠️ ' + e.message + '</div>';
+  }
+}
+
+async function validerSelectionElementsPaiement(code, docId) {
+  const containerId = 'detail-elements-' + docId;
+  const container = document.getElementById(containerId);
+  const url = getAppsScriptUrl();
+  const boxes = container ? container.querySelectorAll('input[type="checkbox"]:checked') : [];
+  if (!boxes.length) { showAdminToast('Sélectionnez au moins un élément', 'orange'); return; }
+  showAdminToast('⏳ Validation...', 'orange');
+  let ok = 0;
+  for (const cb of boxes) {
+    try {
+      const res = await callAppsScriptFetch(url, { action: 'validerElementPaiement', _token: FRI_SECRET_TOKEN, code, onglet: cb.dataset.onglet, ligne: cb.dataset.ligne });
+      const d = (res && res.data) ? res.data : res;
+      if (d && d.status === 'ok') {
+        ok++;
+        if (d.toutValide) {
+          showAdminToast('✅ Tout validé pour ' + code + ' — Inscrit', 'green');
+          await chargerDossiersDepuisSheet(); renderAdmin();
+          return;
+        }
+      }
+    } catch(e) { console.warn('validerElement KO:', e); }
+  }
+  showAdminToast('✅ ' + ok + ' élément(s) validé(s)', 'green');
+  await chargerEtAfficherElementsPaiement(code, docId);
+}
+
 async function chargerElementsPaiement(code, containerId) {
   const url = getAppsScriptUrl();
   const container = document.getElementById(containerId);
