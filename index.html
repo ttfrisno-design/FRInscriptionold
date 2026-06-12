@@ -7081,7 +7081,7 @@ function ouvrirDetailDossier(code, docId) {
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
       ${isPending ? `<button onclick="validerPaiement('${code}','${reg.id}')"
         style="flex:1;min-width:140px;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;font-weight:700;">
-        &#x2705; Valider paiement</button>` : ''}
+        &#x2705; Valider inscription</button>` : ''}
       ${isPending ? `<button onclick="envoyerRappelManuel('${code}')"
         style="flex:1;min-width:140px;background:rgba(230,81,0,0.8);color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer;font-weight:600;">
         &#x1F4E8; Rappel</button>` : ''}
@@ -7642,7 +7642,7 @@ function _renderBasculesPending(c) {
       + '<td style="padding:8px 12px;text-align:center">'
       + '<button onclick="validerPaiementBascule(\'' + b.code + '\',\'' + (b.actId||'') + '\',' + i + ')"'
       + ' style="background:#ff9800;color:white;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:700;">'
-      + '&#x2705; Valider paiement</button></td></tr>';
+      + '&#x2705; Valider inscription</button></td></tr>';
   });
   html += '</tbody></table></div>';
   c.innerHTML += html;
@@ -7702,8 +7702,8 @@ function mergerDossiersSheet(dossiers) {
     }
 
     // Ajouter le membre si pas déjà présent
-    const memKey = (d.prenom_membre + ' ' + d.nom_membre).trim();
-    if (memKey && !reg.members.find(m => (m.prenom + ' ' + m.nom).trim() === memKey)) {
+    const memKey = (d.prenom_membre + ' ' + d.nom_membre).trim().toLowerCase();
+    if (memKey && !reg.members.find(m => (m.prenom + ' ' + m.nom).trim().toLowerCase() === memKey)) {
       reg.members.push({
         prenom:    d.prenom_membre || '',
         nom:       d.nom_membre    || '',
