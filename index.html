@@ -7180,105 +7180,134 @@ async function chargerEtAfficherElementsPaiement(code, docId) {
   var container = document.getElementById(cid);
   var url = getAppsScriptUrl();
   if (!container || !url) return;
-  container.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:8px">⏳ Chargement...</div>';
+  container.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:8px 0;">&#x23F3; Chargement...</div>';
   var savedChecks = JSON.parse(localStorage.getItem('fri_admin_checks') || '{}');
   var checks = savedChecks[code] || {};
   try {
     var res = await callAppsScriptFetch(url, { action: 'getElementsPaiement', _token: FRI_SECRET_TOKEN, code: code });
     var data = (res && res.data) ? res.data : res;
-    if (!data || !data.elements || !data.elements.length) {
-      container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:6px">Aucun élément dans le Sheet.</div>';
+    if (!data || !data.elements || data.elements.length === 0) {
+      container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:6px 0;">Aucun \u00e9l\u00e9ment dans le Sheet.</div>'
+        + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="margin-top:6px;background:rgba(45,106,79,0.25);color:var(--green-light);border:1px solid rgba(45,106,79,0.4);border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;">&#x1F504; Recharger</button>';
       return;
     }
-    var elems = data.elements;
-    var nbRecu = 0;
-    elems.forEach(function(el) {
-      if (checks['pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_')] === 'recu') nbRecu++;
-    });
-
+    var elements = data.elements;
+    var nbRecu = elements.filter(function(el) {
+      return checks['pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_')] === 'recu';
+    }).length;
     var div = document.createElement('div');
-
-    // -- Header --
+    // Header : compteur + bouton reload
     var hdr = document.createElement('div');
-    hdr.style.cssText = 'margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;';
-    hdr.innerHTML = '<span style="font-size:10px;color:rgba(255,255,255,0.4);">' + nbRecu + ' / ' + elems.length + ' reçus</span>';
-    var btnR = document.createElement('button');
-    btnR.innerHTML = '&#x1F504;';
-    btnR.style.cssText = 'background:rgba(45,106,79,0.2);color:var(--green-light);border:1px solid rgba(45,106,79,0.3);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;';
-    btnR.onclick = function() { chargerEtAfficherElementsPaiement(code, docId); };
-    hdr.appendChild(btnR);
+    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+    hdr.innerHTML = '<span id="pay-counter-' + docId + '" style="font-size:10px;color:rgba(255,255,255,0.4);">' + nbRecu + ' / ' + elements.length + ' re\u00e7us</span>'
+      + '<button onclick="chargerEtAfficherElementsPaiement(\'' + code + '\',\'' + docId + '\')" style="background:rgba(45,106,79,0.2);color:var(--green-light);border:1px solid rgba(45,106,79,0.3);border-radius:4px;padding:2px 7px;font-size:10px;cursor:pointer;">&#x1F504;</button>';
     div.appendChild(hdr);
-
-    // -- Lignes --
-    elems.forEach(function(el) {
-      var itemId = 'pay_' + el.onglet.replace(/[^A-Za-z0-9]/g, '_');
-      var isRecu = checks[itemId] === 'recu';
-      var isAtt  = checks[itemId] === 'attente';
-      var montStr = el.montant > 0 ? el.montant.toFixed(2) + ' €' : '—';
-      var bg = isRecu ? 'rgba(45,106,79,0.18)' : isAtt ? 'rgba(255,152,0,0.1)' : 'rgba(255,255,255,0.03)';
-
+    // Bouton Enregistrer (2eme temps - masque jusqu'a selection)
+    var btnSave = document.createElement('button');
+    btnSave.id = 'btn-save-elements-' + docId;
+    btnSave.innerHTML = '&#x1F4BE; Enregistrer dans le Sheet';
+    btnSave.style.cssText = 'display:none;width:100%;background:#52b788;color:white;border:none;border-radius:7px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px;';
+    btnSave.addEventListener('click', function() { enregistrerElementsSheet(code, docId); });
+    div.appendChild(btnSave);
+    // Elements
+    elements.forEach(function(el) {
+      var itemId = 'pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_');
+      var stored = checks[itemId];
+      var isRecu = stored === 'recu'; var isAttente = stored === 'attente';
+      var montantStr = el.montant > 0 ? el.montant.toFixed(2) + '\u00a0\u20ac' : '\u2014';
       var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;margin-bottom:3px;background:' + bg + ';';
-
-      // Radios
-      var rdiv = document.createElement('div');
-      rdiv.style.cssText = 'display:flex;flex-direction:column;gap:2px;flex-shrink:0;';
-
-      function makeRadio(val, color, emoji, checked, onch) {
+      row.id = 'pay-row-' + docId + '-' + itemId;
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;margin-bottom:3px;background:' + (isRecu?'rgba(45,106,79,0.18)':isAttente?'rgba(255,152,0,0.1)':'rgba(255,255,255,0.03)') + ';';
+      var radioDiv = document.createElement('div');
+      radioDiv.style.cssText = 'display:flex;flex-direction:column;gap:2px;flex-shrink:0;';
+      function makeRadio(val, emoji, color, bgA) {
+        var active = val === 'recu' ? isRecu : isAttente;
         var lbl = document.createElement('label');
-        lbl.style.cssText = 'display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:' + color + ';padding:2px 5px;border-radius:4px;';
+        lbl.style.cssText = 'display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:' + color + ';padding:2px 5px;border-radius:4px;background:' + (active?bgA:'rgba(255,255,255,0.05)') + ';';
         var rb = document.createElement('input');
-        rb.type = 'radio'; rb.name = 'pay-' + docId + '-' + itemId;
-        rb.value = val; rb.checked = checked; rb.style.accentColor = color;
-        rb.onchange = onch;
-        lbl.appendChild(rb);
-        var sp = document.createElement('span');
-        sp.innerHTML = emoji;
-        lbl.appendChild(sp);
+        rb.type='radio'; rb.name='pay-'+docId+'-'+itemId; rb.value=val; rb.checked=active;
+        rb.style.accentColor = val==='recu'?'#52b788':'#ff9800';
+        (function(c,id,v,did,allEls){
+          rb.onchange = function() {
+            // 1er temps : localStorage uniquement, pas d'appel GAS
+            var s = JSON.parse(localStorage.getItem('fri_admin_checks')||'{}');
+            if (!s[c]) s[c] = {};
+            s[c][id] = v;
+            localStorage.setItem('fri_admin_checks', JSON.stringify(s));
+            // Mise a jour visuelle immediate
+            var r2 = document.getElementById('pay-row-'+did+'-'+id);
+            if (r2) r2.style.background = v==='recu'?'rgba(45,106,79,0.18)':'rgba(255,152,0,0.1)';
+            // Afficher bouton Enregistrer
+            var b2 = document.getElementById('btn-save-elements-'+did);
+            if (b2) b2.style.display = 'block';
+            // MAJ compteur
+            var s2 = JSON.parse(localStorage.getItem('fri_admin_checks')||'{}');
+            var c2 = s2[c]||{};
+            var n2 = allEls.filter(function(e2){return c2['pay_'+e2.onglet.replace(/[^A-Za-z0-9]/g,'_')]==='recu';}).length;
+            var ct = document.getElementById('pay-counter-'+did);
+            if (ct) ct.textContent = n2 + ' / ' + allEls.length + ' re\u00e7us';
+          };
+        })(code, itemId, val, docId, elements);
+        var sp = document.createElement('span'); sp.textContent = emoji;
+        lbl.appendChild(rb); lbl.appendChild(sp);
         return lbl;
       }
-
-      rdiv.appendChild(makeRadio('attente','#ffab40','&#x23F3;',isAtt,
-        (function(c,id,did){return function(){
-          enregistrerCoche(c,id,'attente');
-          chargerEtAfficherElementsPaiement(c,did);
-        };})(code,itemId,docId)
-      ));
-      rdiv.appendChild(makeRadio('recu','#52b788','&#x2705;',isRecu,
-        (function(c,id,ong,lig,did){return function(){
-          enregistrerCocheElement(c,id,ong,lig,did);
-        };})(code,itemId,el.onglet,el.ligne,docId)
-      ));
-      row.appendChild(rdiv);
-
-      // Info
-      var info = document.createElement('div');
-      info.style.cssText = 'flex:1;min-width:0;';
-      info.innerHTML = '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,' + (isRecu?'0.95':'0.8') + ');">' + el.onglet + '</div>'
-        + (el.prenom||el.nom ? '<div style="font-size:10px;color:rgba(255,255,255,0.4);">' + (el.prenom||'') + ' ' + (el.nom||'') + '</div>' : '');
+      radioDiv.appendChild(makeRadio('attente','\u23f3','#ffab40','rgba(255,152,0,0.2)'));
+      radioDiv.appendChild(makeRadio('recu','\u2705','#52b788','rgba(45,106,79,0.3)'));
+      row.appendChild(radioDiv);
+      var info = document.createElement('div'); info.style.cssText='flex:1;min-width:0;';
+      info.innerHTML = '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,'+(isRecu?'0.95':'0.8')+');white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + el.onglet + '</div>'
+        + (el.prenom||el.nom?'<div style="font-size:10px;color:rgba(255,255,255,0.4);">'+(el.prenom||'')+' '+(el.nom||'')+'</div>':'');
       row.appendChild(info);
-
-      // Montant
-      var mont = document.createElement('div');
-      mont.style.cssText = 'text-align:right;flex-shrink:0;';
-      mont.innerHTML = '<div style="font-size:13px;font-weight:700;color:' + (isRecu?'#52b788':'#ffab40') + ';">' + montStr + '</div>';
-      row.appendChild(mont);
+      var amt = document.createElement('div'); amt.style.cssText='text-align:right;flex-shrink:0;';
+      amt.innerHTML = '<div style="font-size:13px;font-weight:700;color:'+(isRecu?'#52b788':'#ffab40')+';"> ' + montantStr + '</div>';
+      row.appendChild(amt);
       div.appendChild(row);
     });
-
-    container.innerHTML = '';
-    container.appendChild(div);
+    container.innerHTML = ''; container.appendChild(div);
   } catch(e) {
-    container.innerHTML = '<div style="color:rgba(255,100,100,0.6);font-size:11px;">⚠️ ' + e.message + '</div>';
+    container.innerHTML = '<div style="color:rgba(255,100,100,0.6);font-size:11px;">&#x26A0;&#xFE0F; ' + e.message + '</div>';
   }
 }
 
-function toutCocherElements(docId) {
-  const container = document.getElementById('detail-elements-' + docId);
-  if (!container) return;
-  const boxes = container.querySelectorAll('input[type="checkbox"]');
-  const allChecked = Array.from(boxes).every(b => b.checked);
-  boxes.forEach(b => { b.checked = !allChecked; });
+async function enregistrerElementsSheet(code, docId) {
+  // 2eme temps : ecriture batch dans le Sheet
+  var url = getAppsScriptUrl();
+  var btnSave = document.getElementById('btn-save-elements-' + docId);
+  if (btnSave) { btnSave.disabled = true; btnSave.innerHTML = '&#x23F3; Enregistrement...'; }
+  var checks = (JSON.parse(localStorage.getItem('fri_admin_checks')||'{}'))[code] || {};
+  // Recharger pour obtenir les numeros de lignes Sheet
+  var res = await callAppsScriptFetch(url, { action: 'getElementsPaiement', _token: FRI_SECRET_TOKEN, code: code });
+  var data = (res && res.data) ? res.data : res;
+  if (!data || !data.elements) {
+    showAdminToast('&#x26A0;&#xFE0F; Erreur chargement', 'red');
+    if (btnSave) { btnSave.disabled = false; btnSave.innerHTML = '&#x1F4BE; Enregistrer dans le Sheet'; }
+    return;
+  }
+  var aValider = data.elements.filter(function(el) {
+    return checks['pay_' + el.onglet.replace(/[^A-Za-z0-9]/g,'_')] === 'recu';
+  });
+  if (!aValider.length) {
+    showAdminToast('Aucun \u00e9l\u00e9ment \u00e0 enregistrer', 'orange');
+    if (btnSave) { btnSave.disabled = false; btnSave.innerHTML = '&#x1F4BE; Enregistrer dans le Sheet'; }
+    return;
+  }
+  showAdminToast('&#x23F3; ' + aValider.length + ' \u00e9l\u00e9ment(s) en cours...', 'orange');
+  var okCount = 0; var toutValide = false;
+  for (var i = 0; i < aValider.length; i++) {
+    try {
+      var r = await callAppsScriptFetch(url, { action: 'validerElementPaiement', _token: FRI_SECRET_TOKEN, code: code, onglet: aValider[i].onglet, ligne: aValider[i].ligne });
+      var d = (r && r.data) ? r.data : r;
+      if (d && d.status === 'ok') { okCount++; if (d.toutValide) toutValide = true; }
+    } catch(e) { console.warn('validerElement KO:', e); }
+  }
+  if (toutValide) {
+    showAdminToast('&#x2705; Tout valid\u00e9 \u2014 ' + code + ' Inscrit !', 'green');
+    await chargerDossiersDepuisSheet(); renderAdmin();
+  } else {
+    showAdminToast('&#x2705; ' + okCount + ' enregistr\u00e9(s) dans le Sheet', 'green');
+    await chargerEtAfficherElementsPaiement(code, docId);
+  }
 }
 
 async function validerSelectionElementsPaiement(code, docId) {
