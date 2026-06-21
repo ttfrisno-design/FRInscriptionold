@@ -368,8 +368,8 @@
   /* SEMAINIER */
   .semainier-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
   .sem-tab {
-    padding:6px 14px; border-radius:20px; border:1.5px solid var(--border);
-    background:var(--white); cursor:pointer; font-size:12px; font-weight:600;
+    padding:3px 6px; border-radius:20px; border:1.5px solid var(--border);
+    background:var(--white); cursor:pointer; font-size:13px; font-weight:600;
     font-family:'DM Sans',sans-serif; transition:all 0.15s; color:var(--dark);
     white-space:nowrap;
   }
@@ -556,16 +556,33 @@
     ℹ️ Ces informations sont celles du responsable légal. Vous pourrez ajouter d'autres membres de votre famille à l'étape suivante.
   </div>
 
+  <!-- Recherche adhérent année précédente -->
+  <div class="card" style="background:rgba(201,168,76,0.08);border:1.5px solid rgba(201,168,76,0.35);margin-bottom:14px;">
+    <div class="card-title"><span class="icon">🔍</span> Déjà adhérent FRI ? Retrouvez vos informations</div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="field" style="flex:1;min-width:180px;">
+        <label>6 premiers chiffres de votre téléphone <small style="color:#888">(avec ou sans le 0)</small></label>
+        <input type="tel" id="adherent-search-tel" placeholder="ex: 612345 pour 06 12 34..." maxlength="10" inputmode="numeric"
+               oninput="rechercherAdherentFRI(this.value)"
+               style="font-size:16px;letter-spacing:2px;">
+      </div>
+      <button type="button" onclick="rechercherAdherentFRI(document.getElementById('adherent-search-tel').value)" class="btn btn-secondary" style="height:44px;white-space:nowrap;">
+        🔍 Rechercher
+      </button>
+    </div>
+    <div id="adherent-search-results" style="margin-top:10px;"></div>
+  </div>
+
   <div class="card">
     <div class="card-title"><span class="icon">📋</span> Coordonnées</div>
     <div class="form-grid ville-tarif-grid" style="align-items:end;">
       <div class="field">
         <label>Nom <span class="req">*</span></label>
-        <input type="text" id="rl-nom" placeholder="DUPONT" oninput="autosave()">
+        <input type="text" id="rl-nom" placeholder="DUPONT" oninput="autosave();syncMembre1DepuisResponsable()">
       </div>
       <div class="field">
         <label>Prénom <span class="req">*</span></label>
-        <input type="text" id="rl-prenom" placeholder="Marie" oninput="autosave()">
+        <input type="text" id="rl-prenom" placeholder="Marie" oninput="autosave();syncMembre1DepuisResponsable()">
       </div>
       <div class="field">
         <label>Adresse <span class="req">*</span></label>
@@ -1140,8 +1157,13 @@
 // ── Forfait country ≥2 créneaux (hors Initiation) ──
 // Déclarée en tête pour être disponible partout (calcTotals, buildRows, renderSummary)
 function calcCountryForfait(membre, isno) {
-  const CFIDS = ['country-debu-a','country-novice','country-inter','country-debu-j'];
+  const CFIDS = ['country-init-a','country-debu-a','country-novice','country-inter','country-debu-j'];
   const sel = (membre.activities || []).filter(id => CFIDS.includes(id));
+  // Initiation incompatible avec Novices et Intermediaires (trop grande difference de niveau)
+  const hasInit   = sel.includes('country-init-a') || sel.includes('country-init-j');
+  const hasNovice = sel.includes('country-novice');
+  const hasInter  = sel.includes('country-inter');
+  if (hasInit && (hasNovice || hasInter)) return { forfait: false, ids: [], incompatible: true };
   if (sel.length >= 2) return { forfait: true, prix: isno ? 190 : 220, ids: sel };
   return { forfait: false, ids: [] };
 }
@@ -1150,7 +1172,7 @@ function calcCountryForfait(membre, isno) {
 // ============================================================
 // CONFIGURATION — À REMPLIR APRÈS DÉPLOIEMENT DU APPS SCRIPT
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZgC7rKY_VXaE4kE7ZDafewgD18B_PFKJkT4448mzbukec0e6Hc6soPoyysNCy_T-A/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKtQ37rT-TXNIObe-Ps86sstG0UV4IpJyn-emucrrNFq-8C0KNdyx5jWi4KS8yR48/exec';
 
 
 // ══════════════════════════════════════════════════════════════
@@ -1315,10 +1337,35 @@ function formatDateFRI(d) {
 function getAppsScriptUrl() {
   return localStorage.getItem('fri_apps_script_url') || APPS_SCRIPT_URL;
 }
-// Token secret partagé avec le GAS — à changer après déploiement
-// Doit être identique à FRI_SECRET_TOKEN dans Code_GAS_FRI.js
-const FRI_SECRET_TOKEN = 'FRI2026_xK9mP3qZ';
-const SHEET_ID_PUBLIC  = '1H4KZMOtFNXZdNjXBr0LwhqcCHQa3WAzoIcrb812cdrk'; // ID du Google Sheet FRI
+// Token dynamique : récupéré au chargement depuis le GAS (jamais écrit en dur)
+let FRI_SECRET_TOKEN = ''; // sera rempli par initDynamicToken()
+let _tokenExpires = 0;     // timestamp ms d'expiration
+
+async function initDynamicToken() {
+  // Si token encore valide (marge 30s), on garde
+  if (FRI_SECRET_TOKEN && Date.now() < _tokenExpires - 30000) return FRI_SECRET_TOKEN;
+  try {
+    const url = getAppsScriptUrl();
+    if (!url) return '';
+    const data = await new Promise((resolve) => {
+      const cb = '_friTok_' + Date.now();
+      const params = new URLSearchParams({ action: 'getToken', callback: cb });
+      window[cb] = (d) => { clearTimeout(t); try { s.remove(); } catch(e){} delete window[cb]; resolve(d); };
+      const t = setTimeout(() => { try { s.remove(); } catch(e){} delete window[cb]; resolve({}); }, 8000);
+      const s = document.createElement('script');
+      s.src = url + '?' + params;
+      document.head.appendChild(s);
+    });
+    if (data && data.token) {
+      FRI_SECRET_TOKEN = data.token;
+      _tokenExpires = data.expires || (Date.now() + 4 * 60 * 1000);
+      // Renouveler automatiquement 1 min avant expiration
+      setTimeout(initDynamicToken, Math.max(0, _tokenExpires - Date.now() - 60000));
+    }
+  } catch(e) { console.warn('[FRI] initDynamicToken KO:', e); }
+  return FRI_SECRET_TOKEN;
+}
+const SHEET_ID_PUBLIC  = '1KMVBYHReafOYgwolaeCb_yWHfKBdN05gskwHijmYtp4'; // ID du Google Sheet FRI
 // Exemple: 'https://script.google.com/macros/s/AKfycb.../exec'
 // Note: peut aussi etre configure dans le panneau admin sans modifier ce fichier
 
@@ -1342,156 +1389,167 @@ const ACTIVITIES = {
   adultes: {
     label: "Activités Adultes",
     cats: {
+      tt: {
+        icon: "🏓", label: "Tennis de table",
+        acts: [
+          // — Adultes —
+          { id:"tt-comp-entrain",    name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Lundi",    heure:"20h00/21h15", isno:150, hc:150, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain-me", fftt:70, note:"2 séances : Lu 20h15-21h30 + Me 19h45-21h", color:"#c5cae9:#1a237e" },
+          { id:"tt-comp-entrain-me", name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Mercredi", heure:"19h45/21h00", isno:150, hc:150, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain",    fftt:70, note:"2 séances : Lu 20h15-21h30 + Me 19h45-21h", color:"#c5cae9:#1a237e" },
+          { id:"tt-comp-sans",       name:"Tennis de table\nlibre", lieu:"CM", jour:"Mardi",    heure:"19h30/21h30", isno:120, hc:120, animateur:"C. MAURICE\nX.TRUSSART", fftt:70, linkedWith:"tt-comp-sans-me", note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45", color:"#b3e5fc:#01579b" },
+          { id:"tt-comp-sans-me",    name:"Tennis de table\nlibre", lieu:"CM", jour:"Mercredi", heure:"21h00/22h30", isno:120, hc:120, animateur:"C. MAURICE\nX.TRUSSART", fftt:70, linkedWith:"tt-comp-sans",    note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45", color:"#b3e5fc:#01579b" },
+          // — Jeunes —
+          { id:"tt-jeunes-comp",    name:"Tennis de table\nJeunes Compétiteurs", lieu:"CM", jour:"Lundi",    heure:"18h45/20h00", isno:150, hc:150, animateur:"Y. LAROCHELLE", linkedWith:"tt-jeunes-comp-je", fftt:37, note:"2 séances : Lu 19h00-20h15 + Je 17h-18h30", color:"#ffccbc:#bf360c" },
+          { id:"tt-jeunes-comp-je", name:"Tennis de table\nJeunes Compétiteurs", lieu:"CM", jour:"Jeudi",    heure:"17h00/18h30", isno:150, hc:150, animateur:"Y. LAROCHELLE", linkedWith:"tt-jeunes-comp",    fftt:37, note:"2 séances : Lu 19h00-20h15 + Je 17h-18h30", color:"#ffccbc:#bf360c" },
+          { id:"tt-debu-1",          name:"Tennis de table\nJeunes Débutants",   lieu:"CM", jour:"Mercredi", heure:"17h15/18h30", isno:130, hc:130, animateur:"Y. LAROCHELLE", note:"1 séance : Me 17h15-18h30", color:"#dcedc8:#33691e" },
+          { id:"tt-debu-2",    name:"Tennis de table\nJeunes Confirmés", lieu:"CM", jour:"Lundi",    heure:"17h45/18h45", isno:150, hc:150, animateur:"Y. LAROCHELLE", linkedWith:"tt-debu-2-me", fftt:37, note:"2 séances : Lu 17h45-19h00 + Me 18h30-19h45", color:"#c8e6c9:#1b5e20" },
+          { id:"tt-debu-2-me", name:"Tennis de table\nJeunes Confirmés", lieu:"CM", jour:"Mercredi", heure:"18h30/19h45", isno:150, hc:150, animateur:"Y. LAROCHELLE", linkedWith:"tt-debu-2",    fftt:37, note:"2 séances : Lu 17h45-19h00 + Me 18h30-19h45", color:"#c8e6c9:#1b5e20" },
+          { id:"ping-bienetre",      name:"Ping bien-être / Pong santé ✨", lieu:"CM", jour:"Jeudi", heure:"15h30/17h00", isno:130, hc:130, animateur:"C. MAURICE", color:"#e1bee7:#4a148c" },
+        ]
+      },
+      marche: {
+        icon: "🥾", label: "Marche Nordique",
+        acts: [
+          { id:"marche-nordic", name:"Marche Nordique", lieu:"Ext.", jour:"Mercredi et/ou Samedi", heure:"10h00/12h00", isno:40, hc:40, animateur:"D. PICARD", note:"Forfait — non éligible remise 15%" },
+        ]
+      },
+      sport_sante: {
+        icon: "❤️", label: "Sport Santé",
+        acts: [
+          { id:"apa-lu", name:"Sport Santé / APA", lieu:"MB", jour:"Lundi", heure:"15h00/16h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
+          { id:"apa-je", name:"Sport Santé / APA", lieu:"MB", jour:"Jeudi", heure:"14h00/15h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
+          { id:"apa-ve", name:"Sport Santé / APA", lieu:"MB", jour:"Vendredi", heure:"17h30/18h30", isno:125, hc:155, animateur:"V. SEMBLAT" },
+          { id:"yoga-doux", name:"Yoga doux / chaise ✨", lieu:"MB", jour:"Mardi", heure:"14h30/16h00", isno:150, hc:180, animateur:"S. WALLET" },
+          { id:"ping-bienetre", name:"Ping bien-être / Pong santé ✨", lieu:"CM", jour:"Jeudi", heure:"15h30/17h00", isno:130, hc:130, animateur:"C. MAURICE" },
+        ]
+      },
       fitness: {
-        label: "Fitness & Remise en forme (>16 ans)",
+        icon: "💪", label: "Fitness",
         acts: [
           { id:"body-sculpt-lu", name:"Body Sculpt", lieu:"MB", jour:"Lundi", heure:"17h30/18h30", isno:125, hc:155, animateur:"N. DUBOT" },
-          { id:"zumba-lu", name:"Zumba", lieu:"MB", jour:"Lundi", heure:"20h30/21h30", isno:125, hc:155, animateur:"V. SEMBLAT" },
+          { id:"zumba-lu", name:"Circuit training adapté", lieu:"MB", jour:"Lundi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. CARRERE" },
           { id:"body-sculpt-ma", name:"Body Sculpt", lieu:"MB", jour:"Mardi", heure:"10h00/11h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"circuit-ve", name:"Circuit training adapté", lieu:"MB", jour:"Vendredi", heure:"10h00/11h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"stretching-ve", name:"Stretching", lieu:"MB", jour:"Vendredi", heure:"11h00/12h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"body-sculpt-cm-ve", name:"Body Sculpt", lieu:"CM", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"zumba-sa", name:"Zumba", lieu:"CM", jour:"Samedi", heure:"09h45/10h45", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"body-sculpt-sa", name:"Body Sculpt", lieu:"CM", jour:"Samedi", heure:"10h45/11h45", isno:125, hc:155, animateur:"V. SEMBLAT" },
-          { id:"stretching-sa", name:"Stretching ✨", lieu:"CM", jour:"Samedi", heure:"11h45/12h45", isno:125, hc:155, animateur:"V. SEMBLAT" },
-        ]
+         ]
       },
       yoga: {
-        label: "Yoga & Méditation",
+        icon: "🧘", label: "Yoga",
         acts: [
           { id:"yoga-sm-lu", name:"Yoga", lieu:"SM", jour:"Lundi", heure:"18h00/19h30", isno:150, hc:180, animateur:"M-H. CORLAIX" },
           { id:"meditation-lu", name:"Méditation (20 séances)", lieu:"SM", jour:"Lundi", heure:"19h30/20h30", isno:75, hc:100, animateur:"M-H. CORLAIX" },
           { id:"yoga-mb-ma", name:"Yoga", lieu:"MB", jour:"Mardi", heure:"11h00/12h30", isno:150, hc:180, animateur:"S. WALLET" },
-          { id:"stretching-yoga-je", name:"Stretching Yoga ✨", lieu:"MB", jour:"Jeudi", heure:"16h15/17h15", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"yoga-sm-je1", name:"Yoga", lieu:"SM", jour:"Jeudi", heure:"18h35/20h05", isno:150, hc:180, animateur:"S. DUMONT" },
           { id:"yoga-sm-je2", name:"Yoga", lieu:"SM", jour:"Jeudi", heure:"20h05/21h35", isno:150, hc:180, animateur:"S. DUMONT" },
         ]
       },
       pilates: {
-        label: "Pilates",
+        icon: "🤸", label: "Pilates",
         acts: [
           { id:"pilates-lu1", name:"Pilates", lieu:"MB", jour:"Lundi", heure:"11h00/12h00", isno:125, hc:155, animateur:"A. PEREAU" },
           { id:"pilates-lu2", name:"Pilates", lieu:"MB", jour:"Lundi", heure:"12h00/13h00", isno:125, hc:155, animateur:"A. PEREAU" },
           { id:"pilates-lu3", name:"Pilates", lieu:"MB", jour:"Lundi", heure:"14h00/15h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"pilates-flow-lu", name:"Pilates Flow ✨", lieu:"MB", jour:"Lundi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. CARRERE" },
           { id:"pilates-flow-ma", name:"Pilates Flow", lieu:"CM", jour:"Mardi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. CARRERE" },
-          { id:"pilates-me1", name:"Pilates", lieu:"MB", jour:"Mercredi", heure:"10h00/11h00", isno:125, hc:155, animateur:"A. PEREAU" },
-          { id:"pilates-seniors-me", name:"Pilates Séniors", lieu:"MB", jour:"Mercredi", heure:"11h00/12h00", isno:125, hc:155, animateur:"A. PEREAU" },
+          { id:"pilates-me1", name:"Pilates", lieu:"MB", jour:"Mercredi", heure:"10h00/11h00", isno:125, hc:155, animateur:"B. CARRERE" },
+          { id:"pilates-seniors-me", name:"Pilates Séniors", lieu:"MB", jour:"Mercredi", heure:"11h00/12h00", isno:125, hc:155, animateur:"B. CARRERE" },
           { id:"pilates-je1", name:"Pilates ✨", lieu:"MB", jour:"Jeudi", heure:"11h00/12h00", isno:125, hc:155, animateur:"A. PEREAU" },
           { id:"pilates-je2", name:"Pilates", lieu:"MB", jour:"Jeudi", heure:"12h00/13h00", isno:125, hc:155, animateur:"A. PEREAU" },
           { id:"pilates-je3", name:"Pilates", lieu:"MB", jour:"Jeudi", heure:"15h15/16h15", isno:125, hc:155, animateur:"V. SEMBLAT" },
           { id:"pilates-ve", name:"Pilates", lieu:"MB", jour:"Vendredi", heure:"14h00/15h00", isno:125, hc:155, animateur:"A. PEREAU" },
         ]
       },
-      tt_adultes: {
-        label: "Tennis de table Adultes",
-        acts: [
-          { id:"tt-comp-entrain",    name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Lundi",    heure:"19h45/21h00", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain-me", fftt:70, note:"2 séances : Lu 19h45-21h + Me 19h45-21h" },
-          { id:"tt-comp-entrain-me", name:"Tennis de table\nadultes compétiteurs", lieu:"CM", jour:"Mercredi", heure:"19h45/21h00", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-comp-entrain",    fftt:70, note:"2 séances : Lu 19h45-21h + Me 19h45-21h" },
-          { id:"tt-comp-sans",       name:"Tennis de table\nlibre", lieu:"CM", jour:"Mardi",    heure:"19h30/21h30", isno:120, hc:120, animateur:"C. MAURICE", fftt:70, linkedWith:"tt-comp-sans-me", note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
-          { id:"tt-comp-sans-me",    name:"Tennis de table\nlibre", lieu:"CM", jour:"Mercredi", heure:"21h15/22h45", isno:120, hc:120, animateur:"C. MAURICE", fftt:70, linkedWith:"tt-comp-sans",    note:"2 séances : Ma 19h30-21h30 + Me 21h15-22h45" },
-          { id:"ping-bienetre", name:"Ping bien-être / Pong santé ✨", lieu:"CM", jour:"Jeudi", heure:"15h30/17h00", isno:130, hc:130, animateur:"Y. LAROCHELLE / C. MAURICE" },
-        ]
-      },
       sophrologie: {
-        label: "Sophrologie",
+        icon: "🌿", label: "Sophro",
         acts: [
-          { id:"sophro-ma", name:"Sophrologie Ados/Adultes", lieu:"PSF", jour:"Mardi", heure:"11h00/12h30", isno:175, hc:200, animateur:"P. MORLOT" },
-          { id:"sophro-me", name:"Sophrologie Ados/Adultes", lieu:"PSF", jour:"Mercredi", heure:"18h30/20h00", isno:175, hc:200, animateur:"P. MORLOT" },
+          { id:"sophro-ma", name:"Sophrologie Ados/Adultes", lieu:"PSF", jour:"Mardi", heure:"11h00/12h30", isno:190, hc:210, animateur:"P. MORLOT" },
+          { id:"sophro-me", name:"Sophrologie Ados/Adultes", lieu:"PSF", jour:"Mercredi", heure:"18h30/20h00", isno:190, hc:210, animateur:"P. MORLOT" },
         ]
       },
-
-      marche: {
-        label: "Marche Nordique",
+      couture: {
+        icon: "🪡", label: "Couture",
         acts: [
-          { id:"marche-nordic", name:"Marche Nordique", lieu:"Ext.", jour:"Mercredi et/ou Samedi", heure:"10h00/12h00", isno:40, hc:40, animateur:"D. PICARD", note:"Forfait — non éligible remise 15%" },
+          { id:"couture-je1", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"09h30/12h00", isno:340, hc:380, animateur:"A. STEFANI", color:"#fce4ec:#880e4f" },
+          { id:"couture-je2", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"13h00/15h30", isno:340, hc:380, animateur:"A. STEFANI", color:"#fce4ec:#880e4f" },
+          { id:"couture-je3", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"18h00/20h30", isno:340, hc:380, animateur:"A. STEFANI", color:"#fce4ec:#880e4f" },
         ]
       },
-      sport_sante: {
-        label: "Sport Santé — APA",
+      peinture: {
+        icon: "🎨", label: "Peinture",
         acts: [
-          { id:"apa-lu", name:"Sport Santé / APA", lieu:"MB", jour:"Lundi", heure:"15h00/16h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
-          { id:"apa-je", name:"Sport Santé / APA", lieu:"MB", jour:"Jeudi", heure:"14h00/15h00", isno:125, hc:155, animateur:"V. SEMBLAT" },
-          { id:"apa-ve", name:"Sport Santé / APA", lieu:"MB", jour:"Vendredi", heure:"17h30/18h30", isno:125, hc:155, animateur:"V. SEMBLAT" },
-          { id:"yoga-doux", name:"Yoga doux / chaise ✨", lieu:"MB", jour:"Mardi", heure:"14h30/16h00", isno:150, hc:180, animateur:"S. WALLET" },
+          { id:"peinture-lu1", name:"Atelier Peinture\nAdos-Adultes", lieu:"PSF", jour:"Lundi", heure:"15h15/16h45", isno:320, hc:360, animateur:"E. COMELET", color:"#fffde7:#f57f17" },
+          { id:"peinture-lu2", name:"Atelier Peinture\nAdos-Adultes", lieu:"PSF", jour:"Lundi", heure:"18h45/20h15", isno:320, hc:360, animateur:"E. COMELET", color:"#fffde7:#f57f17" },
+          { id:"peinture-ados", name:"Atelier Peinture Ados (collégiens)", lieu:"PSF", jour:"Lundi", heure:"17h15/18h45", isno:320, hc:360, animateur:"E. COMELET", color:"#fffde7:#f57f17" },
+          { id:"peinture-enfants1", name:"Atelier Peinture Enfants/Ados (≥6 ans)", lieu:"PSF", jour:"Mercredi", heure:"09h30/11h00", isno:320, hc:360, animateur:"E. COMELET", color:"#fffde7:#f57f17" },
+          { id:"peinture-enfants2", name:"Atelier Peinture Enfants/Ados (≥6 ans)", lieu:"PSF", jour:"Mercredi", heure:"11h00/12h30", isno:320, hc:360, animateur:"E. COMELET", color:"#fffde7:#f57f17" },
         ]
       },
-      culture_adultes: {
-        label: "Activités culturelles Adultes",
+      theatre: {
+        icon: "🎭", label: "Théâtre",
         acts: [
-          { id:"peinture-lu1", name:"Atelier Peinture", lieu:"PSF", jour:"Lundi", heure:"15h45/17h15", isno:240, hc:280, animateur:"E. COMELET" },
-          { id:"peinture-lu2", name:"Atelier Peinture", lieu:"PSF", jour:"Lundi", heure:"18h45/20h15", isno:240, hc:280, animateur:"E. COMELET" },
-          { id:"guitare-a", name:"Atelier Guitare / Chant", lieu:"RPA", jour:"Jeudi", heure:"19h00/20h30", isno:180, hc:215, animateur:"R. GENTY" },
-          { id:"theatre-creation", name:"Théâtre Adultes — recherche & création", lieu:"GSF", jour:"Lundi", heure:"20h30/22h30", isno:230, hc:260, animateur:"J. PICQUET" },
-          { id:"theatre-loisirs-a", name:"Théâtre Adultes — loisirs", lieu:"GSF", jour:"Jeudi", heure:"19h00/20h30", isno:180, hc:210, animateur:"V. DUBOS" },
-          { id:"couture-je1", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"09h30/12h00", isno:340, hc:380, animateur:"A. STEFANI" },
-          { id:"couture-je2", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"13h00/15h30", isno:340, hc:380, animateur:"A. STEFANI" },
-          { id:"couture-je3", name:"Couture (machine requise)", lieu:"PSF", jour:"Jeudi", heure:"18h00/20h30", isno:340, hc:380, animateur:"A. STEFANI" },
-          { id:"country-init-a", name:"Country Initiation ✨", lieu:"MB", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. DECOUX", note:"Non éligible remise 15%" },
-          { id:"country-debu-a", name:"Country Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"country-novice", name:"Country Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"country-inter", name:"Country Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€" },
-          { id:"danse-moderne-av1", name:"Danse Moderne Avancés 1 (≥18 ans, né 2007)", lieu:"CM", jour:"Jeudi", heure:"18h45/20h15", isno:165, hc:195, animateur:"F. CHARROIS" },
-          { id:"danse-moderne-av2", name:"Danse Moderne Avancés 2", lieu:"CM", jour:"Jeudi", heure:"20h15/21h45", isno:165, hc:195, animateur:"F. CHARROIS" },
-          { id:"danse-classique-inter-a", name:"Danse Classique Inter Ados/Adultes ✨", lieu:"GSF", jour:"Lundi", heure:"18h45/20h00", isno:205, hc:235, animateur:"M. RABAEY" },
-          { id:"danse-classique-pointes-lu", name:"Danse Classique Pointes ✨", lieu:"GSF", jour:"Lundi", heure:"20h00/20h20", isno:50, hc:70, animateur:"M. RABAEY" },
-          { id:"danse-classique-barre", name:"Danse Classique Barre à terre ✨", lieu:"GSF", jour:"Jeudi", heure:"12h15/13h15", isno:185, hc:215, animateur:"M. RABAEY" },
-          { id:"danse-classique-debu-je", name:"Danse Classique Débutants/Inters ✨", lieu:"GSF", jour:"Jeudi", heure:"13h15/14h30", isno:205, hc:235, animateur:"M. RABAEY" },
-          { id:"danse-classique-pointes-je", name:"Danse Classique Pointes ✨", lieu:"GSF", jour:"Jeudi", heure:"14h30/14h50", isno:50, hc:70, animateur:"M. RABAEY" },
+          { id:"theatre-creation", name:"Théâtre Adultes — recherche & création", lieu:"GSF", jour:"Lundi", heure:"20h30/22h30", isno:230, hc:260, animateur:"J. PICQUET", color:"#f3e5f5:#6a1b9a" },
+          { id:"theatre-loisirs-a", name:"Théâtre Adultes — loisirs", lieu:"GSF", jour:"Jeudi", heure:"19h00/20h30", isno:180, hc:210, animateur:"V. DUBOS", color:"#f3e5f5:#6a1b9a" },
+          { id:"theatre-4e3e", name:"Théâtre Collégiens (4e et 3e)", lieu:"GSF", jour:"Jeudi", heure:"18h00/19h00", isno:130, hc:160, animateur:"V. DUBOS", color:"#f3e5f5:#6a1b9a" },
+          { id:"theatre-cm1cm2", name:"Théâtre Primaires (CM1 et CM2)", lieu:"GSF", jour:"Vendredi", heure:"16h30/17h30", isno:130, hc:160, animateur:"V. DUBOS", color:"#f3e5f5:#6a1b9a" },
+          { id:"theatre-6e5e", name:"Théâtre Collégiens (6e et 5e)", lieu:"GSF", jour:"Vendredi", heure:"17h30/18h30", isno:130, hc:160, animateur:"V. DUBOS", color:"#f3e5f5:#6a1b9a" },
+          { id:"theatre-lycee", name:"Théâtre Lycéens", lieu:"GSF", jour:"Vendredi", heure:"18h30/19h30", isno:130, hc:160, animateur:"V. DUBOS", color:"#f3e5f5:#6a1b9a" },
         ]
-      }
-    }
-  },
-  jeunes: {
-    label: "Activités Jeunes",
-    cats: {
-      tt_jeunes: {
-        label: "Tennis de table Jeunes",
+      },
+      guitare: {
+        icon: "🎸", label: "Guitare Chant",
         acts: [
-          { id:"tt-jeunes-comp",    name:"Tennis de table\nJeunes Compétiteurs", lieu:"CM", jour:"Lundi",    heure:"18h30/19h45", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-jeunes-comp-je", fftt:37, note:"2 séances : Lu 18h30-19h45 + Je 17h-18h30" },
-          { id:"tt-jeunes-comp-je", name:"Tennis de table\nJeunes Compétiteurs", lieu:"CM", jour:"Jeudi",    heure:"17h00/18h30", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-jeunes-comp",    fftt:37, note:"2 séances : Lu 18h30-19h45 + Je 17h-18h30" },
-          { id:"tt-debu-1", name:"Tennis de table\nJeunes Débutants",   lieu:"CM", jour:"Mercredi", heure:"17h15/18h30", isno:140, hc:140, animateur:"Y. LAROCHELLE", note:"1 séance : Me 17h15-18h30" },
-          { id:"tt-debu-2",    name:"Tennis de table\nJeunes Confirmés", lieu:"CM", jour:"Lundi",    heure:"17h15/18h30", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-debu-2-me", fftt:37, note:"2 séances : Lu 17h15-18h30 + Me 18h30-19h45" },
-          { id:"tt-debu-2-me", name:"Tennis de table\nJeunes Confirmés", lieu:"CM", jour:"Mercredi", heure:"18h30/19h45", isno:160, hc:160, animateur:"Y. LAROCHELLE", linkedWith:"tt-debu-2",    fftt:37, note:"2 séances : Lu 17h15-18h30 + Me 18h30-19h45" },
+          { id:"guitare-a", name:"Atelier Guitare / Chant", lieu:"RPA", jour:"Jeudi", heure:"19h00/20h30", isno:180, hc:215, animateur:"R. GENTY", color:"#e8f5e9:#1b5e20" },
         ]
       },
       gym: {
-        label: "Gym Enfants",
+        icon: "🤸", label: "Gym Enf.",
         acts: [
-          { id:"baby-gym", name:"Baby-gym Parent/Enfant (20 mois – 3 ans)", lieu:"CM", jour:"Mercredi", heure:"10h00/10h45", isno:120, hc:150, animateur:"G. LEBOURG" },
-          { id:"gym-parent-3-5", name:"Gym Parents/Enfants 3-5 ans ✨", lieu:"CM", jour:"Mercredi", heure:"10h45/11h30", isno:120, hc:150, animateur:"G. LEBOURG" },
-          { id:"gym-3-5", name:"Gym Enfants 3-5 ans", lieu:"CM", jour:"Mercredi", heure:"11h30/12h15", isno:120, hc:150, animateur:"G. LEBOURG" },
-          { id:"gym-inter-av1", name:"Gym Inter/Avancés ✨", lieu:"CM", jour:"Mercredi", heure:"12h15/13h15", isno:160, hc:190, animateur:"J. BREMAUD" },
-          { id:"gym-debu-6-8-1", name:"Gym Débutants 6-8 ans", lieu:"CM", jour:"Mercredi", heure:"13h15/14h15", isno:160, hc:190, animateur:"J. BREMAUD" },
-          { id:"gym-debu-6-8-2", name:"Gym Débutants 6-8 ans", lieu:"CM", jour:"Mercredi", heure:"14h15/15h15", isno:160, hc:190, animateur:"G. LEBOURG" },
-          { id:"gym-inter-av2", name:"Gym Inter/Avancés", lieu:"CM", jour:"Mercredi", heure:"15h15/16h15", isno:160, hc:190, animateur:"G. LEBOURG" },
+          { id:"gym-eveil",      name:"Gym Éveil (18m-3 ans)", lieu:"MB", jour:"Mercredi", heure:"09h30/10h15", isno:130, hc:145, animateur:"A. BONNET" },
+          { id:"gym-parent-3-5", name:"Gym Parent-Enfant (3-5 ans)", lieu:"MB", jour:"Mercredi", heure:"10h45/11h30", isno:130, hc:145, animateur:"A. BONNET" },
+          { id:"gym-3-5",        name:"Gym 3-5 ans", lieu:"MB", jour:"Mercredi", heure:"11h30/12h15", isno:130, hc:145, animateur:"A. BONNET" },
+          { id:"gym-inter-av1",  name:"Gym Intermédiaires/Avancés 1", lieu:"MB", jour:"Mercredi", heure:"12h15/13h15", isno:155, hc:170, animateur:"A. BONNET" },
+          { id:"gym-debu-6-8-1", name:"Gym Débutants 6-8 ans (1)", lieu:"MB", jour:"Mercredi", heure:"13h15/14h15", isno:130, hc:145, animateur:"A. BONNET" },
+          { id:"gym-debu-6-8-2", name:"Gym Débutants 6-8 ans (2)", lieu:"MB", jour:"Mercredi", heure:"14h15/15h15", isno:130, hc:145, animateur:"A. BONNET" },
+          { id:"gym-inter-av2",  name:"Gym Intermédiaires/Avancés 2", lieu:"MB", jour:"Mercredi", heure:"15h15/16h15", isno:155, hc:170, animateur:"A. BONNET" },
         ]
       },
-
-      culture_jeunes: {
-        label: "Activités culturelles Jeunes",
+      modern_jazz: {
+        icon: "💃", label: "Modern Jazz",
         acts: [
-          { id:"country-init-a", name:"Country Initiation ✨ (ados)", lieu:"MB", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. DECOUX" },
-          { id:"country-debu-a", name:"Country Débutants ✨ (ados)", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX" },
-          { id:"danse-moderne-init1", name:"Danse Moderne Initiation 1&2 (6-7 ans / 2018-2019)", lieu:"MB", jour:"Mercredi", heure:"12h15/13h15", isno:145, hc:175, animateur:"F. CHARROIS" },
-          { id:"danse-moderne-debu12", name:"Danse Moderne Débutants 1&2 (8-9 ans / 2016-2017)", lieu:"MB", jour:"Mercredi", heure:"13h15/14h15", isno:145, hc:175, animateur:"F. CHARROIS" },
-          { id:"danse-moderne-debu23", name:"Danse Moderne Débutants 2&3 (10-11 ans / 2014-2015)", lieu:"MB", jour:"Mercredi", heure:"14h15/15h15", isno:145, hc:175, animateur:"F. CHARROIS" },
-          { id:"danse-moderne-debu4", name:"Danse Moderne Déb.4/Inter.1 (12 ans / 2013)", lieu:"MB", jour:"Mercredi", heure:"15h15/16h15", isno:145, hc:175, animateur:"F. CHARROIS" },
-          { id:"danse-moderne-inter23", name:"Danse Moderne Inter 2&3 (13-14 ans / 2011-2012)", lieu:"MB", jour:"Mercredi", heure:"16h15/17h15", isno:145, hc:175, animateur:"F. CHARROIS" },
-          { id:"danse-moderne-inter45", name:"Danse Moderne Inter 4&5 (15-17 ans / 2008-2010)", lieu:"MB", jour:"Mercredi", heure:"17h15/18h30", isno:150, hc:180, animateur:"F. CHARROIS" },
-          { id:"danse-eveil", name:"Danse Moderne Éveil Petits (4-5 ans / 2020-2021)", lieu:"MB", jour:"Jeudi", heure:"17h45/18h30", isno:115, hc:145, animateur:"F. CHARROIS" },
-          { id:"danse-classique-11-13", name:"Danse Classique 11-13 ans ✨", lieu:"GSF", jour:"Lundi", heure:"17h45/18h45", isno:185, hc:215, animateur:"M. RABAEY" },
-          { id:"danse-classique-4-5", name:"Danse Classique 4-5 ans ✨", lieu:"GSF", jour:"Mercredi", heure:"09h30/10h15", isno:140, hc:170, animateur:"M. RABAEY" },
-          { id:"danse-classique-6-7", name:"Danse Classique 6-7 ans ✨", lieu:"GSF", jour:"Mercredi", heure:"10h15/11h00", isno:140, hc:170, animateur:"M. RABAEY" },
-          { id:"danse-classique-8-10", name:"Danse Classique 8-10 ans ✨", lieu:"GSF", jour:"Mercredi", heure:"11h00/12h00", isno:185, hc:215, animateur:"M. RABAEY" },
-          { id:"guitare-a", name:"Atelier Guitare - Chant (ados)", lieu:"RPA", jour:"Jeudi", heure:"19h00/20h30", isno:180, hc:215, animateur:"R. GENTY" },
-          { id:"peinture-ados", name:"Atelier Peinture Ados (collégiens)", lieu:"PSF", jour:"Lundi", heure:"17h15/18h45", isno:240, hc:280, animateur:"E. COMELET" },
-          { id:"peinture-enfants1", name:"Atelier Peinture Enfants/Ados (≥6 ans)", lieu:"PSF", jour:"Mercredi", heure:"09h30/11h00", isno:240, hc:280, animateur:"E. COMELET" },
-          { id:"peinture-enfants2", name:"Atelier Peinture Enfants/Ados (≥6 ans)", lieu:"PSF", jour:"Mercredi", heure:"11h00/12h30", isno:240, hc:280, animateur:"E. COMELET" },
-          { id:"theatre-4e3e", name:"Théâtre Collégiens (4e et 3e)", lieu:"GSF", jour:"Jeudi", heure:"18h00/19h00", isno:130, hc:160, animateur:"V. DUBOS" },
-          { id:"theatre-cm1cm2", name:"Théâtre Primaires (CM1 et CM2)", lieu:"GSF", jour:"Vendredi", heure:"16h30/17h30", isno:130, hc:160, animateur:"V. DUBOS" },
-          { id:"theatre-6e5e", name:"Théâtre Collégiens (6e et 5e)", lieu:"GSF", jour:"Vendredi", heure:"17h30/18h30", isno:130, hc:160, animateur:"V. DUBOS" },
-          { id:"theatre-lycee", name:"Théâtre Lycéens", lieu:"GSF", jour:"Vendredi", heure:"18h30/19h30", isno:130, hc:160, animateur:"V. DUBOS" },
+          { id:"danse-eveil", name:"Danse Moderne Éveil Petits (4-5 ans / 2020-2021)", lieu:"MB", jour:"Jeudi", heure:"17h45/18h30", isno:115, hc:145, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-init1", name:"Danse Moderne Initiation 1&2 (6-7 ans / 2018-2019)", lieu:"MB", jour:"Mercredi", heure:"12h15/13h15", isno:145, hc:175, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-debu12", name:"Danse Moderne Débutants 1&2 (8-9 ans / 2016-2017)", lieu:"MB", jour:"Mercredi", heure:"13h15/14h15", isno:145, hc:175, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-debu23", name:"Danse Moderne Débutants 2&3 (10-11 ans / 2014-2015)", lieu:"MB", jour:"Mercredi", heure:"14h15/15h15", isno:145, hc:175, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-debu4", name:"Danse Moderne Déb.4/Inter.1 (12 ans / 2013)", lieu:"MB", jour:"Mercredi", heure:"15h15/16h15", isno:145, hc:175, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-inter23", name:"Danse Moderne Inter 2&3 (13-14 ans / 2011-2012)", lieu:"MB", jour:"Mercredi", heure:"16h15/17h15", isno:145, hc:175, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-inter45", name:"Danse Moderne Inter 4&5 (15-17 ans / 2008-2010)", lieu:"MB", jour:"Mercredi", heure:"17h15/18h30", isno:150, hc:180, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-av1", name:"Danse Moderne Avancés 1 (≥18 ans)", lieu:"CM", jour:"Jeudi", heure:"18h45/20h15", isno:165, hc:195, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+          { id:"danse-moderne-av2", name:"Danse Moderne Avancés 2", lieu:"CM", jour:"Jeudi", heure:"20h15/21h45", isno:165, hc:195, animateur:"F. CHARROIS", color:"#fce4ec:#880e4f" },
+        ]
+      },
+      classique: {
+        icon: "🩰", label: "Danse Classique",
+        acts: [
+          { id:"danse-classique-4-5", name:"Danse Classique 4-5 ans ✨", lieu:"GSF", jour:"Mercredi", heure:"09h30/10h15", isno:140, hc:170, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-6-7", name:"Danse Classique 6-7 ans ✨", lieu:"GSF", jour:"Mercredi", heure:"10h15/11h00", isno:140, hc:170, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-8-10", name:"Danse Classique 8-10 ans ✨", lieu:"GSF", jour:"Mercredi", heure:"11h00/12h00", isno:185, hc:215, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-11-13", name:"Danse Classique 11-13 ans ✨", lieu:"GSF", jour:"Lundi", heure:"17h45/18h45", isno:185, hc:215, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-inter-a", name:"Danse Classique Inter Ados/Adultes ✨", lieu:"GSF", jour:"Lundi", heure:"18h45/20h00", isno:205, hc:235, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-pointes-lu", name:"Danse Classique Pointes ✨", lieu:"GSF", jour:"Lundi", heure:"20h00/20h20", isno:50, hc:70, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-barre", name:"Danse Classique Barre à terre ✨", lieu:"GSF", jour:"Jeudi", heure:"12h15/13h15", isno:185, hc:215, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-debu-je", name:"Danse Classique Débutants/Inters ✨", lieu:"GSF", jour:"Jeudi", heure:"13h15/14h30", isno:205, hc:235, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+          { id:"danse-classique-pointes-je", name:"Danse Classique Pointes ✨", lieu:"GSF", jour:"Jeudi", heure:"14h30/14h50", isno:50, hc:70, animateur:"M. RABAEY", color:"#fff8e1:#e65100" },
+        ]
+      },
+      danse_en_ligne: {
+        icon: "🤠", label: "Danse en ligne",
+        acts: [
+          { id:"country-init-a", name:"Danse en ligne (Country) Initiation ✨", lieu:"MB", jour:"Vendredi", heure:"18h30/19h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€", color:"#e0f7fa:#006064" },
+          { id:"country-debu-a", name:"Danse en ligne (Country) Débutants ✨", lieu:"MB", jour:"Vendredi", heure:"19h30/20h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€", color:"#e0f7fa:#006064" },
+          { id:"country-novice", name:"Danse en ligne (Country) Novices ✨", lieu:"MB", jour:"Vendredi", heure:"20h30/21h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€", color:"#e0f7fa:#006064" },
+          { id:"country-inter", name:"Danse en ligne (Country) Intermédiaires ✨", lieu:"MB", jour:"Vendredi", heure:"21h30/22h30", isno:125, hc:155, animateur:"B. DECOUX", countryForfait:true, forfaitIsno:190, forfaitHc:220, note:"Forfait 2-3 séances: 190€/220€", color:"#e0f7fa:#006064" },
         ]
       }
     }
@@ -1526,7 +1584,19 @@ function goStep(n) {
   state.step = n;
   window.scrollTo({top:0, behavior:'smooth'});
   if (n === 1) setTimeout(detectCommune, 300); // détecter autofill navigateur
-  if (n === 2) loadPlaces().catch(e => console.warn('loadPlaces step2 KO:', e));
+  if (n === 2) {
+    loadPlaces().catch(e => console.warn('loadPlaces step2 KO:', e));
+    // Preremplir le membre 1 (id=0) avec les infos du responsable legal si champs vides
+    const _m0 = state.members[0];
+    if (_m0) {
+      const _rNom    = document.getElementById('rl-nom')?.value.trim().toUpperCase() || '';
+      const _rPrenom = document.getElementById('rl-prenom')?.value.trim() || '';
+      // DDN non disponible dans le formulaire responsable (saisie directe dans le membre)
+      if (!_m0.nom    && _rNom)    { _m0.nom    = _rNom;    const el = document.getElementById('m-'+_m0.id+'-nom');    if(el){el.value=_rNom;} }
+      if (!_m0.prenom && _rPrenom) { _m0.prenom = _rPrenom; const el = document.getElementById('m-'+_m0.id+'-prenom'); if(el){el.value=_rPrenom;} }
+      renderMembers();
+    }
+  }
   if (n === 3) renderHealth();
   if (n === 4) {
     try {
@@ -1952,7 +2022,9 @@ function detectCommune() {
   const cpRaw    = (document.getElementById('rl-cp')?.value || '').trim();
   const ville = villeRaw.toLowerCase().replace(/[àâäéèêëîïôöùûüç]/g, function(c){return{à:'a',â:'a',ä:'a',é:'e',è:'e',ê:'e',ë:'e',î:'i',ï:'i',ô:'o',ö:'o',ù:'u',û:'u',ü:'u',ç:'c'}[c]||c;});
   const cp    = cpRaw.trim();
-  const isno = ['isneauville', '76230'].some(v => ville.includes(v)) || cp === '76230';
+  // Tarif Isneauville uniquement si la VILLE contient 'isneauville'
+  // Le CP 76230 ne suffit pas (autres communes ont le meme CP)
+  const isno = ville.includes('isneauville');
   const badge = document.getElementById('commune-badge');
   const input = document.getElementById('rl-commune');
   if (badge && input) {
@@ -2005,7 +2077,16 @@ function getAllActs() {
   const acts = [];
   for (const section of Object.values(ACTIVITIES)) {
     for (const cat of Object.values(section.cats)) {
-      for (const a of cat.acts) acts.push(a);
+      if (cat.acts) {
+        for (const a of cat.acts) acts.push(a);
+      } else {
+        // Catégorie conteneur (ex: culture_jeunes) — itérer les sous-catégories
+        for (const subCat of Object.values(cat)) {
+          if (subCat && subCat.acts) {
+            for (const a of subCat.acts) acts.push(a);
+          }
+        }
+      }
     }
   }
   return acts;
@@ -2194,15 +2275,21 @@ const CAT_COLORS = {
   fitness:        '#e8f5e9:#2d6a4f',
   yoga:           '#e3f2fd:#1565c0',
   pilates:        '#f3e5f5:#6a1b9a',
-  tt_adultes:     '#fff3e0:#e65100',
-  tt_jeunes:      '#fff8e1:#f57f17',
+  tt:             '#fff3e0:#e65100',
   sophrologie:    '#fce4ec:#880e4f',
 
   marche:         '#e0f2f1:#00695c',
   sport_sante:    '#f1f8e9:#558b2f',
-  culture_adultes:'#fff9c4:#827717',
-  culture_jeunes: '#fbe9e7:#bf360c',
-  gym:            '#e8f5e9:#1b5e20',
+  culture_adultes: '#fff9c4:#827717',
+  culture_jeunes:  '#fbe9e7:#bf360c',
+  peinture:        '#fffde7:#f57f17',
+  couture:         '#fce4ec:#880e4f',
+  theatre:         '#f3e5f5:#6a1b9a',
+  guitare:         '#e8f5e9:#1b5e20',
+  danse_en_ligne:  '#e0f7fa:#006064',
+  modern_jazz:     '#fce4ec:#880e4f',
+  classique:       '#fff8e1:#e65100',
+  gym:             '#f1f8e9:#33691e',
 };
 
 function catColor(catKey) {
@@ -2222,7 +2309,17 @@ function buildCategoryTabs() {
   const tabs = [];
   for (const [secKey, section] of Object.entries(ACTIVITIES)) {
     for (const [catKey, cat] of Object.entries(section.cats)) {
-      tabs.push({ key: catKey, label: cat.label, secKey, acts: cat.acts });
+      if (cat.acts) {
+        // Catégorie simple avec des activités directes
+        tabs.push({ key: catKey, label: cat.label, icon: cat.icon||'', secKey, acts: cat.acts });
+      } else {
+        // Catégorie conteneur (ex: culture_jeunes) avec des sous-catégories
+        for (const [subKey, subCat] of Object.entries(cat)) {
+          if (subCat && subCat.acts) {
+            tabs.push({ key: subKey, label: subCat.label, icon: subCat.icon||''  , secKey, acts: subCat.acts });
+          }
+        }
+      }
     }
   }
   return tabs;
@@ -2232,10 +2329,21 @@ function semainierHtml(memberId) {
   const tabs = buildCategoryTabs();
   const firstKey = tabs[0].key;
 
-  const tabsHtml = `<div style="font-size:11px;color:var(--gray);margin-bottom:6px;">💡 Cliquez sur une ou plusieurs catégories pour afficher les créneaux</div>`
-    + tabs.map((t, i) =>
-      `<button class="sem-tab${i===0?' active':''}" data-sem-tab="${memberId}" data-cat="${t.key}" onclick="switchSemTab(${memberId},'${t.key}')">${t.label}</button>`
-    ).join('');
+  // Grouper les onglets sur 4 lignes
+  const TAB_GROUPS = [
+    ['tt','marche','sport_sante','fitness','yoga','pilates','sophrologie','gym'],
+    ['couture','peinture','theatre','guitare','modern_jazz','classique','danse_en_ligne'],
+  ];
+  const _tabIdx = {};
+  tabs.forEach((t,i) => { _tabIdx[t.key] = {t, i}; });
+  const tabsHtml = TAB_GROUPS.map(grp =>
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:3px;">'
+        + grp.filter(k => _tabIdx[k]).map(k => {
+            const {t, i} = _tabIdx[k];
+            return `<button class="sem-tab${i===0?' active':''}" data-sem-tab="${memberId}" data-cat="${t.key}" onclick="switchSemTab(${memberId},'${t.key}')">${t.icon ? t.icon+' ' : ''}${t.label}</button>`;
+          }).join('')
+        + '</div>'
+      ).join('');
 
   const gridsHtml = tabs.map((t, i) =>
     `<div class="sem-grid-wrap" id="sem-grid-${memberId}-${t.key}" style="${i===0?'':'display:none'}">
@@ -2245,10 +2353,11 @@ function semainierHtml(memberId) {
 
   return `
     <div style="margin-top:20px">
-      <div style="font-weight:700;font-size:14px;margin-bottom:8px;color:var(--dark);">
-        📅 Choisissez vos activités dans le semainier
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+        <div style="font-weight:700;font-size:14px;color:var(--dark);">📅 Choisissez vos activités dans le semainier</div>
+        <div style="font-size:11px;color:var(--gray);white-space:nowrap;">💡 Cliquez sur une ou plusieurs catégories pour afficher les créneaux</div>
       </div>
-      <div class="semainier-tabs" id="sem-tabs-${memberId}">${tabsHtml}</div>
+      <div class="semainier-tabs" id="sem-tabs-${memberId}" style="display:block;">${tabsHtml}</div>
       <div id="sem-merged-${memberId}" style="display:none"></div>
       <div id="sem-grids-${memberId}">
         ${gridsHtml}
@@ -2301,20 +2410,26 @@ function buildGrid(memberId, tabDef) {
 }
 
 function buildTimeGrid(memberId, tabDef, color, isno, byDay, times) {
-  // Build a proper time-grid table
+  // Exclure les jours sans aucune activite
+  const activeDays = DAYS.filter(d => byDay[d] && byDay[d].length > 0);
+  const activeDayShorts = activeDays.map(d => DAY_SHORT[DAYS.indexOf(d)]);
+
   const rows = times.map(time => {
-    const cells = DAYS.map(day => {
+    // Sauter les lignes horaires sans activite sur un jour actif
+    const hasActInRow = activeDays.some(day =>
+      byDay[day].some(a => a.heure.split('/')[0].trim() === time));
+    if (!hasActInRow) return '';
+
+    const cells = activeDays.map(day => {
       const acts = byDay[day].filter(a => a.heure.split('/')[0].trim() === time);
       if (!acts.length) return '<td><div class="sem-cell"></div></td>';
       const slots = acts.map(act => slotHtml(act, memberId, color, isno)).join('');
       return `<td><div class="sem-cell">${slots}</div></td>`;
     }).join('');
 
-    // Time label
     const endTime = (() => {
-      // find any act with this start to get end time
-      for (const acts of Object.values(byDay)) {
-        const a = acts.find(a => a.heure.split('/')[0].trim() === time);
+      for (const d of activeDays) {
+        const a = byDay[d].find(a => a.heure.split('/')[0].trim() === time);
         if (a) return a.heure.split('/')[1]?.trim() || '';
       }
       return '';
@@ -2326,10 +2441,7 @@ function buildTimeGrid(memberId, tabDef, color, isno, byDay, times) {
     </tr>`;
   }).join('');
 
-  const daysHeaders = DAYS.map((d,i) => {
-    const hasActs = byDay[d].length > 0;
-    return `<th style="${hasActs?'':'opacity:0.35'}">${DAY_SHORT[i]}</th>`;
-  }).join('');
+  const daysHeaders = activeDayShorts.map(d => `<th>${d}</th>`).join('');
 
   return `<div class="semainier-wrap">
     <table class="semainier">
@@ -2377,6 +2489,11 @@ function buildFlatGrid(memberId, tabDef, color, isno) {
 }
 
 function slotHtml(act, memberId, color, isno) {
+  // Couleur propre à l'activité (ex: TT) surcharge la couleur de catégorie
+  if (act.color) {
+    const [bg, fg] = act.color.split(':');
+    color = { bg, fg };
+  }
   const price = isno ? act.isno : act.hc;
   const placeInfo = state.places[act.id];
   const isFull = placeInfo && placeInfo.available <= 0;
@@ -2434,11 +2551,54 @@ function slotHtml(act, memberId, color, isno) {
     ? `<div style="font-size:9px;color:${color.fg};opacity:0.65;margin-top:2px">🔗 2e séance : ${(linkedSelected||isSelected)?'✔ sélectionnée':'à sélectionner'}</div>`
     : '';
 
+  const isMarcheNordic = true;
+  const zoomAttrs = isMarcheNordic
+    ? `onmouseenter="
+        var el=this;
+        el.style.transform='scale(2)';
+        el.style.zIndex='9999';
+        el.style.boxShadow='0 8px 32px rgba(0,0,0,0.35)';
+        el.style.position='relative';
+        var p=el.parentNode;
+        while(p&&p!==document.body){
+          var ov=getComputedStyle(p).overflow;
+          var ovx=getComputedStyle(p).overflowX;
+          var ovy=getComputedStyle(p).overflowY;
+          if(ov==='hidden'||ovx==='hidden'||ovy==='hidden'||ov==='auto'||ov==='scroll'||ovx==='auto'||ovy==='auto'){
+            p.dataset.savedOverflow=p.style.overflow;
+            p.dataset.savedOverflowX=p.style.overflowX;
+            p.dataset.savedOverflowY=p.style.overflowY;
+            p.style.overflow='visible';
+            p.style.overflowX='visible';
+            p.style.overflowY='visible';
+          }
+          p=p.parentNode;
+        }"
+       onmouseleave="
+        var el=this;
+        el.style.transform='';
+        el.style.zIndex='';
+        el.style.boxShadow='';
+        el.style.position='';
+        var p=el.parentNode;
+        while(p&&p!==document.body){
+          if(p.dataset.savedOverflow!==undefined){
+            p.style.overflow=p.dataset.savedOverflow;
+            p.style.overflowX=p.dataset.savedOverflowX||'';
+            p.style.overflowY=p.dataset.savedOverflowY||'';
+            delete p.dataset.savedOverflow;
+            delete p.dataset.savedOverflowX;
+            delete p.dataset.savedOverflowY;
+          }
+          p=p.parentNode;
+        }"` 
+    : '';
   return `<div class="sem-slot${isFull?' slot-full':''}${isInSelectedPair?' selected':''}"
     id="slot-${memberId}-${act.id}"
     data-member="${memberId}" data-act="${act.id}"
-    style="background:${slotBg};border-color:${slotBorder};${selectedStyle}"
-    onclick="toggleSlot(${memberId},'${act.id}')">
+    style="background:${slotBg};border-color:${slotBorder};${selectedStyle}transition:transform 0.2s ease,box-shadow 0.2s ease;"
+    onclick="toggleSlot(${memberId},'${act.id}')"
+    ${zoomAttrs}>
     <div class="sem-slot-name" style="color:${color.fg}">${act.name.replace(/\n/g,'<br>')}</div>
     <div class="sem-slot-time">${act.heure}</div>
     ${act.lieu ? `<div class="sem-slot-info">📍 ${act.lieu} · 👤 ${act.animateur}</div>` : `<div class="sem-slot-info">👤 ${act.animateur}</div>`}
@@ -2533,6 +2693,149 @@ function buildMergedGrid(memberId, catKeys) {
 }
 
 
+
+function afficherIncompatibiliteCountry(act, addingInit) {
+  var existing = document.getElementById('modal-country-incompat');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'modal-country-incompat';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.15s ease;';
+  modal.innerHTML = '<div style="background:white;border-radius:16px;max-width:460px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;">'
+    + '<div style="background:#e65100;padding:20px 24px;text-align:center;">'
+    + '<div style="font-size:36px;margin-bottom:6px;">⛔️</div>'
+    + '<div style="color:white;font-weight:800;font-size:17px;line-height:1.3;">Combinaison non autorisée</div>'
+    + '<div style="color:rgba(255,255,255,0.9);font-size:13px;margin-top:4px;">Différence de niveau trop importante</div>'
+    + '</div>'
+    + '<div style="padding:20px 24px;">'
+    + '<p style="font-size:14px;color:#555;margin:0 0 14px;line-height:1.7;text-align:center;">'
+    + (addingInit
+        ? 'Le créneau <strong>Initiation</strong> ne peut pas être combiné avec les créneaux <strong>Novices</strong> ou <strong>Intermédiaires</strong>.'
+        : 'Les créneaux <strong>Novices</strong> et <strong>Intermédiaires</strong> ne peuvent pas être combinés avec le créneau <strong>Initiation</strong>.')
+    + '</p>'
+    + '<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:12px 16px;font-size:13px;color:#e65100;text-align:center;">'
+    + '💡 Combinaisons autorisées : <strong>Initiation + Débutants</strong><br>ou <strong>Débutants + Novices + Intermédiaires</strong>'
+    + '</div>'
+    + '</div>'
+    + '<div style="padding:0 24px 22px;">'
+    + '<button id="btn-incompat-ok" style="width:100%;padding:13px;background:#1a2e22;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">'
+    + 'Compris — je choisis une autre combinaison'
+    + '</button></div></div>';
+  document.body.appendChild(modal);
+  document.getElementById('btn-incompat-ok').addEventListener('click', function() { modal.remove(); });
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  setTimeout(function() { var b = document.getElementById('btn-incompat-ok'); if (b) b.focus(); }, 50);
+}
+
+function afficherMessagesCountry(memberId, triggerId) {
+  const m = state.members.find(m => m.id === memberId);
+  if (!m) return;
+
+  const COUNTRY_IDS = ['country-init-a','country-debu-a','country-novice','country-inter',
+                       'country-debu-j','country-init-j'];
+  const isno = ((state.responsable && state.responsable.commune) || 'isno') === 'isno';
+  const selected = (m.activities || []).filter(id => COUNTRY_IDS.includes(id));
+
+  // Ne déclencher les popups country que si le clic concernait un créneau country
+  const triggerIsCountry = triggerId && COUNTRY_IDS.includes(triggerId);
+  if (!triggerIsCountry) return;
+
+  const cForf = calcCountryForfait(m, isno);
+  const hasInit   = selected.includes('country-init-a') || selected.includes('country-init-j');
+  const hasNovice = selected.includes('country-novice');
+
+  // Messages à afficher dans l'ordre
+  const msgs = [];
+
+  // Forfait
+  if (cForf.forfait && selected.length >= 2) {
+    const nb   = cForf.ids.length;
+    const prix = isno ? 190 : 220;
+    const brut = nb * (isno ? 125 : 155);
+    msgs.push({
+      color: '#2d6a4f', bg: '#d8f3dc', border: '#52b788', icon: '🎉',
+      titre: 'Forfait Country — ' + (function() {
+        var _noms = cForf.ids.map(function(id) {
+          return { 'country-init-a':'Initiation','country-debu-a':'Débutants',
+                   'country-novice':'Novices','country-inter':'Intermédiaires',
+                   'country-init-j':'Initiation','country-debu-j':'Débutants' }[id] || id;
+        });
+        return _noms.length <= 1 ? _noms[0] || ''
+          : _noms.slice(0,-1).join(', ') + ' et ' + _noms[_noms.length-1];
+      })(),
+      texte: 'Tarif forfait : <strong>' + prix + ' €</strong> au lieu de ' + brut + ' €.<br>'
+           + 'Le premier créneau est facturé ' + prix + ' €, les suivants sont <strong>inclus</strong>.',
+      btn: 'Super ! Compris'
+    });
+  } else if (selected.length === 1 && COUNTRY_IDS.some(id => selected.includes(id))) {
+    const prix2 = isno ? 190 : 220;
+    const brut1 = isno ? 125 : 155;
+    msgs.push({
+      color: '#1565c0', bg: '#e3f2fd', border: '#90caf9', icon: '💡',
+      titre: 'Astuce — Forfait Country disponible',
+      texte: 'Ajoutez un 2ᵉ créneau Country (Initiation ou Débutants) pour bénéficier du forfait : <strong>' + prix2 + ' €</strong> au lieu de ' + (brut1 * 2) + ' €.',
+      btn: 'Compris'
+    });
+  }
+
+  // Avertissement Initiation + Novices
+  if (hasInit && hasNovice) {
+    msgs.push({
+      color: '#e65100', bg: '#fff8e1', border: '#ffca28', icon: '⚠️',
+      titre: 'Attention — niveau Novices',
+      texte: 'Le créneau <strong>Novices</strong> est destiné aux danseurs ayant déjà une première expérience en country.<br>'
+           + 'Il peut être difficile à suivre en débutant en <strong>Initiation</strong> la mêtre année.',
+      btn: 'J’ai compris, je continue'
+    });
+  }
+
+  if (!msgs.length) return;
+
+  // Afficher les popups en cascade (une par une)
+  function showNext(idx) {
+    if (idx >= msgs.length) return;
+    const msg = msgs[idx];
+
+    const existing = document.getElementById('modal-country-msg');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-country-msg';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.15s ease;';
+    modal.innerHTML =
+      '<div style="background:white;border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;">'
+      + '<div style="background:' + msg.bg + ';border-bottom:2px solid ' + msg.border + ';padding:20px 24px;text-align:center;">'
+      + '<div style="font-size:36px;margin-bottom:6px;">' + msg.icon + '</div>'
+      + '<div style="color:' + msg.color + ';font-weight:800;font-size:17px;line-height:1.3;">' + msg.titre + '</div>'
+      + '</div>'
+      + '<div style="padding:20px 24px;">'
+      + '<p style="font-size:14px;color:#555;margin:0 0 16px;line-height:1.7;text-align:center;">' + msg.texte + '</p>'
+      + '</div>'
+      + '<div style="padding:0 24px 22px;">'
+      + '<button id="btn-country-msg-ok" style="width:100%;padding:13px;background:' + msg.color + ';color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">'
+      + msg.btn
+      + '</button>'
+      + '</div>'
+      + '</div>';
+
+    document.body.appendChild(modal);
+
+    document.getElementById('btn-country-msg-ok').addEventListener('click', function() {
+      modal.remove();
+      showNext(idx + 1);
+    });
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) { modal.remove(); showNext(idx + 1); }
+    });
+    setTimeout(function() {
+      const btn = document.getElementById('btn-country-msg-ok');
+      if (btn) btn.focus();
+    }, 50);
+  }
+
+  showNext(0);
+}
+
+
 function toggleSlot(memberId, actId) {
   const m = state.members.find(m => m.id === memberId);
   if (!m) return;
@@ -2567,6 +2870,17 @@ function toggleSlot(memberId, actId) {
       afficherConflitHoraire(primaryAct, conflict);
       return;
     }
+    // ── Incompatibilité country : Initiation + Novices/Intermédiaires interdit ──
+    var _INIT_IDS   = ['country-init-a','country-init-j'];
+    var _NOVICE_IDS = ['country-novice','country-inter'];
+    var _addingInit   = _INIT_IDS.includes(primaryId);
+    var _addingNovice = _NOVICE_IDS.includes(primaryId);
+    var _hasInit   = m.activities.some(function(a){ return _INIT_IDS.includes(a); });
+    var _hasNovice = m.activities.some(function(a){ return _NOVICE_IDS.includes(a); });
+    if ((_addingInit && _hasNovice) || (_addingNovice && _hasInit)) {
+      afficherIncompatibiliteCountry(primaryAct, _addingInit);
+      return;
+    }
     // Select this pair (both slots)
     if (!m.activities.includes(primaryId))    m.activities.push(primaryId);
     if (primaryLink && !m.activities.includes(primaryLink)) m.activities.push(primaryLink);
@@ -2576,6 +2890,7 @@ function toggleSlot(memberId, actId) {
   updateMemberTotal(memberId);
   updateSelectedBadge(memberId);
   refreshFfttBlocks();
+  afficherMessagesCountry(memberId, primaryId);
 }
 
 // ── Détection de chevauchement horaire ──────────────────────
@@ -4083,17 +4398,62 @@ function repondreNonATout(memberId) {
   updateQS(memberId);
 }
 
+function afficherPopupCertificatMedical(question) {
+  var existing = document.getElementById('modal-certif-medical');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'modal-certif-medical';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.15s ease;';
+  modal.innerHTML = '<div style="background:white;border-radius:16px;max-width:480px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;">'
+    + '<div style="background:#c62828;padding:20px 24px;text-align:center;">'
+    + '<div style="font-size:38px;margin-bottom:6px;">🏥</div>'
+    + '<div style="color:white;font-weight:800;font-size:17px;line-height:1.3;">Certificat médical requis</div>'
+    + '<div style="color:rgba(255,255,255,0.85);font-size:13px;margin-top:4px;">Vous avez répondu OUI à une question</div>'
+    + '</div>'
+    + '<div style="padding:20px 24px;">'
+    + (question ? '<div style="background:#fff3f3;border:1.5px solid #ef9a9a;border-radius:10px;padding:12px 16px;font-size:13px;color:#c62828;margin-bottom:14px;line-height:1.5;">'
+        + '<strong>Question concernée :</strong><br>' + question + '</div>' : '')
+    + '<p style="font-size:14px;color:#444;margin:0 0 14px;line-height:1.7;text-align:center;">'
+    + 'Une réponse <strong>OUI</strong> au questionnaire santé impose de fournir un '
+    + '<strong>certificat médical d’aptitude à la pratique sportive</strong>'
+    + ' daté de moins d’un an, délivré par votre médecin.'
+    + '</p>'
+    + '<div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 16px;font-size:13px;color:#e65100;margin-bottom:16px;">'
+    + '📋 <strong>Que faire ?</strong><br>'
+    + '1. Consultez votre médecin et obtenez le certificat.<br>'
+    + '2. Apportez-le lors de votre 1ᵊʳé séance ou envoyez-le à l’association.<br>'
+    + '3. Votre inscription ne sera finalisée qu’à réception du certificat.'
+    + '</div>'
+    + '</div>'
+    + '<div style="padding:0 24px 22px;display:flex;gap:10px;">'
+    + '<button id="btn-certif-ok" style="flex:1;padding:13px;background:#c62828;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">'
+    + 'Compris, je consulterai mon médecin'
+    + '</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+  document.getElementById('btn-certif-ok').addEventListener('click', function() { modal.remove(); });
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  setTimeout(function() { var b = document.getElementById('btn-certif-ok'); if (b) b.focus(); }, 50);
+}
+
 function updateQS(memberId) {
   const m = state.members.find(m => m.id === memberId);
   const age = getAge(m.ddn);
   const questions = age < 18 ? QS_MINEURS : QS_ADULTS;
   let allAnswered = true, hasOui = false;
+  let newOuiQuestion = null;
   questions.forEach((q, qi) => {
     const checked = document.querySelector(`input[name="qs-${memberId}-${qi}"]:checked`);
     if (!checked) { allAnswered = false; return; }
+    const wasOui = m.qs[qi] === 'oui';
     m.qs[qi] = checked.value;
-    if (checked.value === 'oui') hasOui = true;
+    if (checked.value === 'oui') {
+      hasOui = true;
+      if (!wasOui) newOuiQuestion = q; // nouvelle réponse oui
+    }
   });
+  // Ouvrir popup si une nouvelle réponse OUI vient d'être cochée
+  if (newOuiQuestion) afficherPopupCertificatMedical(newOuiQuestion);
   const res = document.getElementById(`qs-result-${memberId}`);
   if (!allAnswered) {
     res.className = 'qs-result qs-pending';
@@ -4154,7 +4514,7 @@ async function chargerDossierExistant() {
   }
 
   // Construire la liste des activités existantes
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-j'];
   activitesExistantes = [];
   let totalExistant = 0;
   let countEligibles = 0;
@@ -4222,7 +4582,7 @@ function isTTActivity(actId) {
   // Réduction -30€ femmes : TT adultes avec/sans entraînement + Ping bien-être/Loisirs
   return actId === 'tt-comp-entrain'    || actId === 'tt-comp-entrain-me'
       || actId === 'tt-comp-sans'       || actId === 'tt-comp-sans-me'
-      || actId === 'ping-bienetre'      || actId === 'tt-loisirs-a';
+      || actId === 'ping-bienetre';
 }
 
 // Mapping IDs site → IDs onglet Places (identique à getPlacesId dans Code.gs)
@@ -4300,7 +4660,7 @@ function calcTotals() {
   let totalActivities = 0;
   let totalFNSMR = state.members.length * 15;
 
-  const NON_DISCOUNTABLE = ['marche-nordic','country-init-a','country-init-j'];
+  const NON_DISCOUNTABLE = ['marche-nordic','country-init-j'];
   const allMemberActivities = state.members.flatMap(m => m.activities);
   totalActivities = new Set(allMemberActivities).size;
 
@@ -4407,7 +4767,7 @@ function buildRows(reg) {
         // Appliquer remise 15% si éligible — tarif = montant réellement réglé
         const aRemise15 = reg.totals && reg.totals.familyActCount >= 3;
         const NON_REMISABLE = ['marche-nordic','country-init-a','country-init-j'];
-        const isCountryForfaitLinked = cFl.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId);
+        const isCountryForfaitLinked = cFl.forfait && ['country-init-a','country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId);
         const estElig = !_isWaiting && aRemise15 && !isCountryForfaitLinked && !NON_REMISABLE.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
         const tarifBrut = price;
         if (estElig) price = Math.round(price * 0.85 * 100) / 100;
@@ -4426,7 +4786,7 @@ function buildRows(reg) {
           tarif: price,
           tarif_brut: tarifBrut,
           statut_inscription: _isWaiting ? 'Liste attente' : '',
-          note_tarif: (cFl.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
+          note_tarif: (cFl.forfait && ['country-init-a','country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
             ? (cFl.ids[0] === actId ? 'Forfait country ' + cFl.ids.length + ' séances' : 'Inclus forfait') : '',
           fnsmr: (function(){
             // FNSMR 0 si activité en attente ET le membre a d'autres activités payantes
@@ -4481,7 +4841,7 @@ function buildRows(reg) {
       if (cFl2.forfait && CFIDSl2.includes(actId)) price = (cFl2.ids[0] === actId) ? cFl2.prix : 0;
       const aRemise15b = reg.totals && reg.totals.familyActCount >= 3;
       const NON_REMISABLE2 = ['marche-nordic','country-init-a','country-init-j'];
-      const isCountryForfait2 = cFl2.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId);
+      const isCountryForfait2 = cFl2.forfait && ['country-init-a','country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId);
       const estElig2 = !_isWaiting2 && aRemise15b && !isCountryForfait2 && !NON_REMISABLE2.includes(actId) && (!actId.startsWith('tt-') || isno) && (!actId.startsWith('ping') || isno);
       const tarifBrut2 = price; // après forfait country
       if (estElig2) price = Math.round(price * 0.85 * 100) / 100;
@@ -4499,7 +4859,7 @@ function buildRows(reg) {
         tarif: price,
         tarif_brut: tarifBrut2,
         statut_inscription: _isWaiting2 ? 'Liste attente' : '',
-        note_tarif: (cFl2.forfait && ['country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
+        note_tarif: (cFl2.forfait && ['country-init-a','country-debu-a','country-novice','country-inter','country-debu-j'].includes(actId))
           ? (cFl2.ids[0] === actId ? 'Forfait country ' + cFl2.ids.length + ' séances' : 'Inclus forfait') : '',
         fnsmr: (function(){
             if (!_isWaiting2) return 15;
@@ -4553,7 +4913,6 @@ function renderSummary() {
   const isno = state.responsable.commune === 'isno';
   const t = calcTotals();
   const r = state.responsable;
-  console.log('[FRI] renderSummary — membres:', state.members.length, state.members.map(m => ({id:m.id, nom:m.nom, prenom:m.prenom, acts:m.activities})));
 
   let membersHtml = state.members.map(m => {
     const counted = new Set();
@@ -4779,6 +5138,53 @@ function buildChequesHtml(total, ch1, ch2, ch3, showTroisOption) {
   return html;
 }
 
+
+function syncCheque2et3DepuisCheque1() {
+  const banque = (document.getElementById('ch1t-banque')?.value || '').trim();
+  const numRaw = (document.getElementById('ch1t-numero')?.value || '').trim();
+  const num    = parseInt(numRaw) || 0;
+
+  // Reporter la banque dans chèque 2 et 3
+  const b2 = document.getElementById('ch2t-banque');
+  const b3 = document.getElementById('ch3t-banque');
+  if (b2 && banque) b2.value = banque;
+  if (b3 && banque) b3.value = banque;
+
+  // Incrémenter le numéro : +1 pour chèque 2, +2 pour chèque 3
+  const n2 = document.getElementById('ch2t-numero');
+  const n3 = document.getElementById('ch3t-numero');
+  if (n2 && num) n2.value = String(num + 1);
+  if (n3 && num) n3.value = String(num + 2);
+}
+
+function initSyncTroisCheques() {
+  // Pré-remplir depuis le chèque 1 simple si déjà rempli
+  const banque1 = (document.getElementById('ch1-banque')?.value || '').trim();
+  const num1    = (document.getElementById('ch1-numero')?.value || '').trim();
+  if (banque1) {
+    const b1t = document.getElementById('ch1t-banque');
+    if (b1t && !b1t.value) b1t.value = banque1;
+  }
+  if (num1) {
+    const n1t = document.getElementById('ch1t-numero');
+    if (n1t && !n1t.value) n1t.value = num1;
+  }
+  // Lancer la sync initiale
+  syncCheque2et3DepuisCheque1();
+
+  // Attacher les listeners sur les champs du chèque 1 (form 3 chèques)
+  const banqueEl = document.getElementById('ch1t-banque');
+  const numEl    = document.getElementById('ch1t-numero');
+  if (banqueEl) {
+    banqueEl.removeEventListener('input', syncCheque2et3DepuisCheque1);
+    banqueEl.addEventListener('input', syncCheque2et3DepuisCheque1);
+  }
+  if (numEl) {
+    numEl.removeEventListener('input', syncCheque2et3DepuisCheque1);
+    numEl.addEventListener('input', syncCheque2et3DepuisCheque1);
+  }
+}
+
 function toggleTroisCheques(total, ch1, ch2, ch3) {
   const cb   = document.getElementById('cb-trois-cheques');
   const form = document.getElementById('trois-cheques-form');
@@ -4796,6 +5202,8 @@ function toggleTroisCheques(total, ch1, ch2, ch3) {
     // Réinitialiser le chèque 1 avec le bon montant
     const m1t = document.getElementById('ch1t-montant');
     if (m1t) m1t.value = ch1;
+    // Reporter banque et incrementer num depuis chèque 1 simple vers 2 et 3
+    setTimeout(initSyncTroisCheques, 50);
   } else {
     if (form) form.style.display = 'none';
     if (singleBox) singleBox.style.display = '';
@@ -5122,21 +5530,22 @@ async function _genererPDFAvecSignature(memberId, signatureDataUrl) {
   // PAGE 2 — ATTESTATION
   // ────────────────────────────────
   doc.addPage();
-  y = 20;
 
-  // Logo texte
-  doc.setFontSize(8);
-  doc.setFont('helvetica','bold');
-  doc.setTextColor(...VERT);
+  // Header page 2 : identique page 1 (bande 20mm)
   doc.setFillColor(245,250,245);
-  doc.rect(0, 0, 210, 12, 'F');
+  doc.rect(0, 0, 210, 20, 'F');
+  // Logo FNSMR image (meme que page 1)
+  try {
+    const logoUrl2 = getLogoDataUrl ? getLogoDataUrl() : null;
+    if (logoUrl2) doc.addImage(logoUrl2, 'JPEG', 5, 2, 16, 16);
+  } catch(e) {}
   doc.setFontSize(7.5);
   doc.setFont('helvetica','bold');
   doc.setTextColor(27,94,32);
-  doc.text('Fédération Nationale', 8, 6);
+  doc.text('Fédération Nationale', 25, 9);
   doc.setFont('helvetica','normal');
-  doc.text('Sport en Milieu Rural', 8, 11);
-  y = 18;
+  doc.text('Sport en Milieu Rural', 25, 14);
+  y = 25;
 
   // Titre attestation
   doc.setFontSize(18);
@@ -5744,12 +6153,16 @@ function showConfirmError(msg) {
 
 // Legacy — kept for URL param compatibility (unused now)
 
-const READ_ACTIONS = ['getDossiers', 'ping', 'getPlaces', 'getPlacesRestantes'];
+const READ_ACTIONS = ['getDossiers', 'ping', 'getPlaces', 'getPlacesRestantes', 'rechercherAdherent'];
 
 async function callAppsScript(payload) {
   const url = getAppsScriptUrl();
   if (!url || url === 'VOTRE_URL_APPS_SCRIPT_ICI') {
     return { ok: false, reason: 'URL non configurée' };
+  }
+  // Renouveler le token si besoin avant chaque requete
+  if (payload.action !== 'getToken' && payload.action !== 'ping') {
+    await initDynamicToken();
   }
 
   if (READ_ACTIONS.includes(payload.action)) {
@@ -5789,6 +6202,38 @@ function callAppsScriptJsonp(url, payload) {
   }
   if (payload.action === 'ping') {
     return callAppsScriptFetch(url, payload).then(r => ({ ok: true })).catch(() => ({ ok: false }));
+  }
+  // rechercherAdherent : JSONP avec callback (GAS fait un redirect 302 qui bloque fetch)
+  if (payload.action === 'rechercherAdherent') {
+    return new Promise(function(resolve) {
+      var cbName = '_friAd_' + Date.now();
+      var params = new URLSearchParams({
+        action:   'rechercherAdherent',
+        tel:      payload.tel || '',
+        _token:   FRI_SECRET_TOKEN,
+        callback: cbName,
+        _t:       Date.now()
+      });
+      window[cbName] = function(data) {
+        clearTimeout(timer);
+        try { if (s.parentNode) s.parentNode.removeChild(s); } catch(e){}
+        delete window[cbName];
+        resolve({ ok: true, data: data });
+      };
+      var timer = setTimeout(function() {
+        try { if (s.parentNode) s.parentNode.removeChild(s); } catch(e){}
+        delete window[cbName];
+        resolve({ ok: false, data: { adherents: [] } });
+      }, 8000);
+      var s = document.createElement('script');
+      s.src = url + '?' + params.toString();
+      // onerror = redirect 302 GAS = requête reçue, le callback arrivera après
+      s.onerror = function() {
+        // Ne pas résoudre ici — laisser le timer attendre le callback
+        try { if (s.parentNode) s.parentNode.removeChild(s); } catch(e){}
+      };
+      document.head.appendChild(s);
+    });
   }
   return callAppsScriptFetch(url, payload);
 }
@@ -5961,6 +6406,18 @@ async function lireSheetPublic() {
 
 // Envoi vers Apps Script via fetch no-cors
 async function callAppsScriptFetch(url, payload) {
+  // Renouveler le token si besoin
+  if (payload.action !== 'getToken' && payload.action !== 'ping') {
+    await initDynamicToken();
+    // Si token toujours vide, retry jusqu'a 5s
+    if (!FRI_SECRET_TOKEN) {
+      for (var _r = 0; _r < 5 && !FRI_SECRET_TOKEN; _r++) {
+        await new Promise(r => setTimeout(r, 1000));
+        await initDynamicToken();
+      }
+    }
+    if (payload._token !== undefined) payload._token = FRI_SECRET_TOKEN;
+  }
   const action = payload.action || '';
   payload._token = payload._token || FRI_SECRET_TOKEN;
 
@@ -5970,7 +6427,6 @@ async function callAppsScriptFetch(url, payload) {
   return new Promise((resolve) => {
     const cbName = '_friW_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
     const payloadStr = JSON.stringify(payload);
-    console.log('[FRI] JSONP payload size:', payloadStr.length, 'action:', action);
 
     const params = new URLSearchParams();
     params.set('payload',  payloadStr);
@@ -5990,7 +6446,6 @@ async function callAppsScriptFetch(url, payload) {
       if (done) return;
       done = true;
       cleanup();
-      console.log('[FRI] JSONP réponse:', action, data);
       resolve({ ok: true, data });
     };
 
@@ -6004,13 +6459,18 @@ async function callAppsScriptFetch(url, payload) {
 
     const s = document.createElement('script');
     s.src = fullUrl;
+    // Actions attendant des données : ne pas résoudre sur onerror
+    const DATA_ACTIONS = ['getPlacesRestantes','getDossiers','getLicenceFFTT',
+                          'rechercherLicencieFFTT','verifierCodeAvoir'];
     s.onerror = () => {
       if (done) return;
+      if (DATA_ACTIONS.includes(action)) {
+        // onerror = redirect 302 normal — le callback va arriver, on attend le timeout
+        return;
+      }
       done = true;
       clearTimeout(t);
       cleanup();
-      // onerror sur une balise script = redirect 302 Apps Script = requête reçue et traitée
-      console.log('[FRI] JSONP script onerror (normal redirect):', action);
       resolve({ ok: true });
     };
     document.head.appendChild(s);
@@ -7929,23 +8389,50 @@ function showAdminConfigBanner() {
 // ============================================================
 function ouvrirAjoutActivite(code) {
   if (!requireAdmin()) return;
-  const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
-  const reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
+  // Chercher d'abord dans allDossiersSheet (console admin), puis localStorage
+  let reg = (window.allDossiersSheet || []).find(r => r.code === code || String(r.id) === String(code));
+  if (!reg) {
+    const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
+    reg = allRegs.find(r => r.code === code || String(r.id) === String(code));
+  }
   if (!reg) { showToast('Dossier introuvable', 'red'); return; }
   // Charger les places pour détecter les activités complètes
   loadPlaces(true).catch(e => console.warn('loadPlaces admin KO:', e));
 
-  const estRegle = reg.status && reg.status !== 'pending_manual';
-  const isno     = reg.responsable.commune === 'isno';
+  // estRegle : dossier validé (statut != pending_manual) dans Sheet ou localStorage
+  const estRegle = reg.status === 'paid' || reg.status === 'validated'
+                || (reg._sheetStatut && reg._sheetStatut.toLowerCase().includes('inscrit'));
+  const isno     = reg.responsable ? reg.responsable.commune === 'isno'
+                 : (reg._ville || '').toLowerCase().includes('isneauville');
   const t        = reg.totals || {};
-  const existingActCount = t.familyActCount || 0;
+  const existingActCount = t.familyActCount || (reg._rows ? reg._rows.filter(
+    r => !['attente','supprim'].some(k => (r.statut_inscription||'').toLowerCase().includes(k))
+  ).length : 0);
 
-  // Activités déjà dans le dossier (pour éviter les doublons et détecter chevauchements)
+  // Activités déjà dans le dossier (pour éviter les doublons)
   const activitesExistantes = new Set();
-  reg.members.forEach(m => (m.activities || []).forEach(a => activitesExistantes.add(a)));
+  if (reg.members) {
+    reg.members.forEach(m => (m.activities || []).forEach(a => activitesExistantes.add(a)));
+  } else if (reg._rows) {
+    reg._rows.forEach(r => { if (r.activite_id) activitesExistantes.add(r.activite_id); });
+  }
 
-  // Construire la liste des membres
-  const membresOptions = reg.members.map((m, idx) =>
+  // Construire la liste des membres (compatible structure Sheet et localStorage)
+  const _responsableNom = reg.responsable
+    ? reg.responsable.prenom + ' ' + reg.responsable.nom
+    : (reg._responsable || code);
+  const _membres = reg.members || (reg.members ? reg.members : []);
+  // Depuis allDossiersSheet: extraire membres uniques depuis _rows
+  let _membresListe = _membres.length ? _membres : [];
+  if (!_membresListe.length && reg._rows) {
+    const seen = new Set();
+    reg._rows.forEach(r => {
+      const k = (r.nom_membre||'') + '|' + (r.prenom_membre||'');
+      if (!seen.has(k)) { seen.add(k); _membresListe.push({nom:r.nom_membre||'',prenom:r.prenom_membre||'',id:_membresListe.length}); }
+    });
+  }
+  if (!_membresListe.length) _membresListe = [{nom: reg._nom||'', prenom: reg._prenom||'', id:0}];
+  const membresOptions = _membresListe.map((m, idx) =>
     `<option value="${idx}">${m.prenom} ${m.nom}</option>`
   ).join('');
 
@@ -7960,7 +8447,7 @@ function ouvrirAjoutActivite(code) {
       <div style="background:#1565c0;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
         <div>
           <div style="color:white;font-weight:700;font-size:15px;">➕ Ajouter une activité</div>
-          <div style="color:rgba(255,255,255,0.75);font-size:12px;">Dossier ${code} — ${reg.responsable.prenom} ${reg.responsable.nom}</div>
+          <div style="color:rgba(255,255,255,0.75);font-size:12px;">Dossier ${code} — ${_responsableNom}</div>
         </div>
         <button onclick="document.getElementById('modal-ajout-activite').remove();restoreStateApresAjout()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px;">✕</button>
       </div>
@@ -8226,11 +8713,59 @@ async function selectionnerActiviteAjout(code, actId) {
   document.getElementById('btn-valider-ajout').addEventListener('click', async () => {
     mc.remove();
     modal.remove();
-    await confirmerAjoutActivite(code, actId, membreIdx, prixApresRemise, isFull, estRegle, existingActCount);
+    if (!isFull && estRegle) {
+      // Dossier deja regle + inscription immediate -> modale paiement
+      ouvrirModalPaiementAjout(code, actId, membreIdx, prixApresRemise, existingActCount);
+    } else {
+      await confirmerAjoutActivite(code, actId, membreIdx, prixApresRemise, isFull, false, existingActCount, '');
+    }
   });
 }
 
-async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListeAttente, estRegle, existingActCount) {
+function ouvrirModalPaiementAjout(code, actId, membreIdx, montant, existingActCount) {
+  document.getElementById('modal-pay-ajout')?.remove();
+  const act = getActById(actId);
+  const actNom = act ? act.name.replace(/\n/g,' \u2014 ') : actId;
+  const mc = document.createElement('div');
+  mc.id = 'modal-pay-ajout';
+  mc.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  mc.innerHTML = '<div style="background:#1a2e22;border-radius:14px;max-width:440px;width:100%;border:1px solid rgba(201,168,76,0.4);">'
+    + '<div style="background:rgba(201,168,76,0.15);padding:16px 20px;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center;">'
+    + '<div style="font-weight:700;font-size:15px;color:var(--gold);">&#x1F4B3; R\u00e8glement activit\u00e9 ajout\u00e9e</div>'
+    + '<button onclick="document.getElementById(\'modal-pay-ajout\').remove()" style="background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:28px;height:28px;color:white;font-size:16px;cursor:pointer;">&times;</button>'
+    + '</div>'
+    + '<div style="padding:20px;">'
+    + '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:16px;">'
+    + 'Activit\u00e9\u00a0: <strong style="color:#ffab40">' + actNom + '</strong>'
+    + '<br>Montant\u00a0: <strong style="color:#52b788">' + montant.toFixed(2) + '\u00a0\u20ac</strong>'
+    + (existingActCount >= 2 ? '<br><small style="color:rgba(255,255,255,0.4);">Remise 15% appliqu\u00e9e (3e activit\u00e9 \u00e9ligible)</small>' : '')
+    + '</div>'
+    + '<div style="margin-bottom:12px;">'
+    + '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Mode de paiement</label>'
+    + '<select id="ajout-mode-pay" style="width:100%;background:#0d1f14;color:white;border:1px solid rgba(45,106,79,0.5);border-radius:7px;padding:8px 12px;font-size:13px;">'
+    + '<option value="cheque">Ch\u00e8que</option>'
+    + '<option value="especes">Esp\u00e8ces</option>'
+    + '<option value="helloasso">HelloAsso</option>'
+    + '</select></div>'
+    + '<div style="margin-bottom:16px;">'
+    + '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px;">Montant r\u00e9gl\u00e9 (\u20ac)</label>'
+    + '<input id="ajout-montant-pay" type="number" step="0.01" value="' + montant.toFixed(2) + '" style="width:100%;background:#0d1f14;color:white;border:1px solid rgba(45,106,79,0.5);border-radius:7px;padding:8px 12px;font-size:14px;font-weight:700;box-sizing:border-box;">'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;">'
+    + '<button onclick="document.getElementById(\'modal-pay-ajout\').remove()" style="flex:1;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:none;border-radius:8px;padding:10px;font-size:13px;cursor:pointer;">Annuler</button>'
+    + '<button id="btn-confirm-ajout-pay" style="flex:2;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">\u2705 Valider le r\u00e8glement</button>'
+    + '</div></div></div>';
+  document.body.appendChild(mc);
+  mc.addEventListener('click', e => { if (e.target === mc) mc.remove(); });
+  document.getElementById('btn-confirm-ajout-pay').addEventListener('click', async function() {
+    const mode    = document.getElementById('ajout-mode-pay')?.value || 'cheque';
+    const montantPay = parseFloat(document.getElementById('ajout-montant-pay')?.value) || montant;
+    mc.remove();
+    await confirmerAjoutActivite(code, actId, membreIdx, montantPay, false, true, existingActCount, mode);
+  });
+}
+
+async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListeAttente, estRegle, existingActCount, modePaiement) {
   restoreStateApresAjout();
   const allRegs = JSON.parse(localStorage.getItem('fri_registrations') || '[]');
   const regIdx  = allRegs.findIndex(r => r.code === code || String(r.id) === String(code));
@@ -8300,7 +8835,8 @@ async function confirmerAjoutActivite(code, actId, membreIdx, prixFinal, enListe
     estRegle:          estRegle === true || estRegle === 'true',
     statutInscription: enListeAttente ? 'Liste attente' : '',
     existingActCount:  existingActCount || 0,
-    ffttPrice:         0
+    ffttPrice:         0,
+    modePaiement:      modePaiement || 'cheque'
   };
 
   console.log('[FRI] Payload GAS:', JSON.stringify(payload).substring(0, 200));
@@ -8614,6 +9150,8 @@ function exportSingleExcel(id) {
 // INIT
 // ============================================================
 (async function init() {
+  // Recuperer le token dynamique avant tout
+  await initDynamicToken();
   // Load places availability before rendering
   // Charger les places avec un léger délai pour laisser le DOM se stabiliser
   // Puis re-rendre la section active pour mettre à jour les badges de places
@@ -8826,7 +9364,14 @@ function setupPaymentStep(code) {
     var ch2 = showTrois ? Math.round(total * 0.30) : 0;
     var ch3 = showTrois ? total - Math.round(total*0.40) - Math.round(total*0.30) : 0;
     document.getElementById('step-b-title').textContent = 'Paiement par chèque';
+    var msgTroisHtml = (!showTrois && total > 0)
+      ? '<div style="background:#fff3cd;border:2px solid #ffc107;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#856404;font-weight:600;">'
+        + '⚠️ Le règlement en 3 chèques échelonnés est uniquement disponible pour un solde <strong>supérieur à 260 €</strong>.'
+        + '<br>Votre solde actuel est de <strong>' + total.toFixed(2) + ' €</strong>.'
+        + '</div>'
+      : '';
     document.getElementById('step-b-content').innerHTML = codeBox + atoutBox
+      + msgTroisHtml
       + buildChequesHtml(total, ch1, ch2, ch3, showTrois)
       + '<div style="background:#e3f2fd;border:1px solid #1565c0;border-radius:10px;padding:14px;margin-top:14px;">'
       + '<div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:6px;">&#x1F4CB; Instructions</div>'
@@ -9082,6 +9627,151 @@ async function validerFormulaireCheques(code, total, showTrois) {
     });
   }
 })();
+
+
+// Recherche adhérent FRI année précédente par téléphone
+let _adherentSearchTimer = null;
+async function rechercherAdherentFRI(telPartiel) {
+  const clean = (telPartiel||'').replace(/[^0-9]/g,'');
+  const resultsDiv = document.getElementById('adherent-search-results');
+  if (!resultsDiv) return;
+  if (clean.length < 6) {
+    resultsDiv.innerHTML = clean.length > 0
+      ? '<span style="font-size:12px;color:#888;">' + clean.length + '/6 chiffres saisis...</span>' : '';
+    return;
+  }
+  clearTimeout(_adherentSearchTimer);
+  _adherentSearchTimer = setTimeout(async () => {
+    resultsDiv.innerHTML = '<span style="font-size:12px;color:#888;">\u23f3 Recherche...</span>';
+    try {
+      const res = await callAppsScript({ action: 'rechercherAdherent', tel: clean });
+      const data = (res && res.data) ? res.data : res;
+      if (!data || !data.adherents || data.adherents.length === 0) {
+        resultsDiv.innerHTML = '<span style="font-size:12px;color:#888;">Aucun r\u00e9sultat pour ces chiffres.</span>';
+        return;
+      }
+      // Stocker les adherents pour validation
+      window._adherentSearchData = data.adherents;
+      let html = '<div style="margin-bottom:10px;background:#fff3cd;border:1.5px solid #ffc107;border-radius:10px;padding:12px 14px;">';
+      html += '<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:8px;">🔒 Validation : saisissez les 3 premières lettres de votre nom</div>';
+      html += '<input type="text" id="adherent-verif-nom" maxlength="3" placeholder="ex: MAR" '
+           + 'style="width:80px;padding:6px 10px;border:1.5px solid #ffc107;border-radius:8px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:2px;" '
+           + 'oninput="verifierAdherentNom(this.value)">';
+      html += '<div id="adherent-verif-results" style="margin-top:8px;"></div>';
+      html += '</div>';
+      resultsDiv.innerHTML = html;
+      setTimeout(() => { const el = document.getElementById('adherent-verif-nom'); if(el) el.focus(); }, 50);
+    } catch(e) {
+      resultsDiv.innerHTML = '<span style="font-size:12px;color:#c00;">\u26a0\ufe0f Erreur: ' + e.message + '</span>';
+    }
+  }, 400);
+}
+
+function verifierAdherentNom(saisie) {
+  const verif = (saisie || '').toUpperCase().trim();
+  const div = document.getElementById('adherent-verif-results');
+  if (!div) return;
+  const adherents = window._adherentSearchData || [];
+  if (verif.length < 3) {
+    div.innerHTML = verif.length > 0
+      ? '<span style="font-size:12px;color:#856404;">' + verif.length + '/3 lettres...</span>' : '';
+    return;
+  }
+  const norm = s => (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const matches = adherents.filter(a => norm(a.nom).startsWith(norm(verif)));
+  if (matches.length === 0) {
+    div.innerHTML = '<div style="font-size:13px;color:#c62828;font-weight:600;">❌ Nom non reconnu. Vérifiez les 3 premières lettres.</div>';
+    return;
+  }
+  let html = '<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">';
+  matches.forEach(function(a) {
+    const idx = adherents.indexOf(a);
+    const nom = ((a.prenom||'') + ' ' + (a.nom||'')).trim();
+    const tel = a.tel1 || '';
+    const ville = ((a.cp||'') + ' ' + (a.ville||'')).trim();
+    html += '<button type="button" onclick="remplirFormulaireAdherent(' + idx + ')"'
+      + ' style="text-align:left;background:rgba(45,106,79,0.12);border:1px solid rgba(45,106,79,0.3);border-radius:8px;padding:10px 14px;cursor:pointer;transition:background 0.2s;"'
+      + ' onmouseover="this.style.background=\'rgba(45,106,79,0.25)\'" onmouseout="this.style.background=\'rgba(45,106,79,0.12)\'">'
+      + '<span style="font-weight:700;font-size:14px;color:#1b5e20;">✔️ ' + nom + '</span>'
+      + '<br><span style="font-size:12px;color:#555;">' + tel + (ville ? ' — ' + ville : '') + '</span>'
+      + '</button>';
+  });
+  html += '</div>';
+  div.innerHTML = html;
+}
+
+function syncMembre1DepuisResponsable() {
+  const m0 = state.members ? state.members[0] : null;
+  if (!m0) return;
+  const nom    = (document.getElementById('rl-nom')?.value || '').trim().toUpperCase();
+  const prenom = (document.getElementById('rl-prenom')?.value || '').trim();
+  // Mettre a jour le state
+  if (nom)    m0.nom    = nom;
+  if (prenom) m0.prenom = prenom;
+  // Mettre a jour les inputs DOM du membre 1 s'ils existent
+  const elNom    = document.getElementById('m-'+m0.id+'-nom');
+  const elPrenom = document.getElementById('m-'+m0.id+'-prenom');
+  if (elNom    && nom    && !elNom.value)    { elNom.value    = nom;    elNom.dispatchEvent(new Event('input')); }
+  if (elPrenom && prenom && !elPrenom.value) { elPrenom.value = prenom; elPrenom.dispatchEvent(new Event('input')); }
+}
+
+function remplirFormulaireAdherent(idx) {
+  const a = (window._adherentSearchData || [])[idx];
+  if (!a) return;
+  // Remplir le formulaire responsable
+  function set(id, val) {
+    const el = document.getElementById(id);
+    if (el && val) { el.value = val; el.dispatchEvent(new Event('input')); }
+  }
+  set('rl-nom',     (a.nom||'').toUpperCase());
+  set('rl-prenom',  a.prenom||'');
+  set('rl-adresse', a.adresse||'');
+  set('rl-cp',      a.cp||'');
+  set('rl-ville',   (a.ville||'').toUpperCase());
+  set('rl-tel1',    a.tel1||'');
+  set('rl-tel2',    a.tel2||'');
+  set('rl-email1',  a.email1||'');
+  set('rl-email2',  a.email2||'');
+  // Pre-remplir membre 0 (responsable legal = membre 1) avec nom, prenom, DDN
+  var _m0auto = state.members[0];
+  if (_m0auto) {
+    // Toujours pre-remplir nom et prenom
+    _m0auto.nom    = (a.nom||'').toUpperCase();
+    _m0auto.prenom = a.prenom||'';
+    // DDN : convertir dd/mm/yyyy en yyyy-mm-dd si besoin
+    if (a.ddn) {
+      var ddnRaw = String(a.ddn).trim();
+      var ddnFmt = ddnRaw;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(ddnRaw)) {
+        var p = ddnRaw.split('/'); ddnFmt = p[2]+'-'+p[1]+'-'+p[0];
+      } else if (/^\d{2}\/\d{2}\/\d{2}$/.test(ddnRaw)) {
+        var p2 = ddnRaw.split('/'); ddnFmt = '20'+p2[2]+'-'+p2[1]+'-'+p2[0];
+      }
+      _m0auto.ddn = ddnFmt;
+    }
+    // Forcer re-render pour afficher les valeurs dans les inputs DOM
+    renderMembers();
+    // Puis mettre a jour les inputs directement (apres render)
+    setTimeout(function() {
+      var idM = _m0auto.id;
+      var elNom    = document.getElementById('m-'+idM+'-nom');
+      var elPrenom = document.getElementById('m-'+idM+'-prenom');
+      var elDdn    = document.getElementById('m-'+idM+'-ddn');
+      if (elNom)    { elNom.value    = _m0auto.nom;    elNom.dispatchEvent(new Event('input')); }
+      if (elPrenom) { elPrenom.value = _m0auto.prenom; elPrenom.dispatchEvent(new Event('input')); }
+      if (elDdn && _m0auto.ddn) { elDdn.value = _m0auto.ddn; elDdn.dispatchEvent(new Event('input')); }
+    }, 50);
+  }
+  // D\u00e9tecter la commune automatiquement
+  setTimeout(detectCommune, 100);
+  autosave();
+  // Feedback visuel
+  const resultsDiv = document.getElementById('adherent-search-results');
+  if (resultsDiv) resultsDiv.innerHTML = '<div style="background:#d8f3dc;border:1px solid #52b788;border-radius:8px;padding:10px 14px;font-size:13px;color:#1b5e20;font-weight:600;">'
+    + '\u2705 Formulaire pr\u00e9-rempli avec les informations de ' + (a.prenom||'') + ' ' + (a.nom||'')
+    + '<br><small style="font-weight:400;color:#555;">V\u00e9rifiez et modifiez si n\u00e9cessaire.</small></div>';
+  document.getElementById('adherent-search-tel').value = '';
+}
 
 </script>
 </body>
